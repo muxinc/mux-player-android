@@ -1,0 +1,55 @@
+// TODO: Update this to kotlin after updating the distribution plugin extension
+plugins {
+  id 'com.android.library'
+  id 'org.jetbrains.kotlin.android'
+}
+
+android {
+  namespace 'com.mux.video'
+  compileSdk 33
+
+  defaultConfig {
+    minSdk 21
+
+    testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    consumerProguardFiles "consumer-rules.pro"
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled false
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+    }
+  }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+  }
+  kotlinOptions {
+    jvmTarget = '1.8'
+  }
+}
+
+dependencies {
+
+  def media3Version = "1.1.1";
+  api "androidx.media3:media3-common:${media3Version}"
+  api "androidx.media3:media3-exoplayer:${media3Version}"
+  api "androidx.media3:media3-ui:${media3Version}"
+  api "androidx.media3:media3-exoplayer-hls:${media3Version}"
+  api "androidx.media3:media3-exoplayer-dash:${media3Version}"
+  api "androidx.media3:media3-exoplayer-ima:${media3Version}"
+  api "androidx.media3:media3-cast:${media3Version}"
+
+  api("com.mux.stats.sdk.muxstats:data-media3:0.8.1")
+
+  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+
+  testImplementation 'junit:junit:4.13.2'
+  testImplementation 'androidx.test.ext:junit:1.1.5'
+  testImplementation "io.mockk:mockk:1.12.3"
+  testImplementation 'org.robolectric:robolectric:4.10.3'
+
+  androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+  androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}
