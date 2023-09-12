@@ -9,7 +9,7 @@ import androidx.media3.exoplayer.upstream.CmcdConfiguration
  * A [MediaSource.Factory] configured to work best with Mux Video. Prefer to use this over
  * [DefaultMediaSourceFactory] so we can provide our own defaults (eg, turning on CMCD, etc)
  *
- * If you want to configure the factory further, you can use [innerFactory]
+ * It's backed by a [DefaultMediaSourceFactory] that you can configure further using [innerFactory]
  *
  * @see innerFactory
  */

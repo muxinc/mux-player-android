@@ -27,18 +27,15 @@ class MuxExoPlayer private constructor(
    *
    * @see MuxMediaSourceFactory
    */
-  class Builder private constructor(
+  class Builder(
+
+    /**
+     * The [Context] in which you're running your player. Using an `Activity` will provide the most
+     * telemetry for Mux Data
+     */
+    val context: Context,
     private val playerBuilder: ExoPlayer.Builder,
-    private val context: Context,
   ) {
-
-    // ========== Mux-specific config params ==========
-    private var muxPlaybackId = "null"
-
-
-    // ========== Mux-Related Builder methods ==========
-
-    // ========== Builder methods ==========
 
     /**
      * Allows you to configure the underlying [ExoPlayer] by adding your own [ExoPlayer.Builder]
@@ -63,8 +60,6 @@ class MuxExoPlayer private constructor(
     private fun setDefaults(builder: ExoPlayer.Builder) {
       playerBuilder.setMediaSourceFactory(MuxMediaSourceFactory(context))
     }
-
-    constructor(context: Context): this(ExoPlayer.Builder(context), context)
 
     init {
       setDefaults(playerBuilder)
