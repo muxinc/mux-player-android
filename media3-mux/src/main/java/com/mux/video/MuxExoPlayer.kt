@@ -2,10 +2,7 @@ package com.mux.video
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.exoplayer.upstream.CmcdConfiguration
-import com.mux.video.factory.MuxMediaSourceFactory
-import java.util.PrimitiveIterator
+import com.mux.video.media.MuxMediaSourceFactory
 
 /**
  * An [ExoPlayer] with a few extra APIs for interacting with Mux Video (TODO: link?)

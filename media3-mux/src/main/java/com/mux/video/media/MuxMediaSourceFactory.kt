@@ -1,4 +1,4 @@
-package com.mux.video.factory
+package com.mux.video.media
 
 import android.content.Context
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
