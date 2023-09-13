@@ -40,6 +40,7 @@ dependencies {
   api "androidx.media3:media3-exoplayer-dash:${media3Version}"
   api "androidx.media3:media3-exoplayer-ima:${media3Version}"
   api "androidx.media3:media3-cast:${media3Version}"
+  api "androidx.media3:media3-extractor:${media3Version}"
 
   api("com.mux.stats.sdk.muxstats:data-media3:0.8.1")
 
