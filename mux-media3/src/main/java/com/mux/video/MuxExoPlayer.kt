@@ -24,7 +24,7 @@ class MuxExoPlayer private constructor(
    *
    * @see MuxMediaSourceFactory
    */
-  class Builder(
+  class Builder private constructor(
 
     /**
      * The [Context] in which you're running your player. Using an `Activity` will provide the most
@@ -34,9 +34,13 @@ class MuxExoPlayer private constructor(
     private val playerBuilder: ExoPlayer.Builder,
   ) {
 
+    constructor(context: Context): this(context, ExoPlayer.Builder(context))
+
     /**
      * Allows you to configure the underlying [ExoPlayer] by adding your own [ExoPlayer.Builder]
      * parameters to it. Note that some of your configuration may be overwritten
+     *
+     * TODO: Usage
      *
      * Calling `build` on this [ExoPlayer.Builder] will result in crashing
      *
@@ -44,6 +48,22 @@ class MuxExoPlayer private constructor(
      */
     fun plusExoConfig(block: (ExoPlayer.Builder) -> Unit): Builder {
       block(playerBuilder)
+      return this
+    }
+
+    /**
+     * Allows you to configure the underlying [ExoPlayer] by adding your own [ExoPlayer.Builder]
+     * parameters to it. Note that some of your configuration may be overwritten
+     *
+     * TODO: Usage
+     *
+     * Calling `build` on this [ExoPlayer.Builder] will result in crashing
+     *
+     * @see MuxMediaSourceFactory
+     */
+    @JvmSynthetic
+    fun applyExoConfig(block: ExoPlayer.Builder.() -> Unit): Builder {
+      playerBuilder.block()
       return this
     }
 

@@ -5,6 +5,8 @@ import androidx.media3.common.MediaItem
 /**
  * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with
  * `MuxExoPlayer`
+ *
+ * TODO: Alternative spelling: MuxMediaItems
  */
 object MediaItems {
 
