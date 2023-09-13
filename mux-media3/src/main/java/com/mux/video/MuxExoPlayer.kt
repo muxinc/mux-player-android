@@ -2,6 +2,9 @@ package com.mux.video
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
+import com.mux.stats.sdk.core.model.CustomerData
+import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
+import com.mux.stats.sdk.muxstats.monitorWithMuxData
 import com.mux.video.media.MuxMediaSourceFactory
 
 /**
@@ -9,8 +12,25 @@ import com.mux.video.media.MuxMediaSourceFactory
  * This player also integrates transparently with Mux Data (TODO: link?)
  */
 class MuxExoPlayer private constructor(
-  private val exoPlayer: ExoPlayer
+  private val exoPlayer: ExoPlayer,
+  private val muxDataKey: String,
+  context: Context
 ) : ExoPlayer by exoPlayer {
+
+  private var muxStats: MuxStatsSdkMedia3<ExoPlayer>? = null
+
+  override fun release() {
+    muxStats?.release()
+    exoPlayer.release()
+  }
+
+  init {
+    muxStats = exoPlayer.monitorWithMuxData(
+      context = context,
+      envKey = muxDataKey,
+      customerData = CustomerData()
+    )
+  }
 
   /**
    * Builds instances of [MuxExoPlayer]. To configure the underlying [ExoPlayer], you can use
@@ -30,11 +50,22 @@ class MuxExoPlayer private constructor(
      * The [Context] in which you're running your player. Using an `Activity` will provide the most
      * telemetry for Mux Data
      */
-    val context: Context,
+    private val context: Context,
     private val playerBuilder: ExoPlayer.Builder,
   ) {
 
+    private var dataEnvKey: String = ""
+
     constructor(context: Context): this(context, ExoPlayer.Builder(context))
+
+    /**
+     * Sets a custom Mux Data Env Key for this player. If you're playing videos hosted on Mux Video,
+     * this can be inferred to be the env key associated with the video asset's org and environment.
+     */
+    fun setMuxDataEnv(envKey: String): Builder {
+      dataEnvKey = envKey
+      return this
+    }
 
     /**
      * Allows you to configure the underlying [ExoPlayer] by adding your own [ExoPlayer.Builder]
@@ -71,7 +102,11 @@ class MuxExoPlayer private constructor(
      * Creates a new [MuxExoPlayer].
      */
     fun build(): MuxExoPlayer {
-      return MuxExoPlayer(playerBuilder.build())
+      return MuxExoPlayer(
+        context = context,
+        exoPlayer = this.playerBuilder.build(),
+        muxDataKey = this.dataEnvKey,
+      )
     }
 
     private fun setDefaults(builder: ExoPlayer.Builder) {

@@ -5,7 +5,7 @@ plugins {
 
 android {
   namespace = "com.mux.video.media3"
-  compileSdk = 33
+  compileSdk = 34
 
   defaultConfig {
     applicationId = "com.mux.video.media3"

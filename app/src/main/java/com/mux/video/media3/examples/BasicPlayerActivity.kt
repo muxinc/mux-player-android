@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -48,7 +49,13 @@ class BasicPlayerActivity : AppCompatActivity() {
 
   private fun playSomething() {
     val player = createPlayer()
-    val mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.TEARS_OF_STEEL)
+    val mediaItem = MediaItems.builderFromMuxPlaybackId(PlaybackIds.TEARS_OF_STEEL)
+      .setMediaMetadata(
+        MediaMetadata.Builder()
+          .setTitle("Basic MuxExoPlayer Example")
+          .build()
+      )
+      .build()
     player.setMediaItem(mediaItem)
     player.prepare()
     player.playWhenReady = true
