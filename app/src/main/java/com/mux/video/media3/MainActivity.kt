@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity() {
   private val examples = listOf(
     Example(
       title = "Basic Foreground Player",
-      destination = Intent(this@, BasicPlayerActivity::class.java)
+      destination = Intent(this@MainActivity, BasicPlayerActivity::class.java)
     )
   )
 }

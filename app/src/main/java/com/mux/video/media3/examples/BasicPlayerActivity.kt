@@ -48,7 +48,6 @@ class BasicPlayerActivity : AppCompatActivity() {
 
   private fun playSomething() {
     val player = createPlayer()
-
     val mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.TEARS_OF_STEEL)
     player.setMediaItem(mediaItem)
     player.prepare()
@@ -62,7 +61,7 @@ class BasicPlayerActivity : AppCompatActivity() {
   private fun createPlayer(): MuxExoPlayer {
     val out = MuxExoPlayer.Builder(this)
       .applyExoConfig {
-        // Call ExoPlayer.Builder methods
+        // Call ExoPlayer.Builder methods here
         setHandleAudioBecomingNoisy(true)
         setSeekBackIncrementMs(10_000)
         setSeekForwardIncrementMs(30_000)
