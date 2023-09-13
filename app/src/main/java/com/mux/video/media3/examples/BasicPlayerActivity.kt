@@ -20,7 +20,7 @@ import com.mux.video.media3.databinding.ActivityBasicPlayerBinding
 class BasicPlayerActivity : AppCompatActivity() {
 
   private lateinit var binding: ActivityBasicPlayerBinding
-  private val playerView by binding::player
+  private val playerView get() = binding.player
 
   private var player: MuxExoPlayer? = null
 

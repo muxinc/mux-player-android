@@ -16,22 +16,23 @@ import com.mux.video.media3.examples.BasicPlayerActivity
 class MainActivity : AppCompatActivity() {
 
   private lateinit var binding: ActivityMainBinding
-  private val examplesView by binding::mainExampleList
+  private val examplesView get() = binding.mainExampleList
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     binding = ActivityMainBinding.inflate(layoutInflater)
     setContentView(binding.root)
-
     examplesView.layoutManager = LinearLayoutManager(this)
+
+    setUpExampleList()
   }
 
   private fun setUpExampleList() {
-    val exampleAdapter = ExampleListAdapter(this, examples)
+    val exampleAdapter = ExampleListAdapter(this, examples())
     examplesView.adapter = exampleAdapter
   }
 
-  private val examples = listOf(
+  private fun examples() = listOf(
     Example(
       title = "Basic Foreground Player",
       destination = Intent(this@MainActivity, BasicPlayerActivity::class.java)
@@ -66,7 +67,7 @@ class ExampleListAdapter(
   override fun onBindViewHolder(holder: Holder, position: Int) {
     val example = examples[position]
     holder.viewBinding.exampleName.text = example.title
-    holder.itemView.setOnClickListener { context.startActivity(example.destination) }
+    holder.viewBinding.root.setOnClickListener { context.startActivity(example.destination) }
   }
 
   class Holder(
