@@ -1,6 +1,7 @@
 package com.mux.video.media3.examples
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
@@ -77,6 +78,7 @@ class BasicPlayerActivity : AppCompatActivity() {
 
     out.addListener(object : Player.Listener {
       override fun onPlayerError(error: PlaybackException) {
+        Log.e(TAG, "player error!", error)
         Toast.makeText(
           this@BasicPlayerActivity,
           "Playback error! ${error.localizedMessage}",
@@ -86,5 +88,9 @@ class BasicPlayerActivity : AppCompatActivity() {
     })
 
     return out
+  }
+
+  companion object {
+    val TAG = BasicPlayerActivity::class.simpleName
   }
 }
