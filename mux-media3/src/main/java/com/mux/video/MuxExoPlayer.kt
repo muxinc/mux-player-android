@@ -38,7 +38,7 @@ class MuxExoPlayer private constructor(
      * Allows you to configure the underlying [ExoPlayer] by adding your own [ExoPlayer.Builder]
      * parameters to it. Note that some of your configuration may be overwritten
      *
-     * Calling [build] on this [ExoPlayer.Builder] will lead to problems
+     * Calling `build` on this [ExoPlayer.Builder] will result in crashing
      *
      * @see MuxMediaSourceFactory
      */
