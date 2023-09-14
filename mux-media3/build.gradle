@@ -6,7 +6,7 @@ plugins {
 
 android {
   namespace 'com.mux.video'
-  compileSdk 33
+  compileSdk 34
 
   defaultConfig {
     minSdk 21
@@ -40,8 +40,9 @@ dependencies {
   api "androidx.media3:media3-exoplayer-dash:${media3Version}"
   api "androidx.media3:media3-exoplayer-ima:${media3Version}"
   api "androidx.media3:media3-cast:${media3Version}"
+  api "androidx.media3:media3-extractor:${media3Version}"
 
-  api("com.mux.stats.sdk.muxstats:data-media3:0.8.1")
+  api("com.mux.stats.sdk.muxstats:data-media3:0.8.0")
 
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
 
