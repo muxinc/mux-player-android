@@ -1,5 +1,6 @@
 package com.mux.video.media
 
+import android.net.Uri
 import androidx.media3.common.MediaItem
 
 /**
@@ -29,8 +30,13 @@ object MediaItems {
   @JvmOverloads
   fun fromMuxPlaybackId(
     playbackId: String,
-    domain: String = MUX_VIDEO_DEFAULT_DOMAIN
-  ): MediaItem = builderFromMuxPlaybackId(playbackId, domain).build()
+    domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
+    maxResolution: PlaybackResolution? = null,
+  ): MediaItem = builderFromMuxPlaybackId(
+    playbackId,
+    domain,
+    maxResolution
+  ).build()
 
   /**
    * Creates a new [MediaItem.Builder] that points to a given Mux Playback ID. You can add
@@ -45,13 +51,15 @@ object MediaItems {
   @JvmOverloads
   fun builderFromMuxPlaybackId(
     playbackId: String,
-    domain: String = MUX_VIDEO_DEFAULT_DOMAIN
+    domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
+    maxResolution: PlaybackResolution? = null,
   ): MediaItem.Builder {
     return MediaItem.Builder()
       .setUri(
         createPlaybackUrl(
           playbackId = playbackId,
-          domain = domain
+          domain = domain,
+          maxResolution = maxResolution,
         )
       )
   }
@@ -59,6 +67,35 @@ object MediaItems {
   private fun createPlaybackUrl(
     playbackId: String,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
-    subdomain: String = MUX_VIDEO_SUBDOMAIN
-  ): String = "https://$subdomain.$domain/$playbackId.m3u8"
+    subdomain: String = MUX_VIDEO_SUBDOMAIN,
+    maxResolution: PlaybackResolution? = null,
+  ): String {
+    val base = Uri.parse("https://$subdomain.$domain/$playbackId.m3u8").buildUpon()
+
+    if (maxResolution != null) {
+      base.appendQueryParameter("max_resolution", resolutionValue(maxResolution))
+    }
+
+    return base.build().toString()
+  }
+
+  private fun resolutionValue(playbackResolution: PlaybackResolution): String {
+    return when (playbackResolution) {
+      PlaybackResolution.HD_720 -> "720p"
+      PlaybackResolution.FHD_1080 -> "1080p"
+      PlaybackResolution.QHD_1440 -> "1440p"
+      PlaybackResolution.FOUR_K_2160 -> "2160p"
+    }
+  }
+}
+
+/**
+ * A resolution for playing back Mux assets. If specified in [MediaItems.fromMuxPlaybackId], or
+ * similar methods, the video's resolution will be limited to the given value
+ */
+enum class PlaybackResolution() {
+  HD_720,
+  FHD_1080,
+  QHD_1440,
+  FOUR_K_2160,
 }
