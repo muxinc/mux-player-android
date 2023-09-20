@@ -33,9 +33,10 @@ class MuxExoPlayer private constructor(
       envKey = muxDataKey,
       customerData = CustomerData()
     )
-    // todo - will probably need to listen to more stuff before the task is over
     exoPlayer.addListener(object : Listener {
+      // more listener methods here if required
       override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        // TODO: When we're associating CustomerVideoDatas with MediaItems, add the right data here
         muxStats?.videoChange(CustomerVideoData())
       }
     })
