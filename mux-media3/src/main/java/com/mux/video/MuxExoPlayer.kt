@@ -1,8 +1,11 @@
 package com.mux.video
 
 import android.content.Context
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player.Listener
 import androidx.media3.exoplayer.ExoPlayer
 import com.mux.stats.sdk.core.model.CustomerData
+import com.mux.stats.sdk.core.model.CustomerVideoData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.stats.sdk.muxstats.monitorWithMuxData
 import com.mux.video.media.MuxMediaSourceFactory
@@ -30,6 +33,12 @@ class MuxExoPlayer private constructor(
       envKey = muxDataKey,
       customerData = CustomerData()
     )
+    // todo - will probably need to listen to more stuff before the task is over
+    exoPlayer.addListener(object : Listener {
+      override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        muxStats?.videoChange(CustomerVideoData())
+      }
+    })
   }
 
   /**
