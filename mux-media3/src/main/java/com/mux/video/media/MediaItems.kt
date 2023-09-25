@@ -1,7 +1,10 @@
 package com.mux.video.media
 
 import android.net.Uri
+import android.os.Bundle
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaItem.RequestMetadata
+import com.mux.stats.sdk.core.model.CustomerVideoData
 
 /**
  * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with
@@ -16,7 +19,9 @@ object MediaItems {
    */
   @Suppress("MemberVisibilityCanBePrivate")
   const val MUX_VIDEO_DEFAULT_DOMAIN = "mux.com"
+
   private const val MUX_VIDEO_SUBDOMAIN = "stream"
+  private const val EXTRA_VIDEO_DATA = "com.mux.video.customerdata"
 
   /**
    * Creates a new [MediaItem] that points to a given Mux Playback ID.
@@ -31,10 +36,12 @@ object MediaItems {
   fun fromMuxPlaybackId(
     playbackId: String,
     maxResolution: PlaybackResolution? = null,
+    videoData: CustomerVideoData? = null,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
   ): MediaItem = builderFromMuxPlaybackId(
     playbackId,
     maxResolution,
+    videoData,
     domain,
   ).build()
 
@@ -52,8 +59,15 @@ object MediaItems {
   fun builderFromMuxPlaybackId(
     playbackId: String,
     maxResolution: PlaybackResolution? = null,
+    videoData: CustomerVideoData? = null,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
   ): MediaItem.Builder {
+    val extras = Bundle()
+    if (videoData != null) {
+      // TODO: Probably need to deserialize from String in the Core :/
+      extras.putString(EXTRA_VIDEO_DATA, videoData.muxDictionary.toString())
+    }
+
     return MediaItem.Builder()
       .setUri(
         createPlaybackUrl(
@@ -61,6 +75,11 @@ object MediaItems {
           domain = domain,
           maxResolution = maxResolution,
         )
+      )
+      .setRequestMetadata(
+        RequestMetadata.Builder()
+          .setExtras(extras)
+          .build()
       )
   }
 
