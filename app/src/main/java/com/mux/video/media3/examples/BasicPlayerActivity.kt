@@ -11,6 +11,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.mux.video.MuxExoPlayer
 import com.mux.video.media.MediaItems
+import com.mux.video.media.PlaybackResolution
 import com.mux.video.media3.PlaybackIds
 import com.mux.video.media3.databinding.ActivityBasicPlayerBinding
 
@@ -50,7 +51,10 @@ class BasicPlayerActivity : AppCompatActivity() {
 
   private fun playSomething() {
     val player = createPlayer()
-    val mediaItem = MediaItems.builderFromMuxPlaybackId(PlaybackIds.TEARS_OF_STEEL)
+    val mediaItem = MediaItems.builderFromMuxPlaybackId(
+      PlaybackIds.TEARS_OF_STEEL,
+      PlaybackResolution.FHD_1080,
+    )
       .setMediaMetadata(
         MediaMetadata.Builder()
           .setTitle("Basic MuxExoPlayer Example")

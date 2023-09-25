@@ -30,12 +30,12 @@ object MediaItems {
   @JvmOverloads
   fun fromMuxPlaybackId(
     playbackId: String,
-    domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
     maxResolution: PlaybackResolution? = null,
+    domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
   ): MediaItem = builderFromMuxPlaybackId(
     playbackId,
+    maxResolution,
     domain,
-    maxResolution
   ).build()
 
   /**
@@ -51,8 +51,8 @@ object MediaItems {
   @JvmOverloads
   fun builderFromMuxPlaybackId(
     playbackId: String,
-    domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
     maxResolution: PlaybackResolution? = null,
+    domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
   ): MediaItem.Builder {
     return MediaItem.Builder()
       .setUri(
@@ -93,7 +93,7 @@ object MediaItems {
  * A resolution for playing back Mux assets. If specified in [MediaItems.fromMuxPlaybackId], or
  * similar methods, the video's resolution will be limited to the given value
  */
-enum class PlaybackResolution() {
+enum class PlaybackResolution {
   HD_720,
   FHD_1080,
   QHD_1440,
