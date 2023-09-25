@@ -17,6 +17,7 @@ import com.mux.video.media.MuxMediaSourceFactory
 class MuxExoPlayer private constructor(
   private val exoPlayer: ExoPlayer,
   private val muxDataKey: String,
+  private val optOutOfMuxData: Boolean,
   context: Context
 ) : ExoPlayer by exoPlayer {
 
@@ -28,11 +29,14 @@ class MuxExoPlayer private constructor(
   }
 
   init {
-    muxStats = exoPlayer.monitorWithMuxData(
-      context = context,
-      envKey = muxDataKey,
-      customerData = CustomerData()
-    )
+    if (!optOutOfMuxData) {
+      muxStats = exoPlayer.monitorWithMuxData(
+        context = context,
+        envKey = muxDataKey,
+        customerData = CustomerData()
+      )
+    }
+
     exoPlayer.addListener(object : Listener {
       // more listener methods here if required
       override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -65,6 +69,7 @@ class MuxExoPlayer private constructor(
   ) {
 
     private var dataEnvKey: String = ""
+    private var optOutOfData: Boolean = false
 
     constructor(context: Context): this(context, ExoPlayer.Builder(context))
 
@@ -110,6 +115,11 @@ class MuxExoPlayer private constructor(
       return this
     }
 
+    fun optOutOfMuxData(optOut: Boolean): Builder {
+      optOutOfData = optOut
+      return this
+    }
+
     /**
      * Creates a new [MuxExoPlayer].
      */
@@ -118,6 +128,7 @@ class MuxExoPlayer private constructor(
         context = context,
         exoPlayer = this.playerBuilder.build(),
         muxDataKey = this.dataEnvKey,
+        optOutOfMuxData = this.optOutOfData,
       )
     }
 

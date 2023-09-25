@@ -67,7 +67,7 @@ class BasicPlayerActivity : AppCompatActivity() {
 
   @OptIn(UnstableApi::class)
   private fun createPlayer(): MuxExoPlayer {
-    val out = MuxExoPlayer.Builder(this)
+    val out: MuxExoPlayer = MuxExoPlayer.Builder(this)
       .applyExoConfig {
         // Call ExoPlayer.Builder methods here
         setHandleAudioBecomingNoisy(true)
