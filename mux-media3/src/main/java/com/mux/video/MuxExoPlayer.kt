@@ -29,14 +29,8 @@ class MuxExoPlayer private constructor(
   }
 
   init {
-    if (!optOutOfMuxData) {
-      muxStats = exoPlayer.monitorWithMuxData(
-        context = context,
-        envKey = muxDataKey,
-        customerData = CustomerData()
-      )
-    }
-
+    // listen internally before Mux Data gets events, in case we need to handle something before
+    // the data SDK sees (like media metadata for new streams during a MediaItem transition, etc)
     exoPlayer.addListener(object : Listener {
       // more listener methods here if required
       override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -44,6 +38,14 @@ class MuxExoPlayer private constructor(
         muxStats?.videoChange(CustomerVideoData())
       }
     })
+
+    if (!optOutOfMuxData) {
+      muxStats = exoPlayer.monitorWithMuxData(
+        context = context,
+        envKey = muxDataKey,
+        customerData = CustomerData()
+      )
+    }
   }
 
   /**
