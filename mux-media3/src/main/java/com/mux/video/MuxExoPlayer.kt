@@ -9,6 +9,10 @@ import com.mux.stats.sdk.core.model.CustomerVideoData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.stats.sdk.muxstats.monitorWithMuxData
 import com.mux.video.media.MuxMediaSourceFactory
+import com.mux.video.util.LogcatLogger
+import com.mux.video.util.Logger
+import com.mux.video.util.NoLogger
+import kotlin.math.log
 
 /**
  * An [ExoPlayer] with a few extra APIs for interacting with Mux Video (TODO: link?)
@@ -18,6 +22,7 @@ class MuxExoPlayer private constructor(
   private val exoPlayer: ExoPlayer,
   private val muxDataKey: String,
   private val optOutOfMuxData: Boolean,
+  private val logger: Logger,
   context: Context
 ) : ExoPlayer by exoPlayer {
 
@@ -72,6 +77,7 @@ class MuxExoPlayer private constructor(
 
     private var dataEnvKey: String = ""
     private var optOutOfData: Boolean = false
+    private var logger: Logger? = null
 
     constructor(context: Context): this(context, ExoPlayer.Builder(context))
 
@@ -81,6 +87,18 @@ class MuxExoPlayer private constructor(
      */
     fun setMuxDataEnv(envKey: String): Builder {
       dataEnvKey = envKey
+      return this
+    }
+
+    /**
+     * Enables logcat from Mux's custom player components. ExoPlayer's logging cannot be turned off
+     */
+    fun enableLogcat(enableLogcat: Boolean): Builder {
+      logger = if (enableLogcat) {
+        LogcatLogger()
+      } else {
+        NoLogger()
+      }
       return this
     }
 
@@ -131,7 +149,18 @@ class MuxExoPlayer private constructor(
         exoPlayer = this.playerBuilder.build(),
         muxDataKey = this.dataEnvKey,
         optOutOfMuxData = this.optOutOfData,
+        logger = logger ?: NoLogger()
       )
+    }
+
+    /**
+     * Internal function allows adding arbitrary loggers. Good for unit tests where you don't have a
+     * real logcat
+     */
+    @JvmSynthetic
+    internal fun setLogger(logger: Logger): Builder {
+      this.logger = logger
+      return this
     }
 
     private fun setDefaults(builder: ExoPlayer.Builder) {
