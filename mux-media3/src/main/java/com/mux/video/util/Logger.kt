@@ -20,7 +20,7 @@ internal interface Logger {
 internal fun LogcatLogger(): Logger = DeviceLogger()
 
 /**
- * Creats a new [Logger] that doesn't log anything at all
+ * Creates a new [Logger] that doesn't log anything at all
  */
 internal fun NoLogger(): Logger = SilentLogger()
 
