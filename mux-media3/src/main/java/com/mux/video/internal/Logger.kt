@@ -1,4 +1,4 @@
-package com.mux.video.util
+package com.mux.video.internal
 
 import android.util.Log
 import java.lang.Exception
@@ -17,14 +17,16 @@ internal interface Logger {
 /**
  * Creates a new [Logger] that logs to Logcat
  */
+@JvmSynthetic
 internal fun LogcatLogger(): Logger = DeviceLogger()
 
 /**
  * Creates a new [Logger] that doesn't log anything at all
  */
+@JvmSynthetic
 internal fun NoLogger(): Logger = SilentLogger()
 
-internal class SilentLogger: Logger {
+private class SilentLogger: Logger {
   override fun e(tag: String, message: String, exception: Exception?) { }
   override fun w(tag: String, message: String, exception: Exception?) { }
   override fun d(tag: String, message: String, exception: Exception?) { }
@@ -33,7 +35,7 @@ internal class SilentLogger: Logger {
 
 }
 
-internal class DeviceLogger: Logger {
+private class DeviceLogger: Logger {
   override fun e(tag: String, message: String, exception: Exception?) {
     Log.e(tag, message, exception)
   }

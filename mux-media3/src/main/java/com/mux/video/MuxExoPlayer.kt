@@ -9,10 +9,9 @@ import com.mux.stats.sdk.core.model.CustomerVideoData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.stats.sdk.muxstats.monitorWithMuxData
 import com.mux.video.media.MuxMediaSourceFactory
-import com.mux.video.util.LogcatLogger
-import com.mux.video.util.Logger
-import com.mux.video.util.NoLogger
-import kotlin.math.log
+import com.mux.video.internal.LogcatLogger
+import com.mux.video.internal.Logger
+import com.mux.video.internal.NoLogger
 
 /**
  * An [ExoPlayer] with a few extra APIs for interacting with Mux Video (TODO: link?)
