@@ -1,6 +1,8 @@
 package com.mux.video.media
 
 import android.content.Context
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.CmcdConfiguration
@@ -13,8 +15,9 @@ import androidx.media3.exoplayer.upstream.CmcdConfiguration
  *
  * @see innerFactory
  */
+@OptIn(UnstableApi::class)
 class MuxMediaSourceFactory private constructor(
-  val innerFactory: DefaultMediaSourceFactory
+  @Suppress("MemberVisibilityCanBePrivate") val innerFactory: DefaultMediaSourceFactory
 ): MediaSource.Factory by innerFactory {
 
   constructor(context: Context): this(DefaultMediaSourceFactory(context))
