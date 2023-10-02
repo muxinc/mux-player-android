@@ -36,12 +36,10 @@ object MediaItems {
   fun fromMuxPlaybackId(
     playbackId: String,
     maxResolution: PlaybackResolution? = null,
-    videoData: CustomerVideoData? = null,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
   ): MediaItem = builderFromMuxPlaybackId(
     playbackId,
     maxResolution,
-    videoData,
     domain,
   ).build()
 
@@ -59,15 +57,8 @@ object MediaItems {
   fun builderFromMuxPlaybackId(
     playbackId: String,
     maxResolution: PlaybackResolution? = null,
-    overriddenVideoData: CustomerVideoData? = null,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
   ): MediaItem.Builder {
-    val extras = Bundle()
-    if (overriddenVideoData != null) {
-      // TODO: Probably need to deserialize from String in the Core :/
-      extras.putString(EXTRA_VIDEO_DATA, overriddenVideoData.muxDictionary.toString())
-    }
-
     return MediaItem.Builder()
       .setUri(
         createPlaybackUrl(
@@ -78,7 +69,6 @@ object MediaItems {
       )
       .setRequestMetadata(
         RequestMetadata.Builder()
-          .setExtras(extras)
           .build()
       )
   }
