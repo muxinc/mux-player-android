@@ -1,5 +1,6 @@
 package com.mux.video.media3.examples
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -9,9 +10,14 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import com.mux.stats.sdk.core.model.CustomData
+import com.mux.stats.sdk.core.model.CustomerData
+import com.mux.stats.sdk.core.model.CustomerVideoData
+import com.mux.stats.sdk.core.model.CustomerViewData
+import com.mux.stats.sdk.core.util.UUID
 import com.mux.video.MuxExoPlayer
 import com.mux.video.media.MediaItems
-import com.mux.video.media.PlaybackResolution
+import com.mux.video.media.PlaybackMaxResolution
 import com.mux.video.media3.PlaybackIds
 import com.mux.video.media3.databinding.ActivityBasicPlayerBinding
 
@@ -50,10 +56,11 @@ class BasicPlayerActivity : AppCompatActivity() {
   }
 
   private fun playSomething() {
-    val player = createPlayer()
+    val player = createPlayer(this)
     val mediaItem = MediaItems.builderFromMuxPlaybackId(
       PlaybackIds.TEARS_OF_STEEL,
-      PlaybackResolution.FHD_1080,
+//      PlaybackResolution.FHD_1080,
+      PlaybackMaxResolution.HD_720,
     )
       .setMediaMetadata(
         MediaMetadata.Builder()
@@ -70,8 +77,25 @@ class BasicPlayerActivity : AppCompatActivity() {
   }
 
   @OptIn(UnstableApi::class)
-  private fun createPlayer(): MuxExoPlayer {
-    val out: MuxExoPlayer = MuxExoPlayer.Builder(this)
+  private fun createPlayer(context: Context): MuxExoPlayer {
+    val out: MuxExoPlayer = MuxExoPlayer.Builder(context)
+      .addMonitoringData(
+        CustomerData().apply {
+          customerViewData = CustomerViewData().apply {
+            viewSessionId = UUID.generateUUID()
+          }
+          customerVideoData = CustomerVideoData().apply {
+            videoSeries = "My Series"
+            videoId = "abc1234zyxw"
+          }
+          customData = CustomData().apply {
+            customData1 = "my custom metadata field"
+            customData2 = "another custom metadata field"
+            customData10 = "up to 10 custom fields"
+          }
+        }
+      )
+      .setMuxDataEnv("rhhn9fph0nog346n4tqb6bqda")
       .applyExoConfig {
         // Call ExoPlayer.Builder methods here
         setHandleAudioBecomingNoisy(true)
