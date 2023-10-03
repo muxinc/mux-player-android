@@ -8,10 +8,10 @@ import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.core.model.CustomerVideoData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.stats.sdk.muxstats.monitorWithMuxData
-import com.mux.video.media.MuxMediaSourceFactory
 import com.mux.video.internal.LogcatLogger
 import com.mux.video.internal.Logger
 import com.mux.video.internal.NoLogger
+import com.mux.video.media.MuxMediaSourceFactory
 
 /**
  * An [ExoPlayer] with a few extra APIs for interacting with Mux Video (TODO: link?)
@@ -19,10 +19,10 @@ import com.mux.video.internal.NoLogger
  */
 class MuxExoPlayer private constructor(
   private val exoPlayer: ExoPlayer,
-  private val muxDataKey: String,
-  private val optOutOfMuxData: Boolean,
+  private val muxDataKey: String?,
   private val logger: Logger,
-  context: Context
+  context: Context,
+  initialCustomerData: CustomerData,
 ) : ExoPlayer by exoPlayer {
 
   private var muxStats: MuxStatsSdkMedia3<ExoPlayer>? = null
@@ -38,18 +38,15 @@ class MuxExoPlayer private constructor(
     exoPlayer.addListener(object : Listener {
       // more listener methods here if required
       override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-        // TODO: When we're associating CustomerVideoDatas with MediaItems, add the right data here
-        muxStats?.videoChange(CustomerVideoData())
+        //muxStats?.videoChange(CustomerVideoData())
       }
     })
 
-    if (!optOutOfMuxData) {
-      muxStats = exoPlayer.monitorWithMuxData(
-        context = context,
-        envKey = muxDataKey,
-        customerData = CustomerData()
-      )
-    }
+    muxStats = exoPlayer.monitorWithMuxData(
+      context = context,
+      envKey = muxDataKey ?: "", // empty string should infer the key
+      customerData = initialCustomerData,
+    )
   }
 
   /**
@@ -74,16 +71,18 @@ class MuxExoPlayer private constructor(
     private val playerBuilder: ExoPlayer.Builder,
   ) {
 
-    private var dataEnvKey: String = ""
+    private var dataEnvKey: String? = null
     private var optOutOfData: Boolean = false
     private var logger: Logger? = null
+    private var customerData: CustomerData = CustomerData()
 
-    constructor(context: Context): this(context, ExoPlayer.Builder(context))
+    constructor(context: Context) : this(context, ExoPlayer.Builder(context))
 
     /**
      * Sets a custom Mux Data Env Key for this player. If you're playing videos hosted on Mux Video,
      * this can be inferred to be the env key associated with the video asset's org and environment.
      */
+    @Suppress("unused")
     fun setMuxDataEnv(envKey: String): Builder {
       dataEnvKey = envKey
       return this
@@ -92,6 +91,7 @@ class MuxExoPlayer private constructor(
     /**
      * Enables logcat from Mux's custom player components. ExoPlayer's logging cannot be turned off
      */
+    @Suppress("unused")
     fun enableLogcat(enableLogcat: Boolean): Builder {
       logger = if (enableLogcat) {
         LogcatLogger()
@@ -102,16 +102,24 @@ class MuxExoPlayer private constructor(
     }
 
     /**
+     * Adds the given Mux Data metadata to this player. Previously-added data will not be cleared,
+     * but can be overridden with other values
+     */
+    @Suppress("unused")
+    fun addMonitoringData(customerData: CustomerData): Builder {
+      this.customerData.update(customerData)
+      return this
+    }
+
+    /**
      * Allows you to configure the underlying [ExoPlayer] by adding your own [ExoPlayer.Builder]
      * parameters to it. Note that some of your configuration may be overwritten
-     *
-     * TODO: Usage
-     * TODO: We probably only need one of [plusExoConfig] or [applyExoConfig]
      *
      * Calling `build` on the provided [ExoPlayer.Builder] will result in a crash eventually
      *
      * @see MuxMediaSourceFactory
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     fun plusExoConfig(block: (ExoPlayer.Builder) -> Unit): Builder {
       block(playerBuilder)
       return this
@@ -120,9 +128,6 @@ class MuxExoPlayer private constructor(
     /**
      * Allows you to configure the underlying [ExoPlayer] by adding your own [ExoPlayer.Builder]
      * parameters to it. Note that some of your configuration may be overwritten
-     *
-     * TODO: Usage
-     * TODO: We probably only need one of [plusExoConfig] or [applyExoConfig]
      *
      * Calling `build` in this block will result in a crash eventually, so don't.
      *
@@ -134,11 +139,6 @@ class MuxExoPlayer private constructor(
       return this
     }
 
-    fun optOutOfMuxData(optOut: Boolean): Builder {
-      optOutOfData = optOut
-      return this
-    }
-
     /**
      * Creates a new [MuxExoPlayer].
      */
@@ -147,8 +147,8 @@ class MuxExoPlayer private constructor(
         context = context,
         exoPlayer = this.playerBuilder.build(),
         muxDataKey = this.dataEnvKey,
-        optOutOfMuxData = this.optOutOfData,
-        logger = logger ?: NoLogger()
+        logger = logger ?: NoLogger(),
+        initialCustomerData = customerData,
       )
     }
 
@@ -156,6 +156,7 @@ class MuxExoPlayer private constructor(
      * Internal function allows adding arbitrary loggers. Good for unit tests where you don't have a
      * real logcat
      */
+    @Suppress("unused")
     @JvmSynthetic
     internal fun setLogger(logger: Logger): Builder {
       this.logger = logger
@@ -163,7 +164,7 @@ class MuxExoPlayer private constructor(
     }
 
     private fun setDefaults(builder: ExoPlayer.Builder) {
-      playerBuilder.setMediaSourceFactory(MuxMediaSourceFactory(context))
+      builder.setMediaSourceFactory(MuxMediaSourceFactory(context))
     }
 
     init {

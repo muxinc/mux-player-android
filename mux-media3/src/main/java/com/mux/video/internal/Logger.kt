@@ -32,7 +32,6 @@ private class SilentLogger: Logger {
   override fun d(tag: String, message: String, exception: Exception?) { }
   override fun i(tag: String, message: String, exception: Exception?) { }
   override fun v(tag: String, message: String, exception: Exception?) { }
-
 }
 
 private class DeviceLogger: Logger {
