@@ -95,7 +95,6 @@ class BasicPlayerActivity : AppCompatActivity() {
           }
         }
       )
-      .setMuxDataEnv("rhhn9fph0nog346n4tqb6bqda")
       .applyExoConfig {
         // Call ExoPlayer.Builder methods here
         setHandleAudioBecomingNoisy(true)
