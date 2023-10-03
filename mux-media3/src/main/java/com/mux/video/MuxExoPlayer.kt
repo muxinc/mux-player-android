@@ -107,8 +107,9 @@ class MuxExoPlayer private constructor(
      * but can be overridden with other values
      */
     @Suppress("unused")
-    fun addMonitoringData(customerData: CustomerData) {
+    fun addMonitoringData(customerData: CustomerData): Builder {
       this.customerData.update(customerData)
+      return this
     }
 
     /**

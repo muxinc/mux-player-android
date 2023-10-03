@@ -9,6 +9,12 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import com.mux.stats.sdk.core.model.CustomerData
+import com.mux.stats.sdk.core.model.CustomerPlayerData
+import com.mux.stats.sdk.core.model.CustomerVideoData
+import com.mux.stats.sdk.core.model.CustomerViewData
+import com.mux.stats.sdk.core.model.CustomerViewerData
+import com.mux.stats.sdk.core.util.UUID
 import com.mux.video.MuxExoPlayer
 import com.mux.video.media.MediaItems
 import com.mux.video.media.PlaybackResolution
@@ -53,7 +59,7 @@ class BasicPlayerActivity : AppCompatActivity() {
     val player = createPlayer()
     val mediaItem = MediaItems.builderFromMuxPlaybackId(
       PlaybackIds.TEARS_OF_STEEL,
-      PlaybackResolution.FHD_1080,
+      //PlaybackResolution.FHD_1080,
     )
       .setMediaMetadata(
         MediaMetadata.Builder()
@@ -72,6 +78,17 @@ class BasicPlayerActivity : AppCompatActivity() {
   @OptIn(UnstableApi::class)
   private fun createPlayer(): MuxExoPlayer {
     val out: MuxExoPlayer = MuxExoPlayer.Builder(this)
+      .addMonitoringData(
+        CustomerData().apply {
+          customerViewData = CustomerViewData().apply {
+            viewSessionId = UUID.generateUUID()
+          }
+          customerVideoData = CustomerVideoData().apply {
+            videoSeries = "My Series"
+            videoId = "abc1234zyxw"
+          }
+        }
+      )
       .applyExoConfig {
         // Call ExoPlayer.Builder methods here
         setHandleAudioBecomingNoisy(true)
