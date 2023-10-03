@@ -12,14 +12,12 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.mux.stats.sdk.core.model.CustomData
 import com.mux.stats.sdk.core.model.CustomerData
-import com.mux.stats.sdk.core.model.CustomerPlayerData
 import com.mux.stats.sdk.core.model.CustomerVideoData
 import com.mux.stats.sdk.core.model.CustomerViewData
-import com.mux.stats.sdk.core.model.CustomerViewerData
 import com.mux.stats.sdk.core.util.UUID
 import com.mux.video.MuxExoPlayer
 import com.mux.video.media.MediaItems
-import com.mux.video.media.PlaybackResolution
+import com.mux.video.media.PlaybackMaxResolution
 import com.mux.video.media3.PlaybackIds
 import com.mux.video.media3.databinding.ActivityBasicPlayerBinding
 
@@ -62,7 +60,7 @@ class BasicPlayerActivity : AppCompatActivity() {
     val mediaItem = MediaItems.builderFromMuxPlaybackId(
       PlaybackIds.TEARS_OF_STEEL,
 //      PlaybackResolution.FHD_1080,
-      PlaybackResolution.HD_720,
+      PlaybackMaxResolution.HD_720,
     )
       .setMediaMetadata(
         MediaMetadata.Builder()

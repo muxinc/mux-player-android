@@ -33,7 +33,7 @@ object MediaItems {
   @JvmOverloads
   fun fromMuxPlaybackId(
     playbackId: String,
-    maxResolution: PlaybackResolution? = null,
+    maxResolution: PlaybackMaxResolution? = null,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
   ): MediaItem = builderFromMuxPlaybackId(
@@ -56,7 +56,7 @@ object MediaItems {
   @JvmOverloads
   fun builderFromMuxPlaybackId(
     playbackId: String,
-    maxResolution: PlaybackResolution? = null,
+    maxResolution: PlaybackMaxResolution? = null,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
   ): MediaItem.Builder {
@@ -79,7 +79,7 @@ object MediaItems {
     playbackId: String,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
     subdomain: String = MUX_VIDEO_SUBDOMAIN,
-    maxResolution: PlaybackResolution? = null,
+    maxResolution: PlaybackMaxResolution? = null,
     playbackToken: String? = null,
   ): String {
     val base = Uri.parse("https://$subdomain.$domain/$playbackId.m3u8").buildUpon()
@@ -90,12 +90,12 @@ object MediaItems {
     return base.build().toString()
   }
 
-  private fun resolutionValue(playbackResolution: PlaybackResolution): String {
-    return when (playbackResolution) {
-      PlaybackResolution.HD_720 -> "720p"
-      PlaybackResolution.FHD_1080 -> "1080p"
-      PlaybackResolution.QHD_1440 -> "1440p"
-      PlaybackResolution.FOUR_K_2160 -> "2160p"
+  private fun resolutionValue(playbackMaxResolution: PlaybackMaxResolution): String {
+    return when (playbackMaxResolution) {
+      PlaybackMaxResolution.HD_720 -> "720p"
+      PlaybackMaxResolution.FHD_1080 -> "1080p"
+      PlaybackMaxResolution.QHD_1440 -> "1440p"
+      PlaybackMaxResolution.FOUR_K_2160 -> "2160p"
     }
   }
 }
@@ -104,7 +104,7 @@ object MediaItems {
  * A resolution for playing back Mux assets. If specified in [MediaItems.fromMuxPlaybackId], or
  * similar methods, the video's resolution will be limited to the given value
  */
-enum class PlaybackResolution {
+enum class PlaybackMaxResolution {
   HD_720,
   FHD_1080,
   QHD_1440,
