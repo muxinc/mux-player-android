@@ -156,6 +156,7 @@ class MuxExoPlayer private constructor(
      * Internal function allows adding arbitrary loggers. Good for unit tests where you don't have a
      * real logcat
      */
+    @Suppress("unused")
     @JvmSynthetic
     internal fun setLogger(logger: Logger): Builder {
       this.logger = logger
