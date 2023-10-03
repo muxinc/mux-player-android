@@ -1,10 +1,8 @@
 package com.mux.video.media
 
 import android.net.Uri
-import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
-import com.mux.stats.sdk.core.model.CustomerVideoData
 
 /**
  * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with
@@ -37,10 +35,12 @@ object MediaItems {
     playbackId: String,
     maxResolution: PlaybackResolution? = null,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
+    playbackToken: String? = null,
   ): MediaItem = builderFromMuxPlaybackId(
     playbackId,
     maxResolution,
     domain,
+    playbackToken,
   ).build()
 
   /**
@@ -58,6 +58,7 @@ object MediaItems {
     playbackId: String,
     maxResolution: PlaybackResolution? = null,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
+    playbackToken: String? = null,
   ): MediaItem.Builder {
     return MediaItem.Builder()
       .setUri(
@@ -65,6 +66,7 @@ object MediaItems {
           playbackId = playbackId,
           domain = domain,
           maxResolution = maxResolution,
+          playbackToken = playbackToken,
         )
       )
       .setRequestMetadata(
@@ -78,12 +80,12 @@ object MediaItems {
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
     subdomain: String = MUX_VIDEO_SUBDOMAIN,
     maxResolution: PlaybackResolution? = null,
+    playbackToken: String? = null,
   ): String {
     val base = Uri.parse("https://$subdomain.$domain/$playbackId.m3u8").buildUpon()
 
-    if (maxResolution != null) {
-      base.appendQueryParameter("max_resolution", resolutionValue(maxResolution))
-    }
+    maxResolution?.let { base.appendQueryParameter("max_resolution", resolutionValue(it)) }
+    playbackToken?.let { base.appendQueryParameter("token", it) }
 
     return base.build().toString()
   }
