@@ -35,7 +35,7 @@ muxDistribution {
   devVersion versionFromCommitHash('dev-')
   releaseVersion versionFromTag()
   artifactIds just("media3-player")
-  groupIds just("com.mux.stats.sdk.muxstats")
+  groupIds just("com.mux.video")
   publicReleaseIf releaseOnTag()
 
   // TODO: This is kinda clumsy, packageJavadocs should be a function not a property probably
