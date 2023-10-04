@@ -5,7 +5,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player.Listener
 import androidx.media3.exoplayer.ExoPlayer
 import com.mux.stats.sdk.core.model.CustomerData
-import com.mux.stats.sdk.core.model.CustomerVideoData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.stats.sdk.muxstats.monitorWithMuxData
 import com.mux.video.internal.LogcatLogger
@@ -17,7 +16,7 @@ import com.mux.video.media.MuxMediaSourceFactory
  * An [ExoPlayer] with a few extra APIs for interacting with Mux Video (TODO: link?)
  * This player also integrates transparently with Mux Data (TODO: link?)
  */
-class MuxExoPlayer private constructor(
+class MuxPlayer private constructor(
   private val exoPlayer: ExoPlayer,
   private val muxDataKey: String?,
   private val logger: Logger,
@@ -50,7 +49,7 @@ class MuxExoPlayer private constructor(
   }
 
   /**
-   * Builds instances of [MuxExoPlayer]. To configure the underlying [ExoPlayer], you can use
+   * Builds instances of [MuxPlayer]. To configure the underlying [ExoPlayer], you can use
    * [plusExoConfig], and provide a function to update an [ExoPlayer.Builder]. Note that configuring
    * or overriding certain objects with [plusExoConfig] may degrade the player's behavior
    *
@@ -140,10 +139,10 @@ class MuxExoPlayer private constructor(
     }
 
     /**
-     * Creates a new [MuxExoPlayer].
+     * Creates a new [MuxPlayer].
      */
-    fun build(): MuxExoPlayer {
-      return MuxExoPlayer(
+    fun build(): MuxPlayer {
+      return MuxPlayer(
         context = context,
         exoPlayer = this.playerBuilder.build(),
         muxDataKey = this.dataEnvKey,

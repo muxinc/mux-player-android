@@ -15,7 +15,7 @@ import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.core.model.CustomerVideoData
 import com.mux.stats.sdk.core.model.CustomerViewData
 import com.mux.stats.sdk.core.util.UUID
-import com.mux.video.MuxExoPlayer
+import com.mux.video.MuxPlayer
 import com.mux.video.media.MediaItems
 import com.mux.video.media.PlaybackMaxResolution
 import com.mux.video.media3.PlaybackIds
@@ -30,7 +30,7 @@ class BasicPlayerActivity : AppCompatActivity() {
   private lateinit var binding: ActivityBasicPlayerBinding
   private val playerView get() = binding.player
 
-  private var player: MuxExoPlayer? = null
+  private var player: MuxPlayer? = null
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -77,8 +77,8 @@ class BasicPlayerActivity : AppCompatActivity() {
   }
 
   @OptIn(UnstableApi::class)
-  private fun createPlayer(context: Context): MuxExoPlayer {
-    val out: MuxExoPlayer = MuxExoPlayer.Builder(context)
+  private fun createPlayer(context: Context): MuxPlayer {
+    val out: MuxPlayer = MuxPlayer.Builder(context)
       .addMonitoringData(
         CustomerData().apply {
           customerViewData = CustomerViewData().apply {
