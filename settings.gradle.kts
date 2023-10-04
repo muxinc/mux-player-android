@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Mux Video Media3"
 include(":app")
-include(":mux-media3")
+include(":library")
