@@ -48,13 +48,13 @@ muxDistribution {
   }
 
   dokkaConfig {
-    moduleName = "Mux Data SDK for Media3, Base"
+    moduleName = "Mux Player SDK for Android"
     footer = "(c) " + new Date().format("yyyy") + " Mux, Inc. Have questions or need help?" +
             " Contact support@mux.com"
   }
 
   pom {
-    description "The Mux Data SDK for Google's androidX media3 player"
+    description "The Mux Player SDK for Android. It's just media3 with some helpful tools"
     inceptionYear = "2022"
     url = "https://github.com/muxinc/mux-stats-sdk-media3"
     organization {
