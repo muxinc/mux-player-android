@@ -1,4 +1,4 @@
-# Mux Video Media3 SDK
+# Mux Player SDK for Android
 
 The Mux Video Media3 SDK is a thin wrapper on top of Google's media3 player SDK with convenient tools for Mux Video users. This SDK is not required to use Mux Video, but it can help you do things like controlling your data and delivery usage, playing Mux assets by ID, automatically leveraging advanced player features like CMCD, and transparently tracking performance and engagement with [Mux Data](https://www.mux.com/data)
 
@@ -20,7 +20,7 @@ maven {
 Add our library to the `dependencies` block for your app. Replace the string `[Current Version]` with the current version of the SDK
 
 ```kotlin
-implementation("com.mux.player:media3-player:[Current Version]")
+implementation("com.mux.player:android:[Current Version]")
 ```
 
 ## Play a Mux Video Asset
