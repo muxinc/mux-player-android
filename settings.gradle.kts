@@ -19,6 +19,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Mux Video Media3"
+rootProject.name = "Mux Player for Android"
 include(":app")
-include(":mux-media3")
+include(":library")

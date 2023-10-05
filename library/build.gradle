@@ -34,8 +34,8 @@ android {
 muxDistribution {
   devVersion versionFromCommitHash('dev-')
   releaseVersion versionFromTag()
-  artifactIds just("media3-player")
-  groupIds just("com.mux.video")
+  artifactIds just("android")
+  groupIds just("com.mux.player")
   publicReleaseIf releaseOnTag()
 
   // TODO: This is kinda clumsy, packageJavadocs should be a function not a property probably
@@ -48,13 +48,13 @@ muxDistribution {
   }
 
   dokkaConfig {
-    moduleName = "Mux Data SDK for Media3, Base"
+    moduleName = "Mux Player SDK for Android"
     footer = "(c) " + new Date().format("yyyy") + " Mux, Inc. Have questions or need help?" +
             " Contact support@mux.com"
   }
 
   pom {
-    description "The Mux Data SDK for Google's androidX media3 player"
+    description "The Mux Player SDK for Android. It's just media3 with some helpful tools"
     inceptionYear = "2022"
     url = "https://github.com/muxinc/mux-stats-sdk-media3"
     organization {
@@ -83,7 +83,7 @@ dependencies {
   api "androidx.media3:media3-cast:${media3Version}"
   api "androidx.media3:media3-extractor:${media3Version}"
 
-  api("com.mux.stats.sdk.muxstats:data-media3:0.8.0")
+  api("com.mux.stats.sdk.muxstats:data-media3:1.0.2")
 
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
 
