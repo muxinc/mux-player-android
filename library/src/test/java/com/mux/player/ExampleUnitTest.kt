@@ -1,4 +1,4 @@
-package com.mux.video
+package com.mux.player
 
 import org.junit.Test
 

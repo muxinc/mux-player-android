@@ -1,4 +1,4 @@
-package com.mux.video.media
+package com.mux.player.media
 
 import android.net.Uri
 import androidx.media3.common.MediaItem
