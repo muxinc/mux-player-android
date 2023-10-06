@@ -1,4 +1,4 @@
-package com.mux.video.internal
+package com.mux.player.internal
 
 import android.util.Log
 import java.lang.Exception

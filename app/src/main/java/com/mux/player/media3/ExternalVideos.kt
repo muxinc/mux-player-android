@@ -1,4 +1,4 @@
-package com.mux.video.media3
+package com.mux.player.media3
 
 object ExternalVideos {
   const val TEARS_OF_STEEL = "https://test-streams.mux.dev/tos_ismc/main.m3u8"

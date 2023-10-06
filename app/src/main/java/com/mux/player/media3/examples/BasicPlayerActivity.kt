@@ -1,4 +1,4 @@
-package com.mux.video.media3.examples
+package com.mux.player.media3.examples
 
 import android.content.Context
 import android.os.Bundle
@@ -15,10 +15,10 @@ import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.core.model.CustomerVideoData
 import com.mux.stats.sdk.core.model.CustomerViewData
 import com.mux.stats.sdk.core.util.UUID
-import com.mux.video.MuxPlayer
-import com.mux.video.media.MediaItems
-import com.mux.video.media.PlaybackMaxResolution
-import com.mux.video.media3.PlaybackIds
+import com.mux.player.MuxPlayer
+import com.mux.player.media.MediaItems
+import com.mux.player.media.PlaybackMaxResolution
+import com.mux.player.media3.PlaybackIds
 import com.mux.video.media3.databinding.ActivityBasicPlayerBinding
 
 /**

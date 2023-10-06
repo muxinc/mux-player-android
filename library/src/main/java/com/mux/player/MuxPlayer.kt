@@ -1,4 +1,4 @@
-package com.mux.video
+package com.mux.player
 
 import android.content.Context
 import androidx.media3.common.MediaItem
@@ -7,10 +7,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.stats.sdk.muxstats.monitorWithMuxData
-import com.mux.video.internal.LogcatLogger
-import com.mux.video.internal.Logger
-import com.mux.video.internal.NoLogger
-import com.mux.video.media.MuxMediaSourceFactory
+import com.mux.player.internal.LogcatLogger
+import com.mux.player.internal.Logger
+import com.mux.player.internal.NoLogger
+import com.mux.player.media.MuxMediaSourceFactory
 
 /**
  * An [ExoPlayer] with a few extra APIs for interacting with Mux Video (TODO: link?)

@@ -1,4 +1,4 @@
-package com.mux.video.media
+package com.mux.player.media
 
 import android.content.Context
 import androidx.annotation.OptIn
