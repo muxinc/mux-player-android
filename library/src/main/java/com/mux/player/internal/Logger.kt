@@ -18,13 +18,13 @@ internal interface Logger {
  * Creates a new [Logger] that logs to Logcat
  */
 @JvmSynthetic
-internal fun LogcatLogger(): Logger = DeviceLogger()
+internal fun createLogcatLogger(): Logger = DeviceLogger()
 
 /**
  * Creates a new [Logger] that doesn't log anything at all
  */
 @JvmSynthetic
-internal fun NoLogger(): Logger = SilentLogger()
+internal fun createNoLogger(): Logger = SilentLogger()
 
 private class SilentLogger: Logger {
   override fun e(tag: String, message: String, exception: Exception?) { }
