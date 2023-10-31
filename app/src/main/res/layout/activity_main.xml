@@ -6,10 +6,33 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/main_example_tb"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/Gray100"
+        app:layout_constraintTop_toTopOf="parent"
+        app:logo="@drawable/mux_logo"
+        />
+
+    <TextView
+        android:id="@+id/main_example_subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?textAppearanceCaption"
+        android:text="Mux Player Examples"
+        android:textColor="@color/White"
+        android:padding="18dp"
+        app:layout_constraintTop_toBottomOf="@id/main_example_tb"
+        app:layout_constraintStart_toStartOf="parent"
+        />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/main_example_list"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toBottomOf="@id/main_example_subtitle"
+        app:layout_constraintBottom_toBottomOf="parent"
         />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

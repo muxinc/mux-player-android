@@ -4,11 +4,10 @@ plugins {
 }
 
 android {
-  namespace = "com.mux.video.media3"
+  namespace = "com.mux.player.media3"
   compileSdk = 34
 
   defaultConfig {
-    applicationId = "com.mux.video.media3"
     minSdk = 21
     targetSdk = 34
     versionCode = 1

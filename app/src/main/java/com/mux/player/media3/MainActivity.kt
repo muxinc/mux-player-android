@@ -3,15 +3,17 @@ package com.mux.player.media3
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.mux.player.media3.databinding.ActivityMainBinding
+import com.mux.player.media3.databinding.ListitemExampleBinding
 import com.mux.player.media3.examples.BasicPlayerActivity
-import com.mux.video.media3.databinding.ActivityMainBinding
-import com.mux.video.media3.databinding.ListitemExampleBinding
+import com.mux.player.media3.examples.MaxResActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -23,6 +25,12 @@ class MainActivity : AppCompatActivity() {
     binding = ActivityMainBinding.inflate(layoutInflater)
     setContentView(binding.root)
     examplesView.layoutManager = LinearLayoutManager(this)
+
+    Log.d("actionbar", "ActionBar is $actionBar")
+
+    binding.mainExampleTb.apply {
+      setLogo(R.drawable.mux_logo)
+    }
 
     setUpExampleList()
   }
@@ -36,6 +44,10 @@ class MainActivity : AppCompatActivity() {
     Example(
       title = "Basic Foreground Player",
       destination = Intent(this@MainActivity, BasicPlayerActivity::class.java)
+    ),
+    Example(
+      title = "Max-Resolution Modifier",
+      destination = Intent(this@MainActivity, MaxResActivity::class.java)
     )
   )
 }
