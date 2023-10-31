@@ -92,10 +92,10 @@ object MediaItems {
 
   private fun resolutionValue(playbackMaxResolution: PlaybackMaxResolution): String {
     return when (playbackMaxResolution) {
-      PlaybackMaxResolution.HD_720 -> "720p"
-      PlaybackMaxResolution.FHD_1080 -> "1080p"
-      PlaybackMaxResolution.QHD_1440 -> "1440p"
-      PlaybackMaxResolution.FOUR_K_2160 -> "2160p"
+      PlaybackMaxResolution.UP_TO_720p -> "720p"
+      PlaybackMaxResolution.UP_TO_1080p -> "1080p"
+      PlaybackMaxResolution.UP_TO_1440p -> "1440p"
+      PlaybackMaxResolution.UP_TO_2160p -> "2160p"
     }
   }
 }
@@ -105,8 +105,12 @@ object MediaItems {
  * similar methods, the video's resolution will be limited to the given value
  */
 enum class PlaybackMaxResolution {
-  HD_720,
-  FHD_1080,
-  QHD_1440,
-  FOUR_K_2160,
+  @Suppress("EnumEntryName") // lower-case matches industry-standard casing for resolutions
+  UP_TO_720p,
+  @Suppress("EnumEntryName") // lower-case matches industry-standard casing for resolutions
+  UP_TO_1080p,
+  @Suppress("EnumEntryName") // lower-case matches industry-standard casing for resolutions
+  UP_TO_1440p,
+  @Suppress("EnumEntryName") // lower-case matches industry-standard casing for resolutions
+  UP_TO_2160p,
 }
