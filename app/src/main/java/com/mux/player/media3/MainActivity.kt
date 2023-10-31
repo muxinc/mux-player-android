@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.mux.player.media3.databinding.ActivityMainBinding
 import com.mux.player.media3.databinding.ListitemExampleBinding
 import com.mux.player.media3.examples.BasicPlayerActivity
+import com.mux.player.media3.examples.MaxResActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -31,12 +32,6 @@ class MainActivity : AppCompatActivity() {
       setLogo(R.drawable.mux_logo)
     }
 
-//    actionBar?.let { ourActionBar ->
-//      ourActionBar.setDisplayShowTitleEnabled(false)
-//      ourActionBar.setDisplayUseLogoEnabled(true)
-//      ourActionBar.setLogo(R.drawable.mux_logo)
-//    }
-
     setUpExampleList()
   }
 
@@ -49,6 +44,10 @@ class MainActivity : AppCompatActivity() {
     Example(
       title = "Basic Foreground Player",
       destination = Intent(this@MainActivity, BasicPlayerActivity::class.java)
+    ),
+    Example(
+      title = "Max-Resolution Modifier",
+      destination = Intent(this@MainActivity, MaxResActivity::class.java)
     )
   )
 }
