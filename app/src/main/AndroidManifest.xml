@@ -16,6 +16,10 @@
             android:name=".examples.BasicPlayerActivity"
             android:exported="false"
             android:label="Basic Foreground Player" />
+        <activity android:name=".examples.MaxResActivity"
+            android:exported="false"
+            android:label="Max-Res Modifier"
+            />
         <activity
             android:name=".MainActivity"
             android:exported="true"
