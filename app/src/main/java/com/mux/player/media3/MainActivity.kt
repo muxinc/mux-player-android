@@ -3,6 +3,7 @@ package com.mux.player.media3
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -23,6 +24,18 @@ class MainActivity : AppCompatActivity() {
     binding = ActivityMainBinding.inflate(layoutInflater)
     setContentView(binding.root)
     examplesView.layoutManager = LinearLayoutManager(this)
+
+    Log.d("actionbar", "ActionBar is $actionBar")
+
+    binding.mainExampleTb.apply {
+      setLogo(R.drawable.mux_logo)
+    }
+
+//    actionBar?.let { ourActionBar ->
+//      ourActionBar.setDisplayShowTitleEnabled(false)
+//      ourActionBar.setDisplayUseLogoEnabled(true)
+//      ourActionBar.setLogo(R.drawable.mux_logo)
+//    }
 
     setUpExampleList()
   }
