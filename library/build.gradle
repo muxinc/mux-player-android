@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-  namespace 'com.mux.video'
+  namespace 'com.mux.player'
   compileSdk 34
 
   defaultConfig {

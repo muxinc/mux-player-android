@@ -19,7 +19,7 @@ import com.mux.player.MuxPlayer
 import com.mux.player.media.MediaItems
 import com.mux.player.media.PlaybackMaxResolution
 import com.mux.player.media3.PlaybackIds
-import com.mux.video.media3.databinding.ActivityBasicPlayerBinding
+import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
 
 /**
  * A simple example that uses the normal media3 player UI to play a video in the foreground from
