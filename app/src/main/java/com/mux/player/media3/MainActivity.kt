@@ -10,8 +10,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.mux.player.media3.examples.BasicPlayerActivity
-import com.mux.video.media3.databinding.ActivityMainBinding
-import com.mux.video.media3.databinding.ListitemExampleBinding
+import com.mux.player.media3.databinding.ActivityMainBinding
+import com.mux.player.media3.databinding.ListitemExampleBinding
 
 class MainActivity : AppCompatActivity() {
 
