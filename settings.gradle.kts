@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "Mux Player for Android"
 include(":app")
 include(":library")
+include(":automatedtests")
