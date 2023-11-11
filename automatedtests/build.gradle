@@ -72,7 +72,9 @@ dependencies {
   // Optional -- UI testing with UI Automator
   androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.2.0'
   androidTestImplementation 'androidx.test.ext:junit:1.1.2'
-  api("com.mux.stats.sdk.muxstats:data-media3:1.0.2")
+
+  api("com.mux.stats.sdk.muxstats:data-media3:${project.ext.get("muxDataVersion")}")
+
   api 'org.checkerframework:checker-qual:3.33.0'
   // Automated tests should always test the local module and not the maven dependency.
   implementation project(":library")

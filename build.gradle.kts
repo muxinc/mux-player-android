@@ -4,5 +4,10 @@ plugins {
   id("org.jetbrains.kotlin.android") version "1.8.0" apply false
   id("com.android.library") version "8.1.2" apply false
   id("com.mux.gradle.android.mux-android-distribution") version "1.1.2" apply false
+}
 
+allprojects {
+  ext {
+    set("muxDataVersion", "dev-releases-v1.1.0-d0df6cf")
+  }
 }

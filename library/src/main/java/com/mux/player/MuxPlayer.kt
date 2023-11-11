@@ -58,8 +58,8 @@ class MuxPlayer private constructor(
         envKey = muxDataKey ?: "", // empty string should infer the key
         customerData = initialCustomerData,
         player = this,
-        playerView = null,
-        customOptions = null,
+//        playerView = null,
+//        customOptions = null,
         network = network,
         playerBinding = exoPlayerBinding,
         )
