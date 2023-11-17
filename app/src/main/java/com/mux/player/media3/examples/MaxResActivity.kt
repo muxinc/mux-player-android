@@ -59,7 +59,7 @@ class MaxResActivity : AppCompatActivity() {
     val player = createPlayer(this)
     val mediaItem = MediaItems.builderFromMuxPlaybackId(
       PlaybackIds.TEARS_OF_STEEL,
-      minResolution = PlaybackResolution.HD_720,
+      PlaybackResolution.HD_720,
     )
       .setMediaMetadata(
         MediaMetadata.Builder()
