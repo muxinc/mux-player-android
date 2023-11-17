@@ -17,7 +17,7 @@ import com.mux.stats.sdk.core.model.CustomerViewData
 import com.mux.stats.sdk.core.util.UUID
 import com.mux.player.MuxPlayer
 import com.mux.player.media.MediaItems
-import com.mux.player.media.PlaybackResolution
+import com.mux.player.media.PlaybackMaxResolution
 import com.mux.player.media3.PlaybackIds
 import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
 
@@ -25,7 +25,7 @@ import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
  * A simple example that uses the normal media3 player UI to play a video in the foreground from
  * Mux Video, using a Playback ID
  */
-class BasicPlayerActivity : AppCompatActivity() {
+class MaxResActivity : AppCompatActivity() {
 
   private lateinit var binding: ActivityBasicPlayerBinding
   private val playerView get() = binding.player
@@ -59,6 +59,7 @@ class BasicPlayerActivity : AppCompatActivity() {
     val player = createPlayer(this)
     val mediaItem = MediaItems.builderFromMuxPlaybackId(
       PlaybackIds.TEARS_OF_STEEL,
+      PlaybackMaxResolution.UP_TO_720p,
     )
       .setMediaMetadata(
         MediaMetadata.Builder()
@@ -105,7 +106,7 @@ class BasicPlayerActivity : AppCompatActivity() {
       override fun onPlayerError(error: PlaybackException) {
         Log.e(TAG, "player error!", error)
         Toast.makeText(
-          this@BasicPlayerActivity,
+          this@MaxResActivity,
           "Playback error! ${error.localizedMessage}",
           Toast.LENGTH_LONG
         ).show()
@@ -116,6 +117,6 @@ class BasicPlayerActivity : AppCompatActivity() {
   }
 
   companion object {
-    val TAG = BasicPlayerActivity::class.simpleName
+    val TAG = MaxResActivity::class.simpleName
   }
 }
