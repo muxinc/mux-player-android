@@ -17,7 +17,7 @@ import com.mux.stats.sdk.core.model.CustomerViewData
 import com.mux.stats.sdk.core.util.UUID
 import com.mux.player.MuxPlayer
 import com.mux.player.media.MediaItems
-import com.mux.player.media.PlaybackMaxResolution
+import com.mux.player.media.PlaybackResolution
 import com.mux.player.media3.PlaybackIds
 import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
 
