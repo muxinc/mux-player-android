@@ -26,8 +26,6 @@ class MainActivity : AppCompatActivity() {
     setContentView(binding.root)
     examplesView.layoutManager = LinearLayoutManager(this)
 
-    Log.d("actionbar", "ActionBar is $actionBar")
-
     binding.mainExampleTb.apply {
       setLogo(R.drawable.mux_logo)
     }
