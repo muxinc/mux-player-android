@@ -344,7 +344,7 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
   }
 
   public void waitForPlaybackToStartBuffering() {
-    if (player.isPlaying()) {
+//    if (player.isPlaying()) {
       try {
         activityLock.lock();
         playbackBuffering.await();
@@ -353,7 +353,7 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
       } finally {
         activityLock.unlock();
       }
-    }
+//    }
   }
 
   public void waitForActivityToClose() {

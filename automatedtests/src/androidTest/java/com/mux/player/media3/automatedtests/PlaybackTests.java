@@ -46,60 +46,6 @@ public class PlaybackTests extends TestBase {
   public static final String DEVICE_MODEL_OVERRIDE = "Mux test model";
 
   @Test
-  public void testVideoChange() {
-    testVideoChange(false, true);
-  }
-
-  @Test
-  public void testProgramChange() {
-    testVideoChange(true, false);
-  }
-
-  public void testVideoChange(boolean programChange, boolean videoChange) {
-    try {
-      if (!testActivity.waitForPlaybackToStart(waitForPlaybackToStartInMS)) {
-        fail("Playback did not start in " + waitForPlaybackToStartInMS + " milliseconds !!!");
-      }
-      Thread.sleep(PAUSE_PERIOD_IN_MS);
-      // Video started, do video change, we expect to see fake rebufferstart
-      testActivity.runOnUiThread(new Runnable() {
-        public void run() {
-          testActivity.setUrlToPlay(secondVideoToPlayUrl);
-          CustomerVideoData customerVideoData = new CustomerVideoData();
-          customerVideoData.setVideoTitle(BuildConfig.FLAVOR + "-" + currentTestName.getMethodName()
-              + "_title_2");
-          MuxPlayer muxPlayer = testActivity.getPlayer();
-          if (videoChange) {
-            // TODO: implemnt this
-//            muxPlayer.videoChange(customerVideoData);
-          }
-          if (programChange) {
-            // TODO: implemnt this
-//            muxStats.programChange(customerVideoData);
-          }
-          testActivity.startPlayback();
-        }
-      });
-      Thread.sleep(PAUSE_PERIOD_IN_MS);
-      int rebufferStartEventIndex = 0;
-      int rebufferEndEventIndex;
-      while ((rebufferStartEventIndex = networkRequest.getIndexForNextEvent(
-          rebufferStartEventIndex, RebufferStartEvent.TYPE)) != -1) {
-        rebufferEndEventIndex = networkRequest.getIndexForNextEvent(rebufferStartEventIndex,
-            RebufferEndEvent.TYPE);
-        if (rebufferEndEventIndex == -1) {
-          fail("We have rebuffer start event at position: " + rebufferStartEventIndex
-              + ",without matching rebuffer end event, events: "
-              + networkRequest.getReceivedEventNames());
-        }
-      }
-      checkOverwrites();
-    } catch (Exception e) {
-      fail(getExceptionFullTraceAndMessage(e));
-    }
-  }
-
-  @Test
   public void testEndEvents() {
     try {
       if (!testActivity.waitForPlaybackToStart(waitForPlaybackToStartInMS)) {

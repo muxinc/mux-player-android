@@ -8,6 +8,6 @@ plugins {
 
 allprojects {
   ext {
-    set("muxDataVersion", "dev-releases-v1.1.0-d0df6cf")
+    set("muxDataVersion", "dev-customer_data_fix-027c482")
   }
 }
