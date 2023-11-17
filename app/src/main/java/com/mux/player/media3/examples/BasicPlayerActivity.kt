@@ -17,7 +17,7 @@ import com.mux.stats.sdk.core.model.CustomerViewData
 import com.mux.stats.sdk.core.util.UUID
 import com.mux.player.MuxPlayer
 import com.mux.player.media.MediaItems
-import com.mux.player.media.PlaybackMaxResolution
+import com.mux.player.media.PlaybackResolution
 import com.mux.player.media3.PlaybackIds
 import com.mux.video.media3.databinding.ActivityBasicPlayerBinding
 
@@ -60,7 +60,7 @@ class BasicPlayerActivity : AppCompatActivity() {
     val mediaItem = MediaItems.builderFromMuxPlaybackId(
       PlaybackIds.TEARS_OF_STEEL,
 //      PlaybackResolution.FHD_1080,
-      PlaybackMaxResolution.HD_720,
+      PlaybackResolution.HD_720,
     )
       .setMediaMetadata(
         MediaMetadata.Builder()
