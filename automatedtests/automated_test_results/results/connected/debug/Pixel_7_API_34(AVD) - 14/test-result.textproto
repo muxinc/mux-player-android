@@ -1,0 +1,73 @@
+# 2023-11-11T00:12:07.470Z:
+test_suite_meta_data {
+  scheduled_test_case_count: 1
+}
+test_status: FAILED
+test_result {
+  test_case {
+    test_class: "PlaybackTests"
+    test_package: "com.mux.player.media3.automatedtests"
+    test_method: "testVodPlayback"
+    start_time {
+      seconds: 1699661407
+      nanos: 96000000
+    }
+    end_time {
+      seconds: 1699661526
+      nanos: 884000000
+    }
+  }
+  test_status: FAILED
+  error {
+    error_message: "java.lang.AssertionError: Missing one of the value set for overwrite, result:\ncategoryOverwriteFound: false\nmanufacturerOverwriteFound: false\nnameOverwriteFound: false\nosFamilyOverwriteFound: false\nosVersionOverwriteFound: false\nmodelOverwriteFound: false\n\nat org.junit.Assert.fail(Assert.java:89)\nat com.mux.player.media3.automatedtests.PlaybackTests.checkOverwrites(PlaybackTests.java:392)\nat com.mux.player.media3.automatedtests.PlaybackTests.testVodPlayback(PlaybackTests.java:233)"
+    error_type: "java.lang.AssertionError"
+    stack_trace: "java.lang.AssertionError: Missing one of the value set for overwrite, result:\ncategoryOverwriteFound: false\nmanufacturerOverwriteFound: false\nnameOverwriteFound: false\nosFamilyOverwriteFound: false\nosVersionOverwriteFound: false\nmodelOverwriteFound: false\n\nat org.junit.Assert.fail(Assert.java:89)\nat com.mux.player.media3.automatedtests.PlaybackTests.checkOverwrites(PlaybackTests.java:392)\nat com.mux.player.media3.automatedtests.PlaybackTests.testVodPlayback(PlaybackTests.java:233)"
+  }
+  output_artifact {
+    label {
+      label: "logcat"
+      namespace: "android"
+    }
+    source_path {
+      path: "/Users/edixon/repos/mux-player-android/automatedtests/automated_test_results/results/connected/debug/Pixel_7_API_34(AVD) - 14/logcat-com.mux.player.media3.automatedtests.PlaybackTests-testVodPlayback.txt"
+    }
+  }
+  output_artifact {
+    label {
+      label: "device-info"
+      namespace: "android"
+    }
+    source_path {
+      path: "/Users/edixon/repos/mux-player-android/automatedtests/automated_test_results/results/connected/debug/Pixel_7_API_34(AVD) - 14/device-info.pb"
+    }
+  }
+  output_artifact {
+    label {
+      label: "device-info.meminfo"
+      namespace: "android"
+    }
+    source_path {
+      path: "/Users/edixon/repos/mux-player-android/automatedtests/automated_test_results/results/connected/debug/Pixel_7_API_34(AVD) - 14/meminfo"
+    }
+  }
+  output_artifact {
+    label {
+      label: "device-info.cpuinfo"
+      namespace: "android"
+    }
+    source_path {
+      path: "/Users/edixon/repos/mux-player-android/automatedtests/automated_test_results/results/connected/debug/Pixel_7_API_34(AVD) - 14/cpuinfo"
+    }
+  }
+}
+output_artifact {
+  label {
+    label: "test-results.log"
+    namespace: "com.google.testing.platform.runtime.android.driver.AndroidInstrumentationDriver"
+  }
+  source_path {
+    path: "/Users/edixon/repos/mux-player-android/automatedtests/automated_test_results/results/connected/debug/Pixel_7_API_34(AVD) - 14/testlog/test-results.log"
+  }
+  type: TEST_DATA
+  mime_type: "text/plain"
+}

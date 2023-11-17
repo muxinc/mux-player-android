@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="com.mux.player.media3.automatedtests.PlaybackTests" tests="1" failures="1" errors="0" skipped="0" time="120.324" timestamp="2023-11-11T00:12:07" hostname="localhost">
+  <properties>
+    <property name="device" value="Pixel_7_API_34(AVD) - 14" />
+    <property name="flavor" value="" />
+    <property name="project" value=":automatedtests" />
+  </properties>
+  <testcase name="testVodPlayback" classname="com.mux.player.media3.automatedtests.PlaybackTests" time="119.792">
+    <failure>java.lang.AssertionError: Missing one of the value set for overwrite, result:
+categoryOverwriteFound: false
+manufacturerOverwriteFound: false
+nameOverwriteFound: false
+osFamilyOverwriteFound: false
+osVersionOverwriteFound: false
+modelOverwriteFound: false
+
+at org.junit.Assert.fail(Assert.java:89)
+at com.mux.player.media3.automatedtests.PlaybackTests.checkOverwrites(PlaybackTests.java:392)
+at com.mux.player.media3.automatedtests.PlaybackTests.testVodPlayback(PlaybackTests.java:233)</failure>
+  </testcase>
+</testsuite>
