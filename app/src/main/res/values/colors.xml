@@ -7,4 +7,19 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Mux Colors -->
+    <color name="Green50">#FF00AA3C</color>
+    <color name="Green60">#FF00802D</color>
+    <color name="Green70">#FF005C20</color>
+    <color name="Gray30">#FFB2BAC2</color>
+    <color name="Gray50">#FF808C99</color>
+    <color name="Gray70">#FF565E67</color>
+    <color name="Gray80">#FF3E4247</color>
+    <color name="Gray90">#FF242628</color>
+    <color name="Gray100">#FF0A0A0B</color>
+    <color name="Pink40">#FFFB65D5</color>
+    <color name="White">#FFFFFFFF</color>
+
+    <color name="BackgroundDark">#FF1E1E1E</color>
 </resources>

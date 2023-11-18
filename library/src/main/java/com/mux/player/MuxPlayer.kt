@@ -7,9 +7,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.stats.sdk.muxstats.monitorWithMuxData
-import com.mux.player.internal.LogcatLogger
+import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.Logger
-import com.mux.player.internal.NoLogger
+import com.mux.player.internal.createNoLogger
 import com.mux.player.media.MuxMediaSourceFactory
 
 /**
@@ -93,9 +93,9 @@ class MuxPlayer private constructor(
     @Suppress("unused")
     fun enableLogcat(enableLogcat: Boolean): Builder {
       logger = if (enableLogcat) {
-        LogcatLogger()
+        createLogcatLogger()
       } else {
-        NoLogger()
+        createNoLogger()
       }
       return this
     }
@@ -146,7 +146,7 @@ class MuxPlayer private constructor(
         context = context,
         exoPlayer = this.playerBuilder.build(),
         muxDataKey = this.dataEnvKey,
-        logger = logger ?: NoLogger(),
+        logger = logger ?: createNoLogger(),
         initialCustomerData = customerData,
       )
     }
