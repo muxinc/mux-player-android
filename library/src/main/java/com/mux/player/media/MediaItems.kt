@@ -99,6 +99,8 @@ object MediaItems {
     renditionOrder?.let { base.appendQueryParameter("rendition_order", resolutionValue(it)) }
     playbackToken?.let { base.appendQueryParameter("token", it) }
 
+    base.appendQueryParameter("redundant_streams", "true");
+
     return base.build().toString()
   }
 
