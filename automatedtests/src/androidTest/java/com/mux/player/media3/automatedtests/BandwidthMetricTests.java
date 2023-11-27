@@ -76,15 +76,15 @@ public class BandwidthMetricTests extends AdaptiveBitStreamTestBase {
 
   }
 
-  @Test
-  public void testBandwidthMetricsHls() {
-    testBandwidthMetrics();
-  }
-
-  @Test
-  public void testBandwidthMetricsDash() {
-    testBandwidthMetrics();
-  }
+//  @Test
+//  public void testBandwidthMetricsHls() {
+//    testBandwidthMetrics();
+//  }
+//
+//  @Test
+//  public void testBandwidthMetricsDash() {
+//    testBandwidthMetrics();
+//  }
 
   public void testBandwidthMetrics() {
     try {

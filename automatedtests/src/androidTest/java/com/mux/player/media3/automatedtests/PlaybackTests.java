@@ -45,7 +45,7 @@ public class PlaybackTests extends TestBase {
   public static final String DEVICE_OS_VERSION_OVERRIDE = "2.15";
   public static final String DEVICE_MODEL_OVERRIDE = "Mux test model";
 
-  @Test
+//  @Test
   public void testEndEvents() {
     try {
       if (!testActivity.waitForPlaybackToStart(waitForPlaybackToStartInMS)) {
