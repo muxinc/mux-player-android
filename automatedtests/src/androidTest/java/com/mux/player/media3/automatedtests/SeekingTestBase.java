@@ -10,7 +10,17 @@ import com.mux.stats.sdk.core.events.playback.RebufferStartEvent;
 import com.mux.stats.sdk.core.events.playback.SeekedEvent;
 import com.mux.stats.sdk.core.events.playback.SeekingEvent;
 
+import org.junit.Ignore;
+import org.junit.Test;
+
 public class SeekingTestBase extends TestBase {
+
+  @Test
+  @Ignore("Dummy Test that prevents the 'no runnable methods' failure")
+  public void dummyTestThatPasses() {
+    // This test is needed because extending TestBase fools junit into thinking this class has
+    //  @Test-annotated tests instead of just utility code
+  }
 
   protected void testSeekingWhilePaused() {
     try {
