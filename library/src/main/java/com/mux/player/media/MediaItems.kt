@@ -33,12 +33,16 @@ object MediaItems {
   @JvmOverloads
   fun fromMuxPlaybackId(
     playbackId: String,
-    maxResolution: PlaybackMaxResolution? = null,
+    maxResolution: PlaybackResolution? = null,
+    minResolution: PlaybackResolution? = null,
+    renditionOrder: RenditionOrder? = null,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
   ): MediaItem = builderFromMuxPlaybackId(
     playbackId,
     maxResolution,
+    minResolution,
+    renditionOrder,
     domain,
     playbackToken,
   ).build()
@@ -56,7 +60,9 @@ object MediaItems {
   @JvmOverloads
   fun builderFromMuxPlaybackId(
     playbackId: String,
-    maxResolution: PlaybackMaxResolution? = null,
+    maxResolution: PlaybackResolution? = null,
+    minResolution: PlaybackResolution? = null,
+    renditionOrder: RenditionOrder? = null,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
   ): MediaItem.Builder {
@@ -66,6 +72,8 @@ object MediaItems {
           playbackId = playbackId,
           domain = domain,
           maxResolution = maxResolution,
+          minResolution = minResolution,
+          renditionOrder = renditionOrder,
           playbackToken = playbackToken,
         )
       )
@@ -79,23 +87,36 @@ object MediaItems {
     playbackId: String,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
     subdomain: String = MUX_VIDEO_SUBDOMAIN,
-    maxResolution: PlaybackMaxResolution? = null,
+    maxResolution: PlaybackResolution? = null,
+    minResolution: PlaybackResolution? = null,
+    renditionOrder: RenditionOrder? = null,
     playbackToken: String? = null,
   ): String {
     val base = Uri.parse("https://$subdomain.$domain/$playbackId.m3u8").buildUpon()
 
+    minResolution?.let { base.appendQueryParameter("min_resolution", resolutionValue(it)) }
     maxResolution?.let { base.appendQueryParameter("max_resolution", resolutionValue(it)) }
+    renditionOrder?.let { base.appendQueryParameter("rendition_order", resolutionValue(it)) }
     playbackToken?.let { base.appendQueryParameter("token", it) }
 
     return base.build().toString()
   }
 
-  private fun resolutionValue(playbackMaxResolution: PlaybackMaxResolution): String {
-    return when (playbackMaxResolution) {
-      PlaybackMaxResolution.HD_720 -> "720p"
-      PlaybackMaxResolution.FHD_1080 -> "1080p"
-      PlaybackMaxResolution.QHD_1440 -> "1440p"
-      PlaybackMaxResolution.FOUR_K_2160 -> "2160p"
+  private fun resolutionValue(renditionOrder: RenditionOrder): String {
+    return when (renditionOrder) {
+      RenditionOrder.Ascending -> "asc"
+      RenditionOrder.Descending -> "desc"
+    }
+  }
+
+  private fun resolutionValue(playbackResolution: PlaybackResolution): String {
+    return when (playbackResolution) {
+      PlaybackResolution.LD_480 -> "480p"
+      PlaybackResolution.LD_540 -> "540p"
+      PlaybackResolution.HD_720 -> "720p"
+      PlaybackResolution.FHD_1080 -> "1080p"
+      PlaybackResolution.QHD_1440 -> "1440p"
+      PlaybackResolution.FOUR_K_2160 -> "2160p"
     }
   }
 }
@@ -104,9 +125,16 @@ object MediaItems {
  * A resolution for playing back Mux assets. If specified in [MediaItems.fromMuxPlaybackId], or
  * similar methods, the video's resolution will be limited to the given value
  */
-enum class PlaybackMaxResolution {
+enum class PlaybackResolution {
+  LD_480,
+  LD_540,
   HD_720,
   FHD_1080,
   QHD_1440,
   FOUR_K_2160,
+}
+
+enum class RenditionOrder {
+  Ascending,
+  Descending,
 }

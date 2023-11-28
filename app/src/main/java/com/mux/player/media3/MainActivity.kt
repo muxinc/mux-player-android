@@ -9,9 +9,10 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.mux.player.media3.examples.BasicPlayerActivity
 import com.mux.player.media3.databinding.ActivityMainBinding
 import com.mux.player.media3.databinding.ListitemExampleBinding
+import com.mux.player.media3.examples.BasicPlayerActivity
+import com.mux.player.media3.examples.MaxResActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -23,6 +24,10 @@ class MainActivity : AppCompatActivity() {
     binding = ActivityMainBinding.inflate(layoutInflater)
     setContentView(binding.root)
     examplesView.layoutManager = LinearLayoutManager(this)
+
+    binding.mainExampleTb.apply {
+      setLogo(R.drawable.mux_logo)
+    }
 
     setUpExampleList()
   }
@@ -36,6 +41,10 @@ class MainActivity : AppCompatActivity() {
     Example(
       title = "Basic Foreground Player",
       destination = Intent(this@MainActivity, BasicPlayerActivity::class.java)
+    ),
+    Example(
+      title = "Max-Resolution Modifier",
+      destination = Intent(this@MainActivity, MaxResActivity::class.java)
     )
   )
 }
