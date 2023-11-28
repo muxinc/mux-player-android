@@ -1,4 +1,4 @@
-name: Test with Sauce Labs (Only Latest)
+name: Test with Sauce Labs
 
 on:
   push:
