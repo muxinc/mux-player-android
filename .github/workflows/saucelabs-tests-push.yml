@@ -32,8 +32,8 @@ jobs:
         with:
           name: automated-test-apks
           path: |
-            automatedtests/build/outputs/apk/androidTest/**/*.apk
-            automatedtests/build/outputs/apk/*/debug/automatedtests-*-debug.apk
+            automatedtests/build/outputs/apk/androidTest/debug/automatedtests-debug-androidTest.apk
+            automatedtests/build/outputs/apk/debug/automatedtests-debug.apk
 
   test:
     name: Run Sauce Labs Tests
