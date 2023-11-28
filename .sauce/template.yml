@@ -4,8 +4,6 @@ sauce:
   region: us-west-1
   concurrency: 1
   retries: 3
-  smartRetry:
-    failedOnly: true
     
   metadata:
     #name: Runs from GHA
