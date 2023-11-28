@@ -13,8 +13,17 @@ import com.mux.stats.sdk.core.model.VideoData;
 import java.util.ArrayList;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.Ignore;
+import org.junit.Test;
 
 public class AdaptiveBitStreamTestBase extends TestBase {
+
+  @Test
+  @Ignore("Dummy Test that prevents the 'no runnable methods' failure")
+  public void dummyTestThatPasses() {
+    // This test is needed because extending TestBase fools junit into thinking this class has
+    //  @Test-annotated tests instead of just utility code
+  }
 
   TrackGroupArray getVideoTrackGroupArray() {
     DefaultTrackSelector selector = testActivity.getTrackSelector();
