@@ -3,17 +3,17 @@ package com.mux.player
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player.Listener
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
-import com.mux.stats.sdk.muxstats.monitorWithMuxData
 import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.Logger
 import com.mux.player.internal.createNoLogger
 import com.mux.player.media.MuxMediaSourceFactory
 import com.mux.stats.sdk.muxstats.ExoPlayerBinding
 import com.mux.stats.sdk.muxstats.INetworkRequest
+import com.mux.stats.sdk.muxstats.MuxDataSdk
+import com.mux.stats.sdk.muxstats.media3.BuildConfig as MuxDataBuildConfig
 
 /**
  * An [ExoPlayer] with a few extra APIs for interacting with Mux Video (TODO: link?)
@@ -46,11 +46,22 @@ class MuxPlayer private constructor(
       }
     })
 
+    // init Mux Data
+    val muxPlayerDevice = MuxDataSdk.AndroidDevice(
+      ctx = context,
+      playerVersion = BuildConfig.LIB_VERSION,
+      muxPluginName = "mux-media3",
+      muxPluginVersion = MuxDataBuildConfig.LIB_VERSION,
+      playerSoftware = "mux-player-android"
+    )
     if (exoPlayerBinding == null) {
-      muxStats = exoPlayer.monitorWithMuxData(
+      muxStats = MuxStatsSdkMedia3(
         context = context,
         envKey = muxDataKey ?: "", // empty string should infer the key
         customerData = initialCustomerData,
+        player = exoPlayer,
+        device = muxPlayerDevice,
+        playerBinding = ExoPlayerBinding(),
       )
     } else {
       muxStats = MuxStatsSdkMedia3(
@@ -60,13 +71,14 @@ class MuxPlayer private constructor(
         player = this,
         playerView = null,
         customOptions = null,
+        device = muxPlayerDevice,
         network = network,
         playerBinding = exoPlayerBinding,
         )
     }
   }
 
-  @UnstableApi /**
+  /**
    * Builds instances of [MuxPlayer]. To configure the underlying [ExoPlayer], you can use
    * [plusExoConfig], and provide a function to update an [ExoPlayer.Builder]. Note that configuring
    * or overriding certain objects with [plusExoConfig] may degrade the player's behavior
