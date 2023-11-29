@@ -84,7 +84,7 @@ dependencies {
   api "androidx.media3:media3-cast:${media3Version}"
   api "androidx.media3:media3-extractor:${media3Version}"
 
-  api("com.mux.stats.sdk.muxstats:data-media3:1.0.2")
+  api("com.mux.stats.sdk.muxstats:data-media3:${project.ext.get("muxDataVersion")}")
 
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
 

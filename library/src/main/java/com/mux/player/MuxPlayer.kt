@@ -6,11 +6,14 @@ import androidx.media3.common.Player.Listener
 import androidx.media3.exoplayer.ExoPlayer
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
-import com.mux.stats.sdk.muxstats.monitorWithMuxData
 import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.Logger
 import com.mux.player.internal.createNoLogger
 import com.mux.player.media.MuxMediaSourceFactory
+import com.mux.stats.sdk.muxstats.ExoPlayerBinding
+import com.mux.stats.sdk.muxstats.INetworkRequest
+import com.mux.stats.sdk.muxstats.MuxDataSdk
+import com.mux.stats.sdk.muxstats.media3.BuildConfig as MuxDataBuildConfig
 
 /**
  * An [ExoPlayer] with a few extra APIs for interacting with Mux Video (TODO: link?)
@@ -22,6 +25,8 @@ class MuxPlayer private constructor(
   private val logger: Logger,
   context: Context,
   initialCustomerData: CustomerData,
+  network: INetworkRequest? = null,
+  exoPlayerBinding: ExoPlayerBinding? = null
 ) : ExoPlayer by exoPlayer {
 
   private var muxStats: MuxStatsSdkMedia3<ExoPlayer>? = null
@@ -41,11 +46,36 @@ class MuxPlayer private constructor(
       }
     })
 
-    muxStats = exoPlayer.monitorWithMuxData(
-      context = context,
-      envKey = muxDataKey ?: "", // empty string should infer the key
-      customerData = initialCustomerData,
+    // init Mux Data
+    val muxPlayerDevice = MuxDataSdk.AndroidDevice(
+      ctx = context,
+      playerVersion = BuildConfig.LIB_VERSION,
+      muxPluginName = "mux-media3",
+      muxPluginVersion = MuxDataBuildConfig.LIB_VERSION,
+      playerSoftware = "mux-player-android"
     )
+    if (exoPlayerBinding == null) {
+      muxStats = MuxStatsSdkMedia3(
+        context = context,
+        envKey = muxDataKey ?: "", // empty string should infer the key
+        customerData = initialCustomerData,
+        player = exoPlayer,
+        device = muxPlayerDevice,
+        playerBinding = ExoPlayerBinding(),
+      )
+    } else {
+      muxStats = MuxStatsSdkMedia3(
+        context = context,
+        envKey = muxDataKey ?: "", // empty string should infer the key
+        customerData = initialCustomerData,
+        player = this,
+        playerView = null,
+        customOptions = null,
+        device = muxPlayerDevice,
+        network = network,
+        playerBinding = exoPlayerBinding,
+        )
+    }
   }
 
   /**
@@ -74,6 +104,8 @@ class MuxPlayer private constructor(
     private var optOutOfData: Boolean = false
     private var logger: Logger? = null
     private var customerData: CustomerData = CustomerData()
+    private var exoPlayerBinding: ExoPlayerBinding? = null
+    private var network: INetworkRequest? = null
 
     constructor(context: Context) : this(context, ExoPlayer.Builder(context))
 
@@ -110,6 +142,18 @@ class MuxPlayer private constructor(
       return this
     }
 
+    @Suppress("unused")
+    fun addExoPlayerBinding(binding: ExoPlayerBinding): Builder {
+      this.exoPlayerBinding = binding
+      return this
+    }
+
+    @Suppress("unused")
+    fun addNetwork(network: INetworkRequest): Builder {
+      this.network = network
+      return this
+    }
+
     /**
      * Allows you to configure the underlying [ExoPlayer] by adding your own [ExoPlayer.Builder]
      * parameters to it. Note that some of your configuration may be overwritten
@@ -119,7 +163,7 @@ class MuxPlayer private constructor(
      * @see MuxMediaSourceFactory
      */
     @Suppress("MemberVisibilityCanBePrivate")
-    fun plusExoConfig(block: (ExoPlayer.Builder) -> Unit): Builder {
+    fun plusExoConfig(block: (ExoPlayer.Builder) -> Void): Builder {
       block(playerBuilder)
       return this
     }
@@ -148,6 +192,8 @@ class MuxPlayer private constructor(
         muxDataKey = this.dataEnvKey,
         logger = logger ?: createNoLogger(),
         initialCustomerData = customerData,
+        network = network,
+        exoPlayerBinding = exoPlayerBinding
       )
     }
 
