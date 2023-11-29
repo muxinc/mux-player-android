@@ -13,7 +13,7 @@ import com.mux.player.media.MuxMediaSourceFactory
 import com.mux.stats.sdk.muxstats.ExoPlayerBinding
 import com.mux.stats.sdk.muxstats.INetworkRequest
 import com.mux.stats.sdk.muxstats.MuxDataSdk
-import com.mux.stats.sdk.muxstats.media3.BuildConfig as Media3BuildConfig
+import com.mux.stats.sdk.muxstats.media3.BuildConfig as MuxDataBuildConfig
 
 /**
  * An [ExoPlayer] with a few extra APIs for interacting with Mux Video (TODO: link?)
@@ -51,7 +51,7 @@ class MuxPlayer private constructor(
       ctx = context,
       playerVersion = BuildConfig.LIB_VERSION,
       muxPluginName = "mux-media3",
-      muxPluginVersion = Media3BuildConfig.LIB_VERSION,
+      muxPluginVersion = MuxDataBuildConfig.LIB_VERSION,
       playerSoftware = "mux-player-android"
     )
     if (exoPlayerBinding == null) {
