@@ -83,6 +83,7 @@ class PlayerConnection(val socket: Socket) {
             val chunk = cdnInputQueue.takeFirst()
             Log.w(TAG, "writing chunk:\n" + chunk)
             writer.write(chunk)
+            // todo - Write to file until EOF or until thread dies or something
         }
     }
 }
