@@ -29,7 +29,7 @@ class CDNConnection(playerConnection: PlayerConnection) {
     private val readThread:Thread = Thread {
         while(running) {
             val chunk = inputStream!!.readBytes().toString()
-          // todo - Read in buffers instead
+          // todo - Would it be good to read-in buffers instead, and 'simultaneously' write to file and to Player?
             if (chunk.length > 0) {
                 playerConnection.send(chunk)
             }
