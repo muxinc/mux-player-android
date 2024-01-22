@@ -88,6 +88,7 @@ class PlayerConnection(val socket: Socket) {
             val chunk = cdnInputQueue.takeFirst()
             Log.w(TAG, "writing chunk:\n" + chunk)
             //writer.write(chunk)
+          // todo - how much are we writing here?
             writeHandle.write(chunk)
 
           // todo - when is EOF?
