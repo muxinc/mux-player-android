@@ -59,9 +59,11 @@ internal object CacheController {
     // todo - if for some reason we are currently downloading the exact-same same segment on another
     //  thread, there would be conflicts here.. But not sure if that is a real case or theoretical one
 
-    // todo - create a file in the cache dir for the output (maybe name is key + downloaded-at timestamp)
 
     return if (shouldCache(requestUrl, responseHeaders)) {
+      // todo - create a file in the cache dir for the output (maybe name is key + downloaded-at timestamp)
+      //  A FileOutputStream for that file should go in the WriteHandle
+
       WriteHandle(
         controller = this,
         fileOutputStream = null, // todo - real value
@@ -110,16 +112,16 @@ internal object CacheController {
      * Writes the given bytes to both the player socket and the file
      */
     fun write(data: ByteArray) {
-      // todo - write to player OutputStream
-      // todo - write to file output stream if it exists
+      playerOutputStream.write(data)
+      fileOutputStream?.write(data)
     }
 
     /**
      * Writes the given String's bytes to both the player socket and the file
      */
     fun write(data: String) {
-      // todo : write to the OutputStream
-      // todo - write to file OutputStream if it exists
+      playerOutputStream.write(data.toByteArray(Charsets.US_ASCII))
+      fileOutputStream?.write(data.toByteArray(Charsets.US_ASCII))
     }
 
     /**
@@ -127,7 +129,9 @@ internal object CacheController {
      * socket and file (if any)
      */
     fun finishedWriting() {
-      // todo - write to index db, close streams
+      // todo - Create a FileRecord write the entry to index db
+      playerOutputStream.close()
+      fileOutputStream?.close()
     }
   }
 
