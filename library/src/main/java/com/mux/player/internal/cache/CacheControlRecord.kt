@@ -5,6 +5,4 @@ import java.util.regex.Pattern
 data class CacheControlRecord(
   val url: String,
   val etag: String?,
-  val maxAge: Long?,
-  val age: Long?,
 )

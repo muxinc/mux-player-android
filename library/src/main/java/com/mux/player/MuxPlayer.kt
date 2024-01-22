@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player.Listener
 import androidx.media3.exoplayer.ExoPlayer
+import com.mux.player.cacheing.CacheController
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.player.internal.createLogcatLogger
@@ -37,6 +38,8 @@ class MuxPlayer private constructor(
   }
 
   init {
+    CacheController.setup(context)
+
     // listen internally before Mux Data gets events, in case we need to handle something before
     // the data SDK sees (like media metadata for new streams during a MediaItem transition, etc)
     exoPlayer.addListener(object : Listener {

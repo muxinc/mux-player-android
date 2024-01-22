@@ -1,5 +1,7 @@
 package com.mux.player.cacheing
 
+import android.annotation.SuppressLint
+import android.content.Context
 import android.icu.util.Output
 import com.mux.player.internal.cache.CacheControlRecord
 import com.mux.player.internal.cache.FileRecord
@@ -13,7 +15,11 @@ import java.io.PrintStream
 /**
  * Controls access to Mux Player's cache
  */
+@SuppressLint("StaticFieldLeak")
 internal object CacheController {
+
+ private lateinit var appContext: Context
+ private lateinit var datastore: CacheDatastore
 
   val RX_NO_STORE_NO_CACHE = Regex("""no-store|no-cache""")
 
@@ -29,6 +35,20 @@ internal object CacheController {
   val RX_S_MAX_AGE = Regex("""s-max-age=([0-9].*)""")
 
   /**
+   * Call from the constructor of Mux Player. This must be called internally before any playing
+   * starts, assuming that disk caching is enabled
+   */
+  @JvmSynthetic
+  internal fun setup(context: Context) {
+    if (!this::appContext.isInitialized) {
+      this.appContext = context.applicationContext
+    }
+    if(!this::datastore.isInitialized) {
+      datastore = CacheDatastore(appContext)
+    }
+  }
+
+  /**
    * Tries to read from the cache. If there's a hit, this method will return a [ReadHandle] for
    * reading the file. The [ReadHandle] has methods for reading, and also info about the original
    * resource, like its original URL, response headers, and cache-control directives
@@ -36,12 +56,13 @@ internal object CacheController {
   fun tryRead(
     requestUrl: String
   ): ReadHandle? {
-    return if (false/* todo - check cache */) {
+    val fileRecord = datastore.readRecord(requestUrl)
+    return if (fileRecord == null) {
       null
     } else {
       ReadHandle(
         url = requestUrl,
-        file = File(""), // todo
+        file = fileRecord,
         fileInput = ByteArrayInputStream(ByteArray(5))
       )
     }
@@ -58,7 +79,7 @@ internal object CacheController {
   ): WriteHandle {
     // todo - if for some reason we are currently downloading the exact-same same segment on another
     //  thread, there would be conflicts here.. But not sure if that is a real case or theoretical one
-
+      
 
     return if (shouldCache(requestUrl, responseHeaders)) {
       // todo - create a file in the cache dir for the output (maybe name is key + downloaded-at timestamp)
@@ -130,6 +151,8 @@ internal object CacheController {
      */
     fun finishedWriting() {
       // todo - Create a FileRecord write the entry to index db
+        //datastore.writeRecord()
+
       playerOutputStream.close()
       fileOutputStream?.close()
     }
@@ -143,7 +166,7 @@ internal object CacheController {
    */
   class ReadHandle(
     val url: String,
-    val file: File,
+    val file: FileRecord,
     // todo - figure out real fields
 //    val fileRecord: FileRecord,
 //    val cacheControlRecord: CacheControlRecord,
