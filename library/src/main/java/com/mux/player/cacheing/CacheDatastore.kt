@@ -3,14 +3,13 @@ package com.mux.player.cacheing
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import com.mux.player.internal.cache.CacheControlRecord
 import com.mux.player.internal.cache.FileRecord
 
 class CacheDatastore(val context: Context) {
 
   private val openHelper: SQLiteOpenHelper by lazy { DbHelper(context) }
 
-  fun writeRecord(fileRecord: FileRecord, cacheControlRecord: CacheControlRecord): Result<Unit> {
+  fun writeRecord(fileRecord: FileRecord): Result<Unit> {
     // todo - write record. If a record exists with same key then replace with this record
     return Result.success(Unit)
   }

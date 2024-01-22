@@ -2,15 +2,10 @@ package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.icu.util.Output
-import com.mux.player.internal.cache.CacheControlRecord
 import com.mux.player.internal.cache.FileRecord
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
-import java.io.PrintStream
 
 /**
  * Controls access to Mux Player's cache
@@ -79,7 +74,7 @@ internal object CacheController {
   ): WriteHandle {
     // todo - if for some reason we are currently downloading the exact-same same segment on another
     //  thread, there would be conflicts here.. But not sure if that is a real case or theoretical one
-      
+
 
     return if (shouldCache(requestUrl, responseHeaders)) {
       // todo - create a file in the cache dir for the output (maybe name is key + downloaded-at timestamp)
