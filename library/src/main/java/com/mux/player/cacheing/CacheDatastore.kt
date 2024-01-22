@@ -22,7 +22,7 @@ class CacheDatastore(val context: Context) {
 
 private class DbHelper(appContext: Context) : SQLiteOpenHelper(
   /*context = */ appContext,
-  /* name */DB_FILE, // todo - put file in `cacheDir/mux/player/` or something
+  /* name */DB_FILE, // todo - put file in `filesDir/mux/player/` or something
   null,
   DB_VERSION
 ) {
