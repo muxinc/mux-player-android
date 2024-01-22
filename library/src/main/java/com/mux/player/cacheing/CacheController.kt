@@ -6,6 +6,7 @@ import com.mux.player.internal.cache.FileRecord
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.URL
 
 /**
  * Controls access to Mux Player's cache
@@ -28,6 +29,28 @@ internal object CacheController {
    * group(1) will have the s-max-age value
    */
   val RX_S_MAX_AGE = Regex("""s-max-age=([0-9].*)""")
+
+  /**
+   * Mux Video segments have special cache keys because their URLs follow a known format even
+   * across CDNs.
+   */
+  fun segmentCacheKey(url: URL): String {
+    fun fallbackUrl() = url.toString()
+
+    val isMux = url.host.endsWith(".mux.com")
+    return if (!isMux) {
+      fallbackUrl()
+    } else {
+      val pathSegments = url.path.split("/")
+      if (pathSegments.size >= 4) {
+        val renditionId = pathSegments[2]
+        val segmentNum = pathSegments[3] // with the extension is fine for keying purposes
+        "$renditionId-$segmentNum"
+      } else {
+        fallbackUrl()
+      }
+    }
+  }
 
   /**
    * Call from the constructor of Mux Player. This must be called internally before any playing
