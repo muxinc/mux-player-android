@@ -53,6 +53,7 @@ class HttpRequestParser(val input:InputStream) {
             appendHeaderParameter(header)
             header = reader.readLine()
         }
+        // todo - worthwhile to give the caller the inputStream to read so it can take turns writing to Player and file?
         var bodyLine = reader.readLine()
         while (bodyLine != null) {
             appendMessageBody(bodyLine)

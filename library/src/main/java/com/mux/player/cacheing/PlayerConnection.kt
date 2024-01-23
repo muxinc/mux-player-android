@@ -74,15 +74,26 @@ class PlayerConnection(val socket: Socket) {
     }
 
     private fun write() {
-        val writer = PrintWriter(
-            OutputStreamWriter(
-                socket.getOutputStream(), StandardCharsets.US_ASCII
-            ), true
-        )
+//        val writer = PrintWriter(
+//            OutputStreamWriter(
+//                socket.getOutputStream(), StandardCharsets.US_ASCII
+//            ), true
+//        )
+      val writeHandle = CacheController.downloadStarted(
+        requestUrl = cdn_url_str,
+        responseHeaders = mapOf(), // todo - real headers
+        socket.getOutputStream()
+      )
         while(running) {
             val chunk = cdnInputQueue.takeFirst()
             Log.w(TAG, "writing chunk:\n" + chunk)
-            writer.write(chunk)
+            //writer.write(chunk)
+          // todo - how much are we writing here?
+            writeHandle.write(chunk)
+
+          // todo - when is EOF?
         }
+      // todo - get here somehow.. After we reach the end of the request
+      writeHandle.finishedWriting()
     }
 }
