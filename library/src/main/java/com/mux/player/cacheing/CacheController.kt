@@ -17,31 +17,29 @@ internal object CacheController {
  private lateinit var appContext: Context
  private lateinit var datastore: CacheDatastore
 
-  val RX_NO_STORE_NO_CACHE = Regex("""no-store|no-cache""")
-
-  /**
-   * group(1) will have the max-age value
-   */
+  val RX_NO_STORE = Regex("""no-store""")
+  val RX_NO_CACHE = Regex("""no-cache""")
   val RX_MAX_AGE = Regex("""max-age=([0-9].*)""")
-
-
-  /**
-   * group(1) will have the s-max-age value
-   */
   val RX_S_MAX_AGE = Regex("""s-max-age=([0-9].*)""")
 
   /**
    * Mux Video segments have special cache keys because their URLs follow a known format even
-   * across CDNs.
+   * across CDNs. Using this key instead of just the URL allows our cache to treat the segments as
+   * equivalent
    */
-  fun segmentCacheKey(url: URL): String {
-    fun fallbackUrl() = url.toString()
+  fun segmentCacheKey(
+    requestUrl: URL,
+    responseHeaders: Map<String, List<String>>
+  ): String {
+    fun fallbackUrl() = requestUrl.toString()
 
-    val isMux = url.host.endsWith(".mux.com")
+    // todo - check Content-Type? Only segments (ts and m4s) have the special keys
+
+    val isMux = requestUrl.host.endsWith(".mux.com")
     return if (!isMux) {
       fallbackUrl()
     } else {
-      val pathSegments = url.path.split("/")
+      val pathSegments = requestUrl.path.split("/")
       if (pathSegments.size >= 4) {
         val renditionId = pathSegments[2]
         val segmentNum = pathSegments[3] // with the extension is fine for keying purposes
@@ -57,12 +55,12 @@ internal object CacheController {
    * starts, assuming that disk caching is enabled
    */
   @JvmSynthetic
-  internal fun setup(context: Context) {
+  internal fun setup(context: Context, cacheDatastore: CacheDatastore?) {
     if (!this::appContext.isInitialized) {
       this.appContext = context.applicationContext
     }
     if(!this::datastore.isInitialized) {
-      datastore = CacheDatastore(appContext)
+      datastore = cacheDatastore ?: CacheDatastore(appContext)
     }
   }
 
@@ -99,7 +97,7 @@ internal object CacheController {
     //  thread, there would be conflicts here.. But not sure if that is a real case or theoretical one
 
 
-    return if (shouldCache(requestUrl, responseHeaders)) {
+    return if (shouldCacheResponse(requestUrl, responseHeaders)) {
       // todo - create a file in the cache dir for the output (maybe name is key + downloaded-at timestamp)
       //  A FileOutputStream for that file should go in the WriteHandle
 
@@ -122,14 +120,29 @@ internal object CacheController {
     }
   }
 
-  private fun shouldCache(
+  /**
+   * Returns true if the request should be cached, based on its URL and the headers of the response
+   */
+  @JvmSynthetic
+  internal fun shouldCacheResponse(
     requestUrl: String,
     responseHeaders: Map<String, List<String>>
   ): Boolean {
-    // todo - additional logic here, like checking disk space against Content-Length etc
+    val cacheControlLine = responseHeaders.getCacheControl()
+    if (cacheControlLine == null) {
+      return false
+    }
+    if (cacheControlLine.contains(RX_NO_STORE)) {
+      return false
+    }
+    // todo - additional logic here:
+    //  * check disk space against Content-Length?
+    //  * check for headers like Age?
 
-    return responseHeaders.getCacheControl()?.matches(RX_NO_STORE_NO_CACHE)?.not() ?: false
+    return true
   }
+
+  // todo - should revalidate
 
   private fun Map<String, List<String>>.getCacheControl(): String? = get("Cache-Control")?.last()
 
