@@ -33,8 +33,10 @@ class CacheControllerTests : AbsRobolectricTest() {
       val responseHeaders = mapOf("Cache-Control" to listOf(cacheControl))
 
       val shouldCache = CacheController.shouldCacheResponse("https://mux.com/xyz", responseHeaders)
-      Assert.assertFalse("Response with Cache-Control header [$cacheControl] should not " +
-              "be cached", shouldCache)
+      Assert.assertFalse(
+        "Response with Cache-Control header [$cacheControl] should not " +
+                "be cached", shouldCache
+      )
     }
 
     val cacheControlValueSimple = "no-store"
@@ -48,23 +50,41 @@ class CacheControllerTests : AbsRobolectricTest() {
 
   @Test
   fun `segmentCacheKey generates different keys for segments`() {
-    fun testTheCase(requestUrl: URL, contentType: String) {
+    val notASegmentUrl = "https://manifest-gcp-us-east4-vop1.cfcdn.mux.com/efg456hjk/rendition.m3u8"
+    val notASegmentResponseHeaders = mapOf("Content-Type" to listOf("application/x-mpegURL"))
+    val hlsSegmentUrl = "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/hls123abc/0.ts"
+    val hlsSegmentResponseHeaders = mapOf("Content-Type" to listOf("video/MP2T"))
+    val cmafSegmentUrl = "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/cmaf456def/146.m4s"
+    val cmafSegmentResponseHeaders = mapOf("Content-Type" to listOf("video/mp4"))
 
-    }
+    val notASegmentKey =
+      CacheController.segmentCacheKey(URL(notASegmentUrl), notASegmentResponseHeaders)
+    val hlsKey = CacheController.segmentCacheKey(URL(hlsSegmentUrl), hlsSegmentResponseHeaders)
+    val cmafKey = CacheController.segmentCacheKey(URL(cmafSegmentUrl), cmafSegmentResponseHeaders)
 
-    val nonSegmentUrl = "https://manifest-gcp-us-east4-vop1.cfcdn.mux.com/efg456hjk/rendition.m3u8"
-    val segmentUrl =  "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/abc12345xyz/0.ts"
+    Assert.assertEquals(
+      "Non-segment URLs key on the entire URL",
+      notASegmentUrl, notASegmentKey
+    )
+    Assert.assertNotEquals(
+      "HLS segment URLs have a special key",
+      hlsKey, hlsSegmentUrl
+    )
+    Assert.assertNotEquals(
+      "CMAF segment URLs have a special key",
+      cmafKey, cmafSegmentUrl
+    )
   }
 
-  @Test fun `segmentCacheKey generates cache keys for segments correctly`() {
-    val segmentUrl =  "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/abc12345xyz/0.ts"
-    val responseHeaders = mapOf( "Content-Type" to listOf(CacheConstants.MIME_TS) )
+  @Test
+  fun `segmentCacheKey generates cache keys for segments correctly`() {
+    val segmentUrl = "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/abc12345xyz/0.ts"
+    val responseHeaders = mapOf("Content-Type" to listOf(CacheConstants.MIME_TS))
 
     val key = CacheController.segmentCacheKey(URL(segmentUrl), responseHeaders)
     Assert.assertEquals(
       "cache key should be constructed properly",
-      "abc12345xyz-0.ts",
-      key
-      )
+      "abc12345xyz-0.ts", key
+    )
   }
 }
