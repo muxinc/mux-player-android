@@ -3,6 +3,7 @@ package com.mux.player.cacheing
 import android.annotation.SuppressLint
 import android.content.Context
 import com.mux.player.internal.cache.FileRecord
+import com.mux.player.oneOf
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.io.OutputStream
@@ -14,8 +15,8 @@ import java.net.URL
 @SuppressLint("StaticFieldLeak")
 internal object CacheController {
 
- private lateinit var appContext: Context
- private lateinit var datastore: CacheDatastore
+  private lateinit var appContext: Context
+  private lateinit var datastore: CacheDatastore
 
   val RX_NO_STORE = Regex("""no-store""")
   val RX_NO_CACHE = Regex("""no-cache""")
@@ -33,22 +34,31 @@ internal object CacheController {
   ): String {
     fun fallback() = requestUrl.toString()
 
-    // todo - check Content-Type? Only segments (ts and m4s) have the special keys
-
-    // TODO: Is a regex better?
     val isMux = requestUrl.host.endsWith(".mux.com")
-    return if (!isMux) {
+    val key = if (!isMux) {
       fallback()
     } else {
-      val pathSegments = requestUrl.path.split("/")
-      if (pathSegments.size > 4) {
-        val renditionId = pathSegments[3]
-        val segmentNum = pathSegments[4] // with the extension is fine for keying purposes
-        "$renditionId-$segmentNum"
+      val contentType = responseHeaders["Content-Type"]?.last()
+      val isSegment = contentType.oneOf(
+        CacheConstants.MIME_M4S, CacheConstants.MIME_TS, CacheConstants.MIME_M4S_ALT
+      )
+
+      if (isSegment) {
+        val pathSegments = requestUrl.path.split("/")
+        if (pathSegments.size > 4) {
+          val renditionId = pathSegments[3]
+          val segmentNum = pathSegments[4] // with the extension is fine for keying purposes
+
+          /*key =*/ "$renditionId-$segmentNum"
+        } else {
+          /*key =*/ fallback()
+        }
       } else {
-        fallback()
+        /*key =*/ fallback()
       }
     }
+
+    return key
   }
 
   /**
@@ -60,7 +70,7 @@ internal object CacheController {
     if (!this::appContext.isInitialized) {
       this.appContext = context.applicationContext
     }
-    if(!this::datastore.isInitialized) {
+    if (!this::datastore.isInitialized) {
       datastore = cacheDatastore ?: CacheDatastore(appContext)
     }
   }
@@ -184,7 +194,7 @@ internal object CacheController {
      */
     fun finishedWriting() {
       // todo - Create a FileRecord write the entry to index db
-        //datastore.writeRecord()
+      //datastore.writeRecord()
 
       playerOutputStream.close()
       fileOutputStream?.close()

@@ -51,6 +51,9 @@ class CacheControllerTests : AbsRobolectricTest() {
     fun testTheCase(requestUrl: URL, contentType: String) {
 
     }
+
+    val nonSegmentUrl = "https://manifest-gcp-us-east4-vop1.cfcdn.mux.com/efg456hjk/rendition.m3u8"
+    val segmentUrl =  "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/abc12345xyz/0.ts"
   }
 
   @Test fun `segmentCacheKey generates cache keys for segments correctly`() {
