@@ -1,6 +1,7 @@
 package com.mux.player
 
 import android.content.Context
+import com.mux.player.cacheing.CacheConstants
 import com.mux.player.cacheing.CacheController
 import com.mux.player.cacheing.CacheDatastore
 import io.mockk.every
@@ -8,6 +9,7 @@ import io.mockk.mockk
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import java.net.URL
 
 class CacheControllerTests : AbsRobolectricTest() {
 
@@ -27,11 +29,7 @@ class CacheControllerTests : AbsRobolectricTest() {
 
   @Test
   fun `shouldCacheResponse returns false for no-store`() {
-    val cacheControlValueSimple = "no-store"
-    val cacheControlValueComplex = "no-cache no-store must-revalidate"
-    val cacheControlValueConflicting = "no-store max-age=12345"
-
-    fun testCacheControlValue(cacheControl: String) {
+    fun testTheCase(cacheControl: String) {
       val responseHeaders = mapOf("Cache-Control" to listOf(cacheControl))
 
       val shouldCache = CacheController.shouldCacheResponse("https://mux.com/xyz", responseHeaders)
@@ -39,8 +37,31 @@ class CacheControllerTests : AbsRobolectricTest() {
               "be cached", shouldCache)
     }
 
-    testCacheControlValue(cacheControlValueComplex)
-    testCacheControlValue(cacheControlValueSimple)
-    testCacheControlValue(cacheControlValueConflicting)
+    val cacheControlValueSimple = "no-store"
+    val cacheControlValueComplex = "no-cache no-store must-revalidate"
+    val cacheControlValueConflicting = "no-store max-age=12345"
+
+    testTheCase(cacheControlValueComplex)
+    testTheCase(cacheControlValueSimple)
+    testTheCase(cacheControlValueConflicting)
+  }
+
+  @Test
+  fun `segmentCacheKey generates different keys for segments`() {
+    fun testTheCase(requestUrl: URL, contentType: String) {
+
+    }
+  }
+
+  @Test fun `segmentCacheKey generates cache keys for segments correctly`() {
+    val segmentUrl =  "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/abc12345xyz/0.ts"
+    val responseHeaders = mapOf( "Content-Type" to listOf(CacheConstants.MIME_TS) )
+
+    val key = CacheController.segmentCacheKey(URL(segmentUrl), responseHeaders)
+    Assert.assertEquals(
+      "cache key should be constructed properly",
+      "abc12345xyz-0.ts",
+      key
+      )
   }
 }

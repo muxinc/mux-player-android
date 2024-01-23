@@ -31,21 +31,22 @@ internal object CacheController {
     requestUrl: URL,
     responseHeaders: Map<String, List<String>>
   ): String {
-    fun fallbackUrl() = requestUrl.toString()
+    fun fallback() = requestUrl.toString()
 
     // todo - check Content-Type? Only segments (ts and m4s) have the special keys
 
+    // TODO: Is a regex better?
     val isMux = requestUrl.host.endsWith(".mux.com")
     return if (!isMux) {
-      fallbackUrl()
+      fallback()
     } else {
       val pathSegments = requestUrl.path.split("/")
-      if (pathSegments.size >= 4) {
-        val renditionId = pathSegments[2]
-        val segmentNum = pathSegments[3] // with the extension is fine for keying purposes
+      if (pathSegments.size > 4) {
+        val renditionId = pathSegments[3]
+        val segmentNum = pathSegments[4] // with the extension is fine for keying purposes
         "$renditionId-$segmentNum"
       } else {
-        fallbackUrl()
+        fallback()
       }
     }
   }
@@ -129,6 +130,7 @@ internal object CacheController {
     responseHeaders: Map<String, List<String>>
   ): Boolean {
     val cacheControlLine = responseHeaders.getCacheControl()
+
     if (cacheControlLine == null) {
       return false
     }
