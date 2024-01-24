@@ -40,3 +40,60 @@ private class DbHelper(appContext: Context) : SQLiteOpenHelper(
     TODO("Not yet implemented")
   }
 }
+
+private object Queries {
+
+}
+
+/**
+ * Schema for the cache index
+ */
+private object Schema {
+
+  const val version = 1
+
+  object FilesTable {
+    const val name = "files"
+
+    object Columns {
+      /**
+       * Key for matching URLs. Since we need to support multi-cdn without caching redundantly,
+       * some files (segments) are keyed using a strategy other than hashing the entire URL
+       */
+      const val lookupKey = "lookup_key"
+      /**
+       * The URL of the remote resource
+       */
+      const val remoteUrl = "remote_url"
+      /**
+       * The etag of the response we cached for this resource
+       */
+      const val etag = "etag"
+
+      /**
+       * The time the resource was downloaded in unix time
+       */
+      const val downloadedAtUnixTime = "downloaded_at_unix_time"
+      /**
+       * The path of the cached copy of the file. This path is absolute
+       */
+      const val filePath = "file_path"
+
+      /**
+       * Age of the resource as described by the `Age` header
+       */
+      const val resourceAge = "resource_age"
+      /**
+       * The `max-age` of the cache entry, as required by cache control.
+       * `max-age` gets its own column because we must perform queries based on it
+       */
+      const val maxAgeUnixTime = "max_age_unix_time"
+      /**
+       * The 'Cache-Control' header that came down with the response we cached
+       * Data found in this header may be duplicated in the table schema if it is required for
+       * queries (like max-age)
+       */
+      const val cacheControl = "cache_control"
+    }
+  }
+}
