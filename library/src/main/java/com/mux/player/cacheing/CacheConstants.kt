@@ -6,4 +6,17 @@ internal object CacheConstants {
   const val MIME_M4S_ALT = "video/iso.segment"
   const val EXT_M4S = "m4s"
   const val EXT_TS = "ts"
+
+  /**
+   * Can be rooted in cache or files dir on either internal or external storage
+   */
+  const val CACHE_BASE_DIR = "mux/player"
+  /**
+   * Can be rooted in cache or files dir on either internal or external storage
+   */
+  const val CACHE_FILES_DIR = "$CACHE_BASE_DIR/cache"
+  /**
+   * Can be rooted in cache or files dir on either internal or external storage
+   */
+  const val TEMP_FILE_DIR = "$CACHE_BASE_DIR/cache/tmp"
 }
