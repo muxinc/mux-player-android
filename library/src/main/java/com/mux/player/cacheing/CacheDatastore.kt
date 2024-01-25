@@ -143,7 +143,7 @@ internal class CacheDatastore(val context: Context) {
   }
 
   /**
-   * Creates a new cache file with a unique name based on the URL. If a file with the name already
+   * Creates a new cache file named after its associated cache key. If a file with that name already
    * existed, it will be deleted.
    */
   private fun createCacheFile(url: URL): File {
