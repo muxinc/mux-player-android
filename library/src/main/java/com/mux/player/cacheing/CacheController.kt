@@ -26,39 +26,6 @@ internal object CacheController {
   val RX_NO_CACHE = Regex("""no-cache""")
   val RX_MAX_AGE = Regex("""max-age=([0-9].*)""")
   val RX_S_MAX_AGE = Regex("""s-max-age=([0-9].*)""")
-  val RX_CHUNK_URL = Regex("""https://.*\.mux.com/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
-
-  /**
-   * Mux Video segments have special cache keys because their URLs follow a known format even
-   * across CDNs.
-   *
-   * For segments specifically from Mux Video, this key will be generated in such a way that
-   * requests for the same segment from one CDN can hit cached entries for the same segment from a
-   * different CDN
-   */
-  fun generateCacheKey(
-    requestUrl: URL,
-  ): String {
-    // todo - should be on the Datastore
-    val urlStr = requestUrl.toString()
-    val matchResult = RX_CHUNK_URL.find(urlStr)
-
-    val key = if (matchResult == null) {
-      urlStr
-    } else {
-      val extension = matchResult.groups[3]!!.value
-      val isSegment = extension.oneOf(CacheConstants.EXT_TS, CacheConstants.EXT_M4S)
-
-      if (isSegment) {
-        requestUrl.path
-      } else {
-        urlStr
-      }
-    }
-
-    // todo - wait we need this to be base64 no matter what
-    return key
-  }
 
   /**
    * Call from the constructor of Mux Player. This must be called internally before any playing
@@ -155,8 +122,6 @@ internal object CacheController {
 
     return true
   }
-
-  // todo - should revalidate
 
   private fun Map<String, List<String>>.getCacheControl(): String? = get("Cache-Control")?.last()
 

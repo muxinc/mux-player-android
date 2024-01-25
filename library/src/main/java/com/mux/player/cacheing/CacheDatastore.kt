@@ -7,11 +7,14 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.os.Build
 import android.util.Base64
 import com.mux.player.internal.cache.FileRecord
+import com.mux.player.oneOf
 import java.io.File
 import java.net.URL
 
 internal class CacheDatastore(val context: Context) {
 
+  private val RX_CHUNK_URL =
+    Regex("""https://.*\.mux.com/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
   private val openHelper: SQLiteOpenHelper by lazy { DbHelper(context) }
 
   fun writeRecord(fileRecord: FileRecord): Result<Unit> {
@@ -24,6 +27,50 @@ internal class CacheDatastore(val context: Context) {
     return null
   }
 
+  /**
+   * Mux Video segments have special cache keys because their URLs follow a known format even
+   * across CDNs.
+   *
+   * For segments specifically from Mux Video, this key will be generated in such a way that
+   * requests for the same segment from one CDN can hit cached entries for the same segment from a
+   * different CDN
+   *
+   * Unless you are writing a test, prefer
+   */
+  @JvmSynthetic
+  internal fun generateCacheKey(
+    requestUrl: URL,
+  ): String {
+    // todo - should be on the Datastore
+    val urlStr = requestUrl.toString()
+    val matchResult = RX_CHUNK_URL.find(urlStr)
+
+    val key = if (matchResult == null) {
+      urlStr
+    } else {
+      val extension = matchResult.groups[3]!!.value
+      val isSegment = extension.oneOf(CacheConstants.EXT_TS, CacheConstants.EXT_M4S)
+
+      if (isSegment) {
+        requestUrl.path
+      } else {
+        urlStr
+      }
+    }
+
+    // todo - wait we need this to be base64 no matter what
+    return key
+  }
+
+  /**
+   * Generates a URL-safe cache key for a given URL.
+   */
+  @JvmSynthetic
+  internal fun safeCacheKey(url: URL): String = Base64.encodeToString(
+    generateCacheKey(url).toByteArray(Charsets.UTF_8),
+    Base64.URL_SAFE
+  )
+
   private fun ensureDirs()  {
     fileTempDir().mkdirs()
     fileCacheDir().mkdirs()
@@ -33,15 +80,6 @@ internal class CacheDatastore(val context: Context) {
   private fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
   private fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
   private fun indexDbDir(): File = File(context.filesDirCompat, CacheConstants.CACHE_BASE_DIR)
-
-  /**
-   * Generates a URL-safe cache key for a given URL.
-   *
-   */
-  private fun safeCacheKey(url: URL): String = Base64.encodeToString(
-    CacheController.generateCacheKey(url).toByteArray(Charsets.UTF_8),
-    Base64.URL_SAFE
-  )
 
   /**
    * Creates a new temp file for downloading-into
@@ -71,7 +109,7 @@ internal class CacheDatastore(val context: Context) {
     //  * eviction pass
     //  ** These things must happen before any other cache operations are allowed. use coroutines
     //    and runBlocking() (for now) to guarantee this
-    TODO("set up the datastore")
+    //TODO("set up the datastore")
   }
 }
 
