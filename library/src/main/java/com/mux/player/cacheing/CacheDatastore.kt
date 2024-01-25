@@ -91,7 +91,6 @@ internal class CacheDatastore(val context: Context) {
   internal fun generateCacheKey(
     requestUrl: URL,
   ): String {
-    // todo - should be on the Datastore
     val urlStr = requestUrl.toString()
     val matchResult = RX_CHUNK_URL.find(urlStr)
 

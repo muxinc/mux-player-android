@@ -3,6 +3,7 @@ package com.mux.player.cacheing
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import com.mux.player.internal.cache.FileRecord
 import com.mux.player.oneOf
 import java.io.BufferedOutputStream
@@ -11,7 +12,11 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.lang.NumberFormatException
 import java.net.URL
+import java.util.Locale
+import java.util.TimeZone
+import java.util.concurrent.TimeUnit
 
 /**
  * Controls access to Mux Player's cache
@@ -122,11 +127,37 @@ internal object CacheController {
     // todo - additional logic here:
     //  * check disk space against Content-Length?
     //  * check for headers like Age?
+    //  * make sure the entry is not already expired by like a second or whatever (edge case)
 
     return true
   }
 
-  private fun Map<String, List<String>>.getCacheControl(): String? = get("Cache-Control")?.last()
+  private fun Map<String, List<String>>.getCacheControl(): String? =
+    mapKeys { it.key.lowercase() }["cache-control"]?.last()
+  private fun Map<String, List<String>>.getETag(): String? =
+    mapKeys { it.key.lowercase() }["etag"]?.last()
+  private fun Map<String, List<String>>.getAge(): String? =
+    mapKeys { it.key.lowercase() }["age"]?.last()
+
+  private fun parseSMaxAge(cacheControl: String): Long? {
+    val matchResult = RX_S_MAX_AGE.matchEntire(cacheControl)
+    return if (matchResult == null) {
+      null
+    } else {
+      val maxAgeSecs = matchResult.groupValues[1]
+      maxAgeSecs.toLongOrNull()
+    }
+  }
+
+  private fun parseMaxAge(cacheControl: String): Long? {
+    val matchResult = RX_MAX_AGE.matchEntire(cacheControl)
+    return if (matchResult == null) {
+      null
+    } else {
+      val maxAgeSecs = matchResult.groupValues[1]
+      maxAgeSecs.toLongOrNull()
+    }
+  }
 
   /**
    * Object for writing to both the player and the cache. Call [downloadStarted] to get one of these
@@ -166,12 +197,39 @@ internal object CacheController {
      */
     fun finishedWriting() {
       playerOutputStream.close()
+
+      // If there's a temp file, we are caching it so move it from the temp file and write to index
       fileOutputStream?.close()
+      if (tempFile != null) {
+        val cacheControl = responseHeaders.getCacheControl()
+        val etag = responseHeaders.getETag()
+        if (cacheControl != null && etag != null) {
+          val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
+          val nowUtc = System.currentTimeMillis().let { timeMs ->
+            val timezone = TimeZone.getDefault()
+            timeMs + timezone.getOffset(timeMs)
+          }
+          val recordAge = responseHeaders.getAge()?.toLongOrNull()
+          val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(cacheControl)
 
-      val cacheFile = tempFile?.let { datastore.moveFromTempFile(it, URL(url)) }
+          val record = FileRecord(
+            url = url,
+            etag = etag,
+            file = cacheFile,
+            downloadedAtUtcSecs = nowUtc,
+            cacheMaxAge = maxAge ?: TimeUnit.SECONDS.convert(7, TimeUnit.DAYS),
+            cacheAge = recordAge ?: 0L,
+            cacheControl = cacheControl,
+          )
+          datastore.writeRecord(record)
+        } else {
+          // todo: need a logger
+          Log.w("CacheController", "Had temp file but not enough info to cache. " +
+                  "cache-control: [$cacheControl] etag $etag")
+        }
 
-      // todo - Create a FileRecord write the entry to index db
-      //datastore.writeRecord()
+        //datastore.writeRecord()
+      }
     }
   }
 
