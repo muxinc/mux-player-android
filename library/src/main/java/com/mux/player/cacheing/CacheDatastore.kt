@@ -104,7 +104,7 @@ private object Schema {
       /**
        * Key for matching URLs. Since we need to support multi-cdn without caching redundantly,
        * some files (segments) are keyed using a strategy other than hashing the entire URL.
-       * Use [CacheController.segmentCacheKey] to calculate a cache key for a given URL
+       * Use [CacheController.generateCacheKey] to calculate a cache key for a given URL
        */
       const val lookupKey = "lookup_key"
       /**

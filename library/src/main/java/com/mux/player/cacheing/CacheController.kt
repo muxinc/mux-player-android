@@ -2,6 +2,7 @@ package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Base64
 import com.mux.player.internal.cache.FileRecord
 import com.mux.player.oneOf
 import java.io.ByteArrayInputStream
@@ -22,39 +23,29 @@ internal object CacheController {
   val RX_NO_CACHE = Regex("""no-cache""")
   val RX_MAX_AGE = Regex("""max-age=([0-9].*)""")
   val RX_S_MAX_AGE = Regex("""s-max-age=([0-9].*)""")
+  val RX_CHUNK_URL = Regex("""https://.*\.mux.com/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
 
   /**
    * Mux Video segments have special cache keys because their URLs follow a known format even
    * across CDNs. Using this key instead of just the URL allows our cache to treat the segments as
    * equivalent
    */
-  fun segmentCacheKey(
+  fun generateCacheKey(
     requestUrl: URL,
-    responseHeaders: Map<String, List<String>>
   ): String {
-    fun fallback() = requestUrl.toString()
+    val urlStr = requestUrl.toString()
+    val matchResult = RX_CHUNK_URL.find(urlStr)
 
-    val isMux = requestUrl.host.endsWith(".mux.com")
-    val key = if (!isMux) {
-      fallback()
+    val key = if (matchResult == null) {
+      urlStr
     } else {
-      val contentType = responseHeaders["Content-Type"]?.last()
-      val isSegment = contentType.oneOf(
-        CacheConstants.MIME_M4S, CacheConstants.MIME_TS, CacheConstants.MIME_M4S_ALT
-      )
+      val extension = matchResult.groups[3]!!.value
+      val isSegment = extension.oneOf(CacheConstants.EXT_TS, CacheConstants.EXT_M4S)
 
       if (isSegment) {
-        val pathSegments = requestUrl.path.split("/")
-        if (pathSegments.size > 4) {
-          val renditionId = pathSegments[3]
-          val segmentNum = pathSegments[4] // with the extension is fine for keying purposes
-
-          /*key =*/ "$renditionId-$segmentNum"
-        } else {
-          /*key =*/ fallback()
-        }
+        Base64.encodeToString(requestUrl.path.toByteArray(Charsets.UTF_8), Base64.URL_SAFE)
       } else {
-        /*key =*/ fallback()
+        urlStr
       }
     }
 

@@ -1,7 +1,7 @@
 package com.mux.player
 
 import android.content.Context
-import com.mux.player.cacheing.CacheConstants
+import android.util.Base64
 import com.mux.player.cacheing.CacheController
 import com.mux.player.cacheing.CacheDatastore
 import io.mockk.every
@@ -51,16 +51,13 @@ class CacheControllerTests : AbsRobolectricTest() {
   @Test
   fun `segmentCacheKey generates different keys for segments`() {
     val notASegmentUrl = "https://manifest-gcp-us-east4-vop1.cfcdn.mux.com/efg456hjk/rendition.m3u8"
-    val notASegmentResponseHeaders = mapOf("Content-Type" to listOf("application/x-mpegURL"))
     val hlsSegmentUrl = "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/hls123abc/0.ts"
-    val hlsSegmentResponseHeaders = mapOf("Content-Type" to listOf("video/MP2T"))
     val cmafSegmentUrl = "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/cmaf456def/146.m4s"
-    val cmafSegmentResponseHeaders = mapOf("Content-Type" to listOf("video/mp4"))
 
     val notASegmentKey =
-      CacheController.segmentCacheKey(URL(notASegmentUrl), notASegmentResponseHeaders)
-    val hlsKey = CacheController.segmentCacheKey(URL(hlsSegmentUrl), hlsSegmentResponseHeaders)
-    val cmafKey = CacheController.segmentCacheKey(URL(cmafSegmentUrl), cmafSegmentResponseHeaders)
+      CacheController.generateCacheKey(URL(notASegmentUrl))
+    val hlsKey = CacheController.generateCacheKey(URL(hlsSegmentUrl))
+    val cmafKey = CacheController.generateCacheKey(URL(cmafSegmentUrl))
 
     Assert.assertEquals(
       "Non-segment URLs key on the entire URL",
@@ -79,12 +76,16 @@ class CacheControllerTests : AbsRobolectricTest() {
   @Test
   fun `segmentCacheKey generates cache keys for segments correctly`() {
     val segmentUrl = "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/abc12345xyz/0.ts"
-    val responseHeaders = mapOf("Content-Type" to listOf(CacheConstants.MIME_TS))
+    val expectedKeyBase = "/v1/chunk/abc12345xyz/0.ts"
+    val expectedKey = Base64.encodeToString(
+      expectedKeyBase.toByteArray(Charsets.UTF_8),
+      Base64.URL_SAFE
+    )
 
-    val key = CacheController.segmentCacheKey(URL(segmentUrl), responseHeaders)
+    val key = CacheController.generateCacheKey(URL(segmentUrl))
     Assert.assertEquals(
       "cache key should be constructed properly",
-      "abc12345xyz-0.ts", key
+      expectedKey, key
     )
   }
 }
