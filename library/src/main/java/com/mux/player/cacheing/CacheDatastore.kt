@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReference
 internal class CacheDatastore(val context: Context) {
 
   private val RX_CHUNK_URL =
-    Regex("""https*://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
+    Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
 
   private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
   private val dbHelper: DbHelper get() = awaitDbHelper()
@@ -191,16 +191,26 @@ private class DbHelper(appContext: Context) : SQLiteOpenHelper(
   /*context = */ appContext,
   /* name = */ DB_FILE, // todo - put file in `filesDir/mux/player/` or something
   null,
-  DB_VERSION
+  Schema.version
 ) {
 
   companion object {
-    private const val DB_VERSION = 1
     private const val DB_FILE = "mux-player-cache.db"
   }
 
   override fun onCreate(db: SQLiteDatabase?) {
-    TODO("This is where we run the script to create the db")
+    db?.execSQL("""
+        create table if not exists ${Schema.FilesTable.name} (
+            ${Schema.FilesTable.Columns.lookupKey} text primary key,
+            ${Schema.FilesTable.Columns.remoteUrl} text not null,
+            ${Schema.FilesTable.Columns.etag} text not null,
+            ${Schema.FilesTable.Columns.filePath} text not null,
+            ${Schema.FilesTable.Columns.downloadedAtUnixTime} integer not null,
+            ${Schema.FilesTable.Columns.maxAgeUnixTime} text not null,
+            ${Schema.FilesTable.Columns.resourceAgeUnixTime} text not null,
+            ${Schema.FilesTable.Columns.cacheControl} text not null
+        )
+      """.trimIndent())
   }
 
   override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
@@ -256,7 +266,7 @@ private object Schema {
       /**
        * Age of the resource as described by the `Age` header
        */
-      const val resourceAge = "resource_age"
+      const val resourceAgeUnixTime = "resource_age"
 
       /**
        * The `max-age` of the cache entry, as required by cache control.
