@@ -159,6 +159,7 @@ internal class CacheDatastore(val context: Context) {
     val basename = safeCacheKey(url)
     val cacheFile = File(fileCacheDir(), basename)
     cacheFile.delete()
+    cacheFile.createNewFile()
     return cacheFile
   }
 
