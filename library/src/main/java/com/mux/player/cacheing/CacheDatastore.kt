@@ -201,7 +201,7 @@ private class DbHelper(appContext: Context) : SQLiteOpenHelper(
   override fun onCreate(db: SQLiteDatabase?) {
     db?.execSQL("""
         create table if not exists ${Schema.FilesTable.name} (
-            ${Schema.FilesTable.Columns.lookupKey} text primary key,
+            ${Schema.FilesTable.Columns.lookupKey} text not null primary key,
             ${Schema.FilesTable.Columns.remoteUrl} text not null,
             ${Schema.FilesTable.Columns.etag} text not null,
             ${Schema.FilesTable.Columns.filePath} text not null,
@@ -214,7 +214,8 @@ private class DbHelper(appContext: Context) : SQLiteOpenHelper(
   }
 
   override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-    TODO("This is where we run scripts to update the schema")
+    // in the future, if we need to update the sql schema, we'd increment Schema.version and do the
+    //  migration here by adding or altering tables or whatever.
   }
 }
 
