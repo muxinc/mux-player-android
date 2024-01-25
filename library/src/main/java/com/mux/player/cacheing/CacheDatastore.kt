@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.os.Build
 import android.util.Base64
+import androidx.annotation.WorkerThread
 import com.mux.player.internal.cache.FileRecord
 import com.mux.player.oneOf
 import java.io.File
@@ -16,6 +17,20 @@ internal class CacheDatastore(val context: Context) {
   private val RX_CHUNK_URL =
     Regex("""https://.*\.mux.com/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
   private val openHelper: SQLiteOpenHelper by lazy { DbHelper(context) }
+
+  /**
+   * Opens the datastore
+   *
+   * Internally, this method will ensure that the cache directories and index database exist
+   * on-disk, and the index db is updated. It will also clean-up orphaned files and do an eviction
+   * pass.
+   *
+   * This method will block until the Datastore is ready to use
+   */
+  fun open() {
+
+  }
+
 
   fun writeRecord(fileRecord: FileRecord): Result<Unit> {
     // todo - write record. If a record exists with same key then replace with this record
