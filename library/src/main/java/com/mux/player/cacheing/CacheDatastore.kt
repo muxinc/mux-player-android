@@ -197,16 +197,6 @@ internal class CacheDatastore(val context: Context) {
       throw IOException(e)
     }
   }
-
-  init {
-    // todo - async setup
-    //  * ensureDirs
-    //  * clear temp dir
-    //  * eviction pass
-    //  ** These things must happen before any other cache operations are allowed. use coroutines
-    //    and runBlocking() (for now) to guarantee this
-    //TODO("set up the datastore")
-  }
 }
 
 private class DbHelper(
@@ -242,13 +232,6 @@ private class DbHelper(
     // in the future, if we need to update the sql schema, we'd increment Schema.version and do the
     //  migration here by adding or altering tables or whatever.
   }
-}
-
-/**
- * SQL queries and parts of SQL queries that the Datastore needs in order to use the database
- * Queries with  args ('?'s) should explain what the args are for in their doc tags
- */
-private object Queries {
 }
 
 /**

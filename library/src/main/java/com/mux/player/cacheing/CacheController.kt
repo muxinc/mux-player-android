@@ -56,8 +56,7 @@ internal object CacheController {
     requestUrl: String
   ): ReadHandle? {
     val fileRecord = datastore.readRecord(requestUrl)
-    // todo - also check if the file exists
-    return if (fileRecord == null) {
+    return if (fileRecord == null || !fileRecord.file.exists()) {
       null
     } else {
       ReadHandle(
