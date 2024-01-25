@@ -11,7 +11,6 @@ import com.mux.player.internal.cache.FileRecord
 import com.mux.player.oneOf
 import java.io.File
 import java.io.IOException
-import java.lang.Exception
 import java.net.URL
 import java.util.concurrent.FutureTask
 import java.util.concurrent.atomic.AtomicReference
@@ -34,13 +33,17 @@ internal class CacheDatastore(val context: Context) {
    * on-disk, and the index db is updated. It will also clean-up orphaned files and do an eviction
    * pass and whatever other cleanup tasks are required.
    *
-   * This method is safe to call multiple times. Subsequent calls will await the same task, or do
-   * nothing if the db is already open
+   * This method is safe to call multiple times. Subsequent calls will await the same task,
+   * or do nothing if the db is already open.
    */
-  @Throws fun open() {
-    awaitDbHelper()
+  fun open(): Result<Unit> {
+    return try {
+      awaitDbHelper()
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Result.failure(e)
+    }
   }
-
 
   fun writeRecord(fileRecord: FileRecord): Result<Unit> {
     // todo - write record. If a record exists with same key then replace with this record
@@ -87,7 +90,8 @@ internal class CacheDatastore(val context: Context) {
   }
 
   /**
-   * Generates a URL-safe cache key for a given URL.
+   * Generates a URL-safe cache key for a given URL. Delegates to [generateCacheKey] but encodes it
+   * into something else
    */
   @JvmSynthetic
   internal fun safeCacheKey(url: URL): String = Base64.encodeToString(
@@ -95,7 +99,7 @@ internal class CacheDatastore(val context: Context) {
     Base64.URL_SAFE
   )
 
-  private fun ensureDirs()  {
+  private fun ensureDirs() {
     fileTempDir().mkdirs()
     fileCacheDir().mkdirs()
     indexDbDir().mkdirs()
@@ -114,18 +118,18 @@ internal class CacheDatastore(val context: Context) {
   }
 
   private val Context.filesDirCompat: File
-  @SuppressLint("ObsoleteSdkInt") get() {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      noBackupFilesDir
-    } else {
-      filesDir
+    @SuppressLint("ObsoleteSdkInt") get() {
+      return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        noBackupFilesDir
+      } else {
+        filesDir
+      }
     }
-  }
 
   // Starts opening the DB unless it's open or being opened. If it's open, you get the DbHelper.
   //  If it's still being opened on another thread, this method will block until the db has been
   //  opened.
-  // If the db failed to open, this method will throw. todo - should reset the task in this case?
+  // If the db failed to open, this method will throw. Opening can be re-attmpted
   @Throws(IOException::class)
   private fun awaitDbHelper(): DbHelper {
     // called only once, guaranteed by logic in this function
@@ -143,13 +147,17 @@ internal class CacheDatastore(val context: Context) {
     val needToStart = openTask.compareAndSet(null, FutureTask { createOpenedDbHelper() })
     try {
       val actualTask = openTask.get()!!
-      if(needToStart) {
+      if (needToStart) {
         actualTask.run()
       }
       return actualTask.get()
     } catch (e: Exception) {
       // todo - get a Logger down here
       Log.e("CacheDatastore", "failed to open cache", e)
+
+      // subsequent calls can attempt again
+      openTask.set(null)
+
       throw IOException(e)
     }
   }
@@ -178,16 +186,19 @@ private class DbHelper(appContext: Context) : SQLiteOpenHelper(
   }
 
   override fun onCreate(db: SQLiteDatabase?) {
-    TODO("Not yet implemented")
+    TODO("This is where we run the script to create the db")
   }
 
   override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-    TODO("Not yet implemented")
+    TODO("This is where we run scripts to update the schema")
   }
 }
 
+/**
+ * SQL queries and parts of SQL queries that the Datastore needs in order to use the database
+ * Queries with  args ('?'s) should explain what the args are for in their doc tags
+ */
 private object Queries {
-
 }
 
 /**
@@ -204,13 +215,15 @@ private object Schema {
       /**
        * Key for matching URLs. Since we need to support multi-cdn without caching redundantly,
        * some files (segments) are keyed using a strategy other than hashing the entire URL.
-       * Use [CacheController.generateCacheKey] to calculate a cache key for a given URL
+       * Use [CacheDatastore.generateCacheKey] to calculate a cache key for a given URL
        */
       const val lookupKey = "lookup_key"
+
       /**
        * The URL of the remote resource
        */
       const val remoteUrl = "remote_url"
+
       /**
        * The etag of the response we cached for this resource
        */
@@ -220,6 +233,7 @@ private object Schema {
        * The time the resource was downloaded in unix time
        */
       const val downloadedAtUnixTime = "downloaded_at_unix_time"
+
       /**
        * The path of the cached copy of the file. This path is relative to the app's cache dir
        */
@@ -229,11 +243,13 @@ private object Schema {
        * Age of the resource as described by the `Age` header
        */
       const val resourceAge = "resource_age"
+
       /**
        * The `max-age` of the cache entry, as required by cache control.
        * `max-age` gets its own column because we must perform queries based on it
        */
       const val maxAgeUnixTime = "max_age_unix_time"
+
       /**
        * The 'Cache-Control' header that came down with the response we cached
        * Data found in this header may be duplicated in the table schema if it is required for
