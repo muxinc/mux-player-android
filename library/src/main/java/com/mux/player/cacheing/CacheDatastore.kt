@@ -153,7 +153,7 @@ internal class CacheDatastore(val context: Context) {
       // todo- eviction pass
       // todo - clear temp dir
 
-      val helper = DbHelper(context)
+      val helper = DbHelper(context, indexDbDir())
       helper.writableDatabase
       return helper
     }
@@ -187,9 +187,12 @@ internal class CacheDatastore(val context: Context) {
   }
 }
 
-private class DbHelper(appContext: Context) : SQLiteOpenHelper(
-  /*context = */ appContext,
-  /* name = */ DB_FILE, // todo - put file in `filesDir/mux/player/` or something
+private class DbHelper(
+  appContext: Context,
+  directory: File,
+) : SQLiteOpenHelper(
+  /* context = */ appContext,
+  /* name = */ File(directory, DB_FILE).path,
   null,
   Schema.version
 ) {
