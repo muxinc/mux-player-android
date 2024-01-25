@@ -70,7 +70,7 @@ internal class CacheDatastore(val context: Context) {
 
   fun writeRecord(fileRecord: FileRecord): Result<Unit> {
     val rowId = dbHelper.writableDatabase.insertWithOnConflict(
-      Schema.FilesTable.name, null,
+      IndexSchema.FilesTable.name, null,
       fileRecord.toContentValues(),
       SQLiteDatabase.CONFLICT_REPLACE
       )
@@ -213,14 +213,14 @@ internal fun FileRecord.toContentValues(): ContentValues {
   val values = ContentValues()
 
   values.apply {
-    put(Schema.FilesTable.Columns.lookupKey, lookupKey)
-    put(Schema.FilesTable.Columns.etag, etag)
-    put(Schema.FilesTable.Columns.filePath, file.path)
-    put(Schema.FilesTable.Columns.remoteUrl, url)
-    put(Schema.FilesTable.Columns.downloadedAtUnixTime, downloadedAtUtcSecs)
-    put(Schema.FilesTable.Columns.maxAgeUnixTime, cacheMaxAge)
-    put(Schema.FilesTable.Columns.resourceAgeUnixTime, resourceAge)
-    put(Schema.FilesTable.Columns.cacheControl, cacheControl)
+    put(IndexSchema.FilesTable.Columns.lookupKey, lookupKey)
+    put(IndexSchema.FilesTable.Columns.etag, etag)
+    put(IndexSchema.FilesTable.Columns.filePath, file.path)
+    put(IndexSchema.FilesTable.Columns.remoteUrl, url)
+    put(IndexSchema.FilesTable.Columns.downloadedAtUnixTime, downloadedAtUtcSecs)
+    put(IndexSchema.FilesTable.Columns.maxAgeUnixTime, cacheMaxAge)
+    put(IndexSchema.FilesTable.Columns.resourceAgeUnixTime, resourceAge)
+    put(IndexSchema.FilesTable.Columns.cacheControl, cacheControl)
   }
 
   return values
@@ -233,7 +233,7 @@ private class DbHelper(
   /* context = */ appContext,
   /* name = */ File(directory, DB_FILE).path,
   null,
-  Schema.version
+  IndexSchema.version
 ) {
 
   companion object {
@@ -242,15 +242,15 @@ private class DbHelper(
 
   override fun onCreate(db: SQLiteDatabase?) {
     db?.execSQL("""
-        create table if not exists ${Schema.FilesTable.name} (
-            ${Schema.FilesTable.Columns.lookupKey} text not null primary key,
-            ${Schema.FilesTable.Columns.remoteUrl} text not null,
-            ${Schema.FilesTable.Columns.etag} text not null,
-            ${Schema.FilesTable.Columns.filePath} text not null,
-            ${Schema.FilesTable.Columns.downloadedAtUnixTime} integer not null,
-            ${Schema.FilesTable.Columns.maxAgeUnixTime} text not null,
-            ${Schema.FilesTable.Columns.resourceAgeUnixTime} text not null,
-            ${Schema.FilesTable.Columns.cacheControl} text not null
+        create table if not exists ${IndexSchema.FilesTable.name} (
+            ${IndexSchema.FilesTable.Columns.lookupKey} text not null primary key,
+            ${IndexSchema.FilesTable.Columns.remoteUrl} text not null,
+            ${IndexSchema.FilesTable.Columns.etag} text not null,
+            ${IndexSchema.FilesTable.Columns.filePath} text not null,
+            ${IndexSchema.FilesTable.Columns.downloadedAtUnixTime} integer not null,
+            ${IndexSchema.FilesTable.Columns.maxAgeUnixTime} text not null,
+            ${IndexSchema.FilesTable.Columns.resourceAgeUnixTime} text not null,
+            ${IndexSchema.FilesTable.Columns.cacheControl} text not null
         )
       """.trimIndent())
   }
@@ -264,7 +264,7 @@ private class DbHelper(
 /**
  * Schema for the cache index
  */
-private object Schema {
+internal object IndexSchema {
 
   const val version = 1
 
