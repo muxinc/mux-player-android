@@ -26,7 +26,7 @@ class CacheDatastoreTests: AbsRobolectricTest() {
   }
 
   @Test
-  fun `segmentCacheKey generates different keys for segments`() {
+  fun `generateCacheKey generates special keys for segments`() {
     val notASegmentUrl = "https://manifest-gcp-us-east4-vop1.cfcdn.mux.com/efg456hjk/rendition.m3u8"
     val hlsSegmentUrl = "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/hls123abc/0.ts"
     val cmafSegmentUrl = "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/cmaf456def/146.m4s"
@@ -51,7 +51,7 @@ class CacheDatastoreTests: AbsRobolectricTest() {
   }
 
   @Test
-  fun `segmentCacheKey generates cache keys for segments correctly`() {
+  fun `generateCacheKey generates cache keys for segments correctly`() {
     val segmentUrl = "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/abc12345xyz/0.ts"
     val expectedKey = "/v1/chunk/abc12345xyz/0.ts"
 
@@ -61,24 +61,4 @@ class CacheDatastoreTests: AbsRobolectricTest() {
       expectedKey, key
     )
   }
-
-
-//  private lateinit var mockContext: Context
-//
-//  @Before
-//  fun setUpCacheController() {
-//    // We're not testing the CacheControlle.r
-//    val mockDatastore = mockk<CacheDatastore> {
-//
-//    }
-//
-//    val mockContext = mockk<Context> {
-//      every { applicationContext } returns mockk {
-//
-//      }
-//    }
-//
-//    CacheController.setup(mockContext, mockDatastore)
-//  }
-
 }

@@ -6,29 +6,39 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.os.Build
 import android.util.Base64
-import androidx.annotation.WorkerThread
+import android.util.Log
 import com.mux.player.internal.cache.FileRecord
 import com.mux.player.oneOf
 import java.io.File
+import java.io.IOException
+import java.lang.Exception
 import java.net.URL
+import java.util.concurrent.FutureTask
+import java.util.concurrent.atomic.AtomicReference
 
 internal class CacheDatastore(val context: Context) {
 
   private val RX_CHUNK_URL =
     Regex("""https://.*\.mux.com/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
-  private val openHelper: SQLiteOpenHelper by lazy { DbHelper(context) }
+
+  private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
+  private val dbHelper: DbHelper get() = awaitDbHelper()
 
   /**
-   * Opens the datastore
+   * Opens the datastore, blocking until it is ready to use
+   *
+   * If you use the cache before opening then it will open itself. But opening after a crash or
+   * something may take longer due to internal bookkeeping stuff, so this method is exposed for now
    *
    * Internally, this method will ensure that the cache directories and index database exist
    * on-disk, and the index db is updated. It will also clean-up orphaned files and do an eviction
-   * pass.
+   * pass and whatever other cleanup tasks are required.
    *
-   * This method will block until the Datastore is ready to use
+   * This method is safe to call multiple times. Subsequent calls will await the same task, or do
+   * nothing if the db is already open
    */
-  fun open() {
-
+  @Throws fun open() {
+    awaitDbHelper()
   }
 
 
@@ -73,7 +83,6 @@ internal class CacheDatastore(val context: Context) {
       }
     }
 
-    // todo - wait we need this to be base64 no matter what
     return key
   }
 
@@ -97,15 +106,11 @@ internal class CacheDatastore(val context: Context) {
   private fun indexDbDir(): File = File(context.filesDirCompat, CacheConstants.CACHE_BASE_DIR)
 
   /**
-   * Creates a new temp file for downloading-into
+   * Creates a new temp file for downloading-into. Temp files go in a special dir that gets cleared
+   * out when the datastore is opened
    */
   private fun createTempMediaFile(fileBasename: String): File {
     return File.createTempFile("filedownload", ".part", fileTempDir())
-  }
-
-  private fun filenameForKey(cacheKey: String): String {
-    val base64 =  Base64.encode(cacheKey.toByteArray(Charsets.UTF_8), Base64.URL_SAFE)
-    return base64.toString(Charsets.UTF_8)
   }
 
   private val Context.filesDirCompat: File
@@ -114,6 +119,38 @@ internal class CacheDatastore(val context: Context) {
       noBackupFilesDir
     } else {
       filesDir
+    }
+  }
+
+  // Starts opening the DB unless it's open or being opened. If it's open, you get the DbHelper.
+  //  If it's still being opened on another thread, this method will block until the db has been
+  //  opened.
+  // If the db failed to open, this method will throw. todo - should reset the task in this case?
+  @Throws(IOException::class)
+  private fun awaitDbHelper(): DbHelper {
+    // called only once, guaranteed by logic in this function
+    fun createOpenedDbHelper(): DbHelper {
+      ensureDirs()
+
+      // todo- eviction pass
+      // todo - clear temp dir
+
+      val helper = DbHelper(context)
+      helper.writableDatabase
+      return helper
+    }
+
+    val needToStart = openTask.compareAndSet(null, FutureTask { createOpenedDbHelper() })
+    try {
+      val actualTask = openTask.get()!!
+      if(needToStart) {
+        actualTask.run()
+      }
+      return actualTask.get()
+    } catch (e: Exception) {
+      // todo - get a Logger down here
+      Log.e("CacheDatastore", "failed to open cache", e)
+      throw IOException(e)
     }
   }
 
