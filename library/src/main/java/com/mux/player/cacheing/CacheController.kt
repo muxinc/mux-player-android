@@ -12,6 +12,9 @@ import java.net.URL
 
 /**
  * Controls access to Mux Player's cache
+ *
+ * To use this object, you must first call [setup]. If you aren't writing a test, you can pass
+ * `null` for the second parameter
  */
 @SuppressLint("StaticFieldLeak")
 internal object CacheController {
@@ -27,8 +30,11 @@ internal object CacheController {
 
   /**
    * Mux Video segments have special cache keys because their URLs follow a known format even
-   * across CDNs. Using this key instead of just the URL allows our cache to treat the segments as
-   * equivalent
+   * across CDNs.
+   *
+   * For segments specifically from Mux Video, this key will be generated in such a way that
+   * requests for the same segment from one CDN can hit cached entries for the same segment from a
+   * different CDN
    */
   fun generateCacheKey(
     requestUrl: URL,
@@ -44,7 +50,7 @@ internal object CacheController {
       val isSegment = extension.oneOf(CacheConstants.EXT_TS, CacheConstants.EXT_M4S)
 
       if (isSegment) {
-        Base64.encodeToString(requestUrl.path.toByteArray(Charsets.UTF_8), Base64.URL_SAFE)
+        requestUrl.path
       } else {
         urlStr
       }
@@ -57,6 +63,9 @@ internal object CacheController {
   /**
    * Call from the constructor of Mux Player. This must be called internally before any playing
    * starts, assuming that disk caching is enabled
+   *
+   * @param context A context. The Application context will be extracted from it for further use
+   * @param cacheDatastore Optional. If not provided, the default `CacheDatastore` will be used
    */
   @JvmSynthetic
   internal fun setup(context: Context, cacheDatastore: CacheDatastore?) {

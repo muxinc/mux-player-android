@@ -76,11 +76,7 @@ class CacheControllerTests : AbsRobolectricTest() {
   @Test
   fun `segmentCacheKey generates cache keys for segments correctly`() {
     val segmentUrl = "https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/abc12345xyz/0.ts"
-    val expectedKeyBase = "/v1/chunk/abc12345xyz/0.ts"
-    val expectedKey = Base64.encodeToString(
-      expectedKeyBase.toByteArray(Charsets.UTF_8),
-      Base64.URL_SAFE
-    )
+    val expectedKey = "/v1/chunk/abc12345xyz/0.ts"
 
     val key = CacheController.generateCacheKey(URL(segmentUrl))
     Assert.assertEquals(

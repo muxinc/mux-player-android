@@ -8,6 +8,7 @@ import android.os.Build
 import android.util.Base64
 import com.mux.player.internal.cache.FileRecord
 import java.io.File
+import java.net.URL
 
 internal class CacheDatastore(val context: Context) {
 
@@ -32,6 +33,15 @@ internal class CacheDatastore(val context: Context) {
   private fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
   private fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
   private fun indexDbDir(): File = File(context.filesDirCompat, CacheConstants.CACHE_BASE_DIR)
+
+  /**
+   * Generates a URL-safe cache key for a given URL.
+   *
+   */
+  private fun safeCacheKey(url: URL): String = Base64.encodeToString(
+    CacheController.generateCacheKey(url).toByteArray(Charsets.UTF_8),
+    Base64.URL_SAFE
+  )
 
   /**
    * Creates a new temp file for downloading-into
