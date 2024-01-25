@@ -6,8 +6,9 @@ data class FileRecord(
   val url: String,
   val etag: String,
   val file: File,
+  val lookupKey: String,
   val downloadedAtUtcSecs: Long,
   val cacheMaxAge: Long,
-  val cacheAge: Long,
+  val resourceAge: Long,
   val cacheControl: String,
 )

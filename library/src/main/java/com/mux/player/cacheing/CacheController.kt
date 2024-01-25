@@ -2,19 +2,15 @@ package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.util.Base64
 import android.util.Log
 import com.mux.player.internal.cache.FileRecord
-import com.mux.player.oneOf
 import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
-import java.lang.NumberFormatException
 import java.net.URL
-import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
@@ -216,12 +212,16 @@ internal object CacheController {
             url = url,
             etag = etag,
             file = cacheFile,
+            lookupKey = datastore.safeCacheKey(URL(url)),
             downloadedAtUtcSecs = nowUtc,
             cacheMaxAge = maxAge ?: TimeUnit.SECONDS.convert(7, TimeUnit.DAYS),
-            cacheAge = recordAge ?: 0L,
+            resourceAge = recordAge ?: 0L,
             cacheControl = cacheControl,
           )
-          datastore.writeRecord(record)
+
+          val result = datastore.writeRecord(record)
+
+          // todo - return a fail or throw somerthing
         } else {
           // todo: need a logger
           Log.w("CacheController", "Had temp file but not enough info to cache. " +

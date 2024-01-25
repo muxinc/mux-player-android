@@ -1,6 +1,7 @@
 package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
+import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
@@ -68,8 +69,17 @@ internal class CacheDatastore(val context: Context) {
   }
 
   fun writeRecord(fileRecord: FileRecord): Result<Unit> {
-    // todo - write record. If a record exists with same key then replace with this record
-    return Result.success(Unit)
+    val rowId = dbHelper.writableDatabase.insertWithOnConflict(
+      Schema.FilesTable.name, null,
+      fileRecord.toContentValues(),
+      SQLiteDatabase.CONFLICT_REPLACE
+      )
+
+    return if (rowId >= 0) {
+      Result.success(Unit)
+    } else {
+      Result.failure(IOException("Failed to write to cache index"))
+    }
   }
 
   fun readRecord(url: String): FileRecord? {
@@ -196,6 +206,24 @@ internal class CacheDatastore(val context: Context) {
       throw IOException(e)
     }
   }
+}
+
+@JvmSynthetic
+internal fun FileRecord.toContentValues(): ContentValues {
+  val values = ContentValues()
+
+  values.apply {
+    put(Schema.FilesTable.Columns.lookupKey, lookupKey)
+    put(Schema.FilesTable.Columns.etag, etag)
+    put(Schema.FilesTable.Columns.filePath, file.path)
+    put(Schema.FilesTable.Columns.remoteUrl, url)
+    put(Schema.FilesTable.Columns.downloadedAtUnixTime, downloadedAtUtcSecs)
+    put(Schema.FilesTable.Columns.maxAgeUnixTime, cacheMaxAge)
+    put(Schema.FilesTable.Columns.resourceAgeUnixTime, resourceAge)
+    put(Schema.FilesTable.Columns.cacheControl, cacheControl)
+  }
+
+  return values
 }
 
 private class DbHelper(
