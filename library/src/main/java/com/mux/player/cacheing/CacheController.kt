@@ -5,7 +5,10 @@ import android.content.Context
 import android.util.Base64
 import com.mux.player.internal.cache.FileRecord
 import com.mux.player.oneOf
+import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.URL
@@ -77,25 +80,25 @@ internal object CacheController {
     // todo - if for some reason we are currently downloading the exact-same same segment on another
     //  thread, there would be conflicts here.. But not sure if that is a real case or theoretical one
 
-
     return if (shouldCacheResponse(requestUrl, responseHeaders)) {
-      // todo - create a file in the cache dir for the output (maybe name is key + downloaded-at timestamp)
-      //  A FileOutputStream for that file should go in the WriteHandle
+      val tempFile = datastore.createTempDownloadFile(URL(requestUrl))
 
       WriteHandle(
         controller = this,
-        fileOutputStream = null, // todo - real value
+        tempFile = tempFile,
         playerOutputStream = playerOutputStream,
         responseHeaders = responseHeaders,
+        datastore = datastore,
         url = requestUrl,
       )
     } else {
       // not supposed to cache, so the WriteHandle just writes to the player
       WriteHandle(
         controller = this,
-        fileOutputStream = null,
+        tempFile = null,
         playerOutputStream = playerOutputStream,
         url = requestUrl,
+        datastore = datastore,
         responseHeaders = responseHeaders,
       )
     }
@@ -135,10 +138,12 @@ internal object CacheController {
     val url: String,
     val responseHeaders: Map<String, List<String>>,
     private val controller: CacheController,
-    private val fileOutputStream: OutputStream?,
+    private val datastore: CacheDatastore,
+    private val tempFile: File?,
     private val playerOutputStream: OutputStream,
-    // todo - info about the Response, to be written to the index when appropriate
   ) {
+
+    private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
 
     /**
      * Writes the given bytes to both the player socket and the file
@@ -161,11 +166,13 @@ internal object CacheController {
      * socket and file (if any)
      */
     fun finishedWriting() {
-      // todo - Create a FileRecord write the entry to index db
-      //datastore.writeRecord()
-
       playerOutputStream.close()
       fileOutputStream?.close()
+
+      val cacheFile = tempFile?.let { datastore.moveFromTempFile(it, URL(url)) }
+
+      // todo - Create a FileRecord write the entry to index db
+      //datastore.writeRecord()
     }
   }
 

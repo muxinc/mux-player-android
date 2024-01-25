@@ -9,10 +9,8 @@ import android.util.Base64
 import android.util.Log
 import com.mux.player.internal.cache.FileRecord
 import com.mux.player.oneOf
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
-import java.io.OutputStream
 import java.net.URL
 import java.util.concurrent.FutureTask
 import java.util.concurrent.atomic.AtomicReference
@@ -47,13 +45,26 @@ internal class CacheDatastore(val context: Context) {
     }
   }
 
-  fun createDownloadFile(): OutputStream {
-    // todo - Create a temp file for downloading
-    return ByteArrayOutputStream(1)
+  /**
+   * Create a temporary file for downloading purposes. This file will be within a temporary dir,
+   * and is guaranteed not to have existed before this method was called. When the download is
+   * finished, call [moveFromTempFile] to move the file to more-permanent cache storage.
+   *
+   * The temp directory is purged every time the datastore is reopened, and temp files are deleted
+   * automatically whenever the JVM shuts down gracefully
+   */
+  fun createTempDownloadFile(remoteUrl: URL): File {
+    return createTempMediaFile(remoteUrl.path.split("/").last())
+      .also { it.deleteOnExit() }
   }
 
-  fun finalizeDownload() {
-
+  /**
+   * Move a completed download from the temp file to the cache where it will live until it falls out
+   */
+  fun moveFromTempFile(tempFile: File, remoteUrl: URL): File {
+    val cacheFile = createCacheFile(remoteUrl)
+    tempFile.renameTo(cacheFile)
+    return cacheFile
   }
 
   fun writeRecord(fileRecord: FileRecord): Result<Unit> {
@@ -129,6 +140,17 @@ internal class CacheDatastore(val context: Context) {
    */
   private fun createTempMediaFile(fileBasename: String): File {
     return File.createTempFile("filedownload", ".part", fileTempDir())
+  }
+
+  /**
+   * Creates a new cache file with a unique name based on the URL. If a file with the name already
+   * existed, it will be deleted.
+   */
+  private fun createCacheFile(url: URL): File {
+    val basename = safeCacheKey(url)
+    val cacheFile = File(fileCacheDir(), basename)
+    cacheFile.delete()
+    return cacheFile
   }
 
   private val Context.filesDirCompat: File
