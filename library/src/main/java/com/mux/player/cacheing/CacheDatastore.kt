@@ -9,7 +9,7 @@ import android.util.Base64
 import com.mux.player.internal.cache.FileRecord
 import java.io.File
 
-class CacheDatastore(val context: Context) {
+internal class CacheDatastore(val context: Context) {
 
   private val openHelper: SQLiteOpenHelper by lazy { DbHelper(context) }
 

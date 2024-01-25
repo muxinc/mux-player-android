@@ -33,6 +33,7 @@ internal object CacheController {
   fun generateCacheKey(
     requestUrl: URL,
   ): String {
+    // todo - should be on the Datastore
     val urlStr = requestUrl.toString()
     val matchResult = RX_CHUNK_URL.find(urlStr)
 
@@ -49,6 +50,7 @@ internal object CacheController {
       }
     }
 
+    // todo - wait we need this to be base64 no matter what
     return key
   }
 
