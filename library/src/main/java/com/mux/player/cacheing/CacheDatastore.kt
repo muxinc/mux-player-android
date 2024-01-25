@@ -26,12 +26,12 @@ class CacheDatastore(val context: Context) {
   private fun ensureDirs()  {
     fileTempDir().mkdirs()
     fileCacheDir().mkdirs()
-    fileBaseDir().mkdirs()
+    indexDbDir().mkdirs()
   }
 
   private fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
   private fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
-  private fun fileBaseDir(): File = File(context.cacheDir, CacheConstants.CACHE_BASE_DIR)
+  private fun indexDbDir(): File = File(context.filesDirCompat, CacheConstants.CACHE_BASE_DIR)
 
   /**
    * Creates a new temp file for downloading-into
@@ -40,9 +40,8 @@ class CacheDatastore(val context: Context) {
     return File.createTempFile("filedownload", ".part", fileTempDir())
   }
 
-  // not for security, just making everything path-safe
   private fun filenameForKey(cacheKey: String): String {
-    val base64 =  Base64.encode(cacheKey.toByteArray(Charsets.UTF_8), Base64.DEFAULT)
+    val base64 =  Base64.encode(cacheKey.toByteArray(Charsets.UTF_8), Base64.URL_SAFE)
     return base64.toString(Charsets.UTF_8)
   }
 
