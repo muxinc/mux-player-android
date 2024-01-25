@@ -9,8 +9,10 @@ import android.util.Base64
 import android.util.Log
 import com.mux.player.internal.cache.FileRecord
 import com.mux.player.oneOf
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
+import java.io.OutputStream
 import java.net.URL
 import java.util.concurrent.FutureTask
 import java.util.concurrent.atomic.AtomicReference
@@ -18,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReference
 internal class CacheDatastore(val context: Context) {
 
   private val RX_CHUNK_URL =
-    Regex("""https://.*\.mux.com/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
+    Regex("""https*://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
 
   private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
   private val dbHelper: DbHelper get() = awaitDbHelper()
@@ -43,6 +45,15 @@ internal class CacheDatastore(val context: Context) {
     } catch (e: Exception) {
       Result.failure(e)
     }
+  }
+
+  fun createDownloadFile(): OutputStream {
+    // todo - Create a temp file for downloading
+    return ByteArrayOutputStream(1)
+  }
+
+  fun finalizeDownload() {
+
   }
 
   fun writeRecord(fileRecord: FileRecord): Result<Unit> {
@@ -80,6 +91,9 @@ internal class CacheDatastore(val context: Context) {
       val isSegment = extension.oneOf(CacheConstants.EXT_TS, CacheConstants.EXT_M4S)
 
       if (isSegment) {
+        // todo - we can pull out more-specific key parts using groups 2 and 1 if we want, but the
+        //  paths in the urls are standardized in mux video so this implementation just relies on
+        //  that for simplicity
         requestUrl.path
       } else {
         urlStr
@@ -133,7 +147,7 @@ internal class CacheDatastore(val context: Context) {
   @Throws(IOException::class)
   private fun awaitDbHelper(): DbHelper {
     // called only once, guaranteed by logic in this function
-    fun createOpenedDbHelper(): DbHelper {
+    fun doOpen(): DbHelper {
       ensureDirs()
 
       // todo- eviction pass
@@ -144,7 +158,7 @@ internal class CacheDatastore(val context: Context) {
       return helper
     }
 
-    val needToStart = openTask.compareAndSet(null, FutureTask { createOpenedDbHelper() })
+    val needToStart = openTask.compareAndSet(null, FutureTask { doOpen() })
     try {
       val actualTask = openTask.get()!!
       if (needToStart) {
