@@ -35,7 +35,7 @@ internal class CacheDatastore(val context: Context) {
    * requests for the same segment from one CDN can hit cached entries for the same segment from a
    * different CDN
    *
-   * Unless you are writing a test, prefer
+   * Unless you are writing a test, use [safeCacheKey], which encodes the output of this
    */
   @JvmSynthetic
   internal fun generateCacheKey(
