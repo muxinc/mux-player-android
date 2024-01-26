@@ -203,7 +203,7 @@ internal object CacheController {
           val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
           val nowUtc = System.currentTimeMillis().let { timeMs ->
             val timezone = TimeZone.getDefault()
-            timeMs + timezone.getOffset(timeMs)
+            (timeMs + timezone.getOffset(timeMs)) / 1000
           }
           val recordAge = responseHeaders.getAge()?.toLongOrNull()
           val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(cacheControl)
