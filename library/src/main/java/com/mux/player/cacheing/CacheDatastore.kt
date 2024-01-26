@@ -241,6 +241,16 @@ private class DbHelper(
     private const val DB_FILE = "mux-player-cache.db"
   }
 
+  init {
+    setWriteAheadLoggingEnabled(true)
+    // todo - this is the modern way to enable WAL but requires very recent Android
+//    setOpenParams(
+//      SQLiteDatabase.OpenParams.Builder()
+//        .setOpenFlags(SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING)
+//        .build()
+//    )
+  }
+
   override fun onCreate(db: SQLiteDatabase?) {
     db?.execSQL("""
         create table if not exists ${IndexSchema.FilesTable.name} (
