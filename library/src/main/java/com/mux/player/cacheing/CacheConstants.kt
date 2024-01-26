@@ -12,11 +12,11 @@ internal object CacheConstants {
    */
   const val CACHE_BASE_DIR = "mux/player"
   /**
-   * Can be rooted in cache or files dir on either internal or external storage
+   * In the cacheDir
    */
   const val CACHE_FILES_DIR = "$CACHE_BASE_DIR/cache"
   /**
-   * Can be rooted in cache or files dir on either internal or external storage
+   * In the cacheDir
    */
   const val TEMP_FILE_DIR = "$CACHE_BASE_DIR/cache/tmp"
 }
