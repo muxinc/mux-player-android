@@ -259,8 +259,8 @@ private class DbHelper(
             ${IndexSchema.FilesTable.Columns.etag} text not null,
             ${IndexSchema.FilesTable.Columns.filePath} text not null,
             ${IndexSchema.FilesTable.Columns.downloadedAtUnixTime} integer not null,
-            ${IndexSchema.FilesTable.Columns.maxAgeUnixTime} text not null,
-            ${IndexSchema.FilesTable.Columns.resourceAgeUnixTime} text not null,
+            ${IndexSchema.FilesTable.Columns.maxAgeUnixTime} integer not null,
+            ${IndexSchema.FilesTable.Columns.resourceAgeUnixTime} integer not null default 0,
             ${IndexSchema.FilesTable.Columns.cacheControl} text not null
         )
       """.trimIndent())
