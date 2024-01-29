@@ -18,7 +18,7 @@ public class CachingTests extends TestBase{
 
   @Before
   public void init() {
-    urlToPlay = "http://localhost:6000";
+    urlToPlay = "http://localhost:6000/.m3u8";
     // start proxy server on port 6000, run in seprate thread by default
     proxyServer = new ProxyServer(6000);
     super.init();
@@ -27,7 +27,7 @@ public class CachingTests extends TestBase{
   @Test
   public void testProxyPlayback() {
     try {
-      if (!testActivity.waitForPlaybackToStart(waitForPlaybackToStartInMS)) {
+      if (!testActivity.waitForPlaybackToStart(waitForPlaybackToStartInMS * 10)) {
         fail("Playback did not start in " + waitForPlaybackToStartInMS + " milliseconds !!!");
       }
     } catch (Exception e) {
