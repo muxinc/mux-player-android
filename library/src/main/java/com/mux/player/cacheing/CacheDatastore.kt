@@ -139,6 +139,32 @@ internal class CacheDatastore(val context: Context) {
     indexDbDir().mkdirs()
   }
 
+  /**
+   * Deletes all temporary files. Under normal circumstances, temp files are moved to cache files
+   * once the download is complete. There are mechanisms to delete temp files in the event of
+   * errors but nothing is 100% guaranteed.
+   *
+   * As such, this method should be called at least once per Process, while blocking for the
+   * database to be opened. If our error-handling is thorough, we shouldn't need to call this method
+   * more times than that. Safely calling this once the datastore can be used would be complex.
+   */
+  private fun clearTempFiles() {
+    val fileTempDir = fileTempDir()
+
+    if (fileTempDir.isDirectory) { // probably true, but handling otherwise is easy
+      fileTempDir.listFiles()?.onEach { tempFile ->
+        if (tempFile.isDirectory) { // probably not, but it's easy to catch
+          tempFile.deleteRecursively()
+        } else {
+          tempFile.delete()
+        }
+      }
+    } else {
+      fileTempDir.delete()
+      fileTempDir.mkdirs()
+    }
+  }
+
   private fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
   private fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
   private fun indexDbDir(): File = File(context.filesDirCompat, CacheConstants.CACHE_BASE_DIR)
@@ -148,7 +174,7 @@ internal class CacheDatastore(val context: Context) {
    * out when the datastore is opened
    */
   private fun createTempMediaFile(fileBasename: String): File {
-    return File.createTempFile("filedownload", ".part", fileTempDir())
+    return File.createTempFile("mux-download-$fileBasename", ".part", fileTempDir())
   }
 
   /**
@@ -180,13 +206,14 @@ internal class CacheDatastore(val context: Context) {
   private fun awaitDbHelper(): DbHelper {
     // called only once, guaranteed by logic in this function
     fun doOpen(): DbHelper {
+      // Managing cache dirs is only safe from inside this method, otherwise corruption is possible
+      clearTempFiles()
       ensureDirs()
 
-      // todo- eviction pass
-      // todo - clear temp dir
-
       val helper = DbHelper(context, indexDbDir())
-      helper.writableDatabase
+      val db = helper.writableDatabase
+      // todo- eviction pass with that db
+      
       return helper
     }
 
