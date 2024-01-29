@@ -54,6 +54,25 @@ internal class CacheDatastore(val context: Context) {
     }
   }
 
+  /**
+   * Closes the datastore. This will close the index database and revert the datastore to a closed
+   * state. You can reopen it by calling [open] again.
+   */
+  fun close() {
+    val openFuture = openTask.get()
+    try {
+      if (openFuture != null) {
+        val openDbHelper = if (openFuture.isDone) openFuture.get() else null
+        openFuture.cancel(true)
+        openDbHelper?.close()
+      }
+    } catch (_: Exception) {
+    } finally {
+      // calls made to open() start failing after cancel() and keep failing until after this line
+      openTask.compareAndSet(openFuture, null)
+    }
+  }
+
   // todo - you should probably be able to close this too, like whenever the last MuxPlayer releases
   //  or like whenever the last Mux DataSource is released, if we went with that. Then you'd have
   //  to reopen it ofc, on like Dispatchers.IO since we made opening thread-safe by blocking and IO
