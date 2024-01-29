@@ -2,44 +2,49 @@ package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import com.mux.player.internal.cache.FileRecord
+import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.URL
+import java.util.TimeZone
+import java.util.concurrent.TimeUnit
 
 /**
  * Controls access to Mux Player's cache
+ *
+ * To use this object, you must first call [setup]. If you aren't writing a test, you can pass
+ * `null` for the second parameter
  */
 @SuppressLint("StaticFieldLeak")
 internal object CacheController {
 
- private lateinit var appContext: Context
- private lateinit var datastore: CacheDatastore
+  private lateinit var appContext: Context
+  private lateinit var datastore: CacheDatastore
 
-  val RX_NO_STORE_NO_CACHE = Regex("""no-store|no-cache""")
-
-  /**
-   * group(1) will have the max-age value
-   */
+  val RX_NO_STORE = Regex("""no-store""")
+  val RX_NO_CACHE = Regex("""no-cache""")
   val RX_MAX_AGE = Regex("""max-age=([0-9].*)""")
-
-
-  /**
-   * group(1) will have the s-max-age value
-   */
   val RX_S_MAX_AGE = Regex("""s-max-age=([0-9].*)""")
 
   /**
    * Call from the constructor of Mux Player. This must be called internally before any playing
    * starts, assuming that disk caching is enabled
+   *
+   * @param context A context. The Application context will be extracted from it for further use
+   * @param cacheDatastore Optional. If not provided, the default `CacheDatastore` will be used
    */
   @JvmSynthetic
-  internal fun setup(context: Context) {
+  internal fun setup(context: Context, cacheDatastore: CacheDatastore?) {
     if (!this::appContext.isInitialized) {
       this.appContext = context.applicationContext
     }
-    if(!this::datastore.isInitialized) {
-      datastore = CacheDatastore(appContext)
+    if (!this::datastore.isInitialized) {
+      datastore = cacheDatastore ?: CacheDatastore(appContext)
     }
   }
 
@@ -52,7 +57,7 @@ internal object CacheController {
     requestUrl: String
   ): ReadHandle? {
     val fileRecord = datastore.readRecord(requestUrl)
-    return if (fileRecord == null) {
+    return if (fileRecord == null || !fileRecord.file.exists()) {
       null
     } else {
       ReadHandle(
@@ -75,40 +80,80 @@ internal object CacheController {
     // todo - if for some reason we are currently downloading the exact-same same segment on another
     //  thread, there would be conflicts here.. But not sure if that is a real case or theoretical one
 
-
-    return if (shouldCache(requestUrl, responseHeaders)) {
-      // todo - create a file in the cache dir for the output (maybe name is key + downloaded-at timestamp)
-      //  A FileOutputStream for that file should go in the WriteHandle
+    return if (shouldCacheResponse(requestUrl, responseHeaders)) {
+      val tempFile = datastore.createTempDownloadFile(URL(requestUrl))
 
       WriteHandle(
         controller = this,
-        fileOutputStream = null, // todo - real value
+        tempFile = tempFile,
         playerOutputStream = playerOutputStream,
         responseHeaders = responseHeaders,
+        datastore = datastore,
         url = requestUrl,
       )
     } else {
       // not supposed to cache, so the WriteHandle just writes to the player
       WriteHandle(
         controller = this,
-        fileOutputStream = null,
+        tempFile = null,
         playerOutputStream = playerOutputStream,
         url = requestUrl,
+        datastore = datastore,
         responseHeaders = responseHeaders,
       )
     }
   }
 
-  private fun shouldCache(
+  /**
+   * Returns true if the request should be cached, based on its URL and the headers of the response
+   */
+  @JvmSynthetic
+  internal fun shouldCacheResponse(
     requestUrl: String,
     responseHeaders: Map<String, List<String>>
   ): Boolean {
-    // todo - additional logic here, like checking disk space against Content-Length etc
+    val cacheControlLine = responseHeaders.getCacheControl()
 
-    return responseHeaders.getCacheControl()?.matches(RX_NO_STORE_NO_CACHE)?.not() ?: false
+    if (cacheControlLine == null) {
+      return false
+    }
+    if (cacheControlLine.contains(RX_NO_STORE)) {
+      return false
+    }
+    // todo - additional logic here:
+    //  * check disk space against Content-Length?
+    //  * check for headers like Age?
+    //  * make sure the entry is not already expired by like a second or whatever (edge case)
+
+    return true
   }
 
-  private fun Map<String, List<String>>.getCacheControl(): String? = get("Cache-Control")?.last()
+  private fun Map<String, List<String>>.getCacheControl(): String? =
+    mapKeys { it.key.lowercase() }["cache-control"]?.last()
+  private fun Map<String, List<String>>.getETag(): String? =
+    mapKeys { it.key.lowercase() }["etag"]?.last()
+  private fun Map<String, List<String>>.getAge(): String? =
+    mapKeys { it.key.lowercase() }["age"]?.last()
+
+  private fun parseSMaxAge(cacheControl: String): Long? {
+    val matchResult = RX_S_MAX_AGE.matchEntire(cacheControl)
+    return if (matchResult == null) {
+      null
+    } else {
+      val maxAgeSecs = matchResult.groupValues[1]
+      maxAgeSecs.toLongOrNull()
+    }
+  }
+
+  private fun parseMaxAge(cacheControl: String): Long? {
+    val matchResult = RX_MAX_AGE.matchEntire(cacheControl)
+    return if (matchResult == null) {
+      null
+    } else {
+      val maxAgeSecs = matchResult.groupValues[1]
+      maxAgeSecs.toLongOrNull()
+    }
+  }
 
   /**
    * Object for writing to both the player and the cache. Call [downloadStarted] to get one of these
@@ -119,10 +164,12 @@ internal object CacheController {
     val url: String,
     val responseHeaders: Map<String, List<String>>,
     private val controller: CacheController,
-    private val fileOutputStream: OutputStream?,
+    private val datastore: CacheDatastore,
+    private val tempFile: File?,
     private val playerOutputStream: OutputStream,
-    // todo - info about the Response, to be written to the index when appropriate
   ) {
+
+    private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
 
     /**
      * Writes the given bytes to both the player socket and the file
@@ -145,11 +192,44 @@ internal object CacheController {
      * socket and file (if any)
      */
     fun finishedWriting() {
-      // todo - Create a FileRecord write the entry to index db
-        //datastore.writeRecord()
-
       playerOutputStream.close()
+
+      // If there's a temp file, we are caching it so move it from the temp file and write to index
       fileOutputStream?.close()
+      if (tempFile != null) {
+        val cacheControl = responseHeaders.getCacheControl()
+        val etag = responseHeaders.getETag()
+        if (cacheControl != null && etag != null) {
+          val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
+          val nowUtc = System.currentTimeMillis().let { timeMs ->
+            val timezone = TimeZone.getDefault()
+            (timeMs + timezone.getOffset(timeMs)) / 1000
+          }
+          val recordAge = responseHeaders.getAge()?.toLongOrNull()
+          val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(cacheControl)
+
+          val record = FileRecord(
+            url = url,
+            etag = etag,
+            file = cacheFile,
+            lookupKey = datastore.safeCacheKey(URL(url)),
+            downloadedAtUtcSecs = nowUtc,
+            cacheMaxAge = maxAge ?: TimeUnit.SECONDS.convert(7, TimeUnit.DAYS),
+            resourceAge = recordAge ?: 0L,
+            cacheControl = cacheControl,
+          )
+
+          val result = datastore.writeRecord(record)
+
+          // todo - return a fail or throw somerthing
+        } else {
+          // todo: need a logger
+          Log.w("CacheController", "Had temp file but not enough info to cache. " +
+                  "cache-control: [$cacheControl] etag $etag")
+        }
+
+        //datastore.writeRecord()
+      }
     }
   }
 
