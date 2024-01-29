@@ -38,7 +38,7 @@ class MuxPlayer private constructor(
   }
 
   init {
-    CacheController.setup(context)
+    CacheController.setup(context, null)
 
     // listen internally before Mux Data gets events, in case we need to handle something before
     // the data SDK sees (like media metadata for new streams during a MediaItem transition, etc)
