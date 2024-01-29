@@ -16,6 +16,13 @@ import java.net.URL
 import java.util.concurrent.FutureTask
 import java.util.concurrent.atomic.AtomicReference
 
+/**
+ * Represents the on-disk datastore for the cache. This class provides methods that allow for
+ * reading and writing from the cache, as well as methods for obtaining files for the Proxy to
+ * download into.
+ *
+ * note - there can only be one instance of this class at a time, owned by the CacheController. The
+ */
 internal class CacheDatastore(val context: Context) {
 
   private val RX_CHUNK_URL =
