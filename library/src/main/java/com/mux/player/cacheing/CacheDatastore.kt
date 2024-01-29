@@ -54,6 +54,9 @@ internal class CacheDatastore(val context: Context) {
     }
   }
 
+  // todo - you should probably be able to close this too, like whenever the last MuxPlayer releases
+  //  or like whenever the last Mux DataSource is released, if we went with that
+
   /**
    * Create a temporary file for downloading purposes. This file will be within a temporary dir,
    * and is guaranteed not to have existed before this method was called. When the download is
