@@ -20,17 +20,18 @@ import java.util.concurrent.atomic.AtomicReference
  * Represents the on-disk datastore for the cache. This class provides methods that allow for
  * reading and writing from the cache, as well as methods for obtaining files for the Proxy to
  * download into.
- *
- * note - there can only be one instance of this class at a time, owned by the CacheController. The
  */
 internal class CacheDatastore(val context: Context) {
+
+  companion object {
+    private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
+  }
 
   private val RX_CHUNK_URL =
     Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
 
-  private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
   private val dbHelper: DbHelper get() = awaitDbHelper()
-
+  
   /**
    * Opens the datastore, blocking until it is ready to use
    *
