@@ -56,6 +56,8 @@ internal object CacheController {
   fun tryRead(
     requestUrl: String
   ): ReadHandle? {
+    // todo - check for initialization and throw Something
+
     val fileRecord = datastore.readRecord(requestUrl)
     return if (fileRecord == null || !fileRecord.file.exists()) {
       null
@@ -77,8 +79,7 @@ internal object CacheController {
     responseHeaders: Map<String, List<String>>,
     playerOutputStream: OutputStream,
   ): WriteHandle {
-    // todo - if for some reason we are currently downloading the exact-same same segment on another
-    //  thread, there would be conflicts here.. But not sure if that is a real case or theoretical one
+    // todo - check for initialization and throw or something
 
     return if (shouldCacheResponse(requestUrl, responseHeaders)) {
       val tempFile = datastore.createTempDownloadFile(URL(requestUrl))
