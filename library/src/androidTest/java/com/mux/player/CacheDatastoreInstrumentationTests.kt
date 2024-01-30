@@ -116,7 +116,7 @@ class CacheDatastoreInstrumentationTests {
       BufferedOutputStream(FileOutputStream(oldTempFile)).use { it.write(oldFileData) }
       val permanentFile1 = datastore.moveFromTempFile(oldTempFile, url)
       Assert.assertEquals(
-        "The 'permanent' file should have the content: [$oldFileData]",
+        "The 'permanent' file should have the content: [${oldFileData.decodeToString()}]",
         oldFileData.decodeToString(),
         BufferedInputStream(FileInputStream(permanentFile1)).use { it.readBytes() }.decodeToString()
       )
@@ -129,7 +129,7 @@ class CacheDatastoreInstrumentationTests {
         permanentFile1.absoluteFile, permanentFile2.absoluteFile
       )
       Assert.assertEquals(
-        "The new 'permanent' file should have the content: [$newFileData]",
+        "The new 'permanent' file should have the content: [${newFileData.decodeToString()}]",
         newFileData.decodeToString(),
         BufferedInputStream(FileInputStream(permanentFile2)).use { it.readBytes() }.decodeToString()
       )
