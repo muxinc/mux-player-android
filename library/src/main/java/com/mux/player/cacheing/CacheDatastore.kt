@@ -63,6 +63,7 @@ internal class CacheDatastore(val context: Context) {
     // em - it's definitely all copacetic to call close() to handle errors from open(), or to
     // close() during opening. if you immediately call open() after close(), your second open() may
     // fail intermittently. But maybe that's just a theoretical risk, so todo - test cranking this
+    //  (and maybe don't worry about it overly much)
     val openFuture = openTask.get()
     try {
       if (openFuture != null) {
@@ -76,11 +77,6 @@ internal class CacheDatastore(val context: Context) {
       openTask.compareAndSet(openFuture, null)
     }
   }
-
-  // todo - you should probably be able to close this too, like whenever the last MuxPlayer releases
-  //  or like whenever the last Mux DataSource is released, if we went with that. Then you'd have
-  //  to reopen it ofc, on like Dispatchers.IO since we made opening thread-safe by blocking and IO
-  //  is *for* that kind of thing
 
   /**
    * Create a temporary file for downloading purposes. This file will be within a temporary dir,
@@ -187,7 +183,7 @@ internal class CacheDatastore(val context: Context) {
   private fun clearTempFiles() {
     val fileTempDir = fileTempDir()
 
-    if (fileTempDir.isDirectory) { // probably true, but handling otherwise is easy
+    if (fileTempDir.exists() && fileTempDir.isDirectory) {
       fileTempDir.listFiles()?.onEach { tempFile ->
         if (tempFile.isDirectory) { // probably not, but it's easy to catch
           tempFile.deleteRecursively()
@@ -240,22 +236,24 @@ internal class CacheDatastore(val context: Context) {
   // If the db failed to open, this method will throw. Opening can be re-attempted after resolving
   @Throws(IOException::class)
   private fun awaitDbHelper(): DbHelper {
-    // called only once, guaranteed by logic in this function
+    fun closeIfInterrupted(dbHelper: DbHelper?) {
+      if (Thread.interrupted()) {
+        dbHelper?.close()
+        throw CancellationException("open interrupted")
+      }
+    }
     fun doOpen(): DbHelper {
-      // Managing cache dirs is only safe from inside this method, otherwise corruption is possible
+      closeIfInterrupted(null)
       clearTempFiles()
+      closeIfInterrupted(null)
       ensureDirs()
 
       val helper = DbHelper(context, indexDbDir())
+      closeIfInterrupted(helper)
       val db = helper.writableDatabase
       // todo- eviction pass with that db
-
-      if (Thread.interrupted()) {
-        helper.close()
-        throw CancellationException()
-      } else {
-        return helper
-      }
+      closeIfInterrupted(helper)
+      return helper;
     }
 
     val needToStart = openTask.compareAndSet(null, FutureTask { doOpen() })
