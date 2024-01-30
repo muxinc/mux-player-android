@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * You should keep an instance of this class open as long as the cache could likely be accessed.
  * CacheController is immediately responsible for deciding this (though in this in-dev iteration it
- * just never closes anything, which we should change before 1.0)
+ * simply keeps one and doesn't close it, which we should change before 1.0)
  */
 internal class CacheDatastore(val context: Context) : Closeable {
 
@@ -242,7 +242,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
     }
     fun doOpen(): DbHelper {
       // todo - we should also consider getting our cacheQuota here, that will take a long time
-      //  so maybe do it async & only consider the cache quota once we have it
+      //  so maybe do it async & only consider the cache quota once we have it(..?)
       closeIfInterrupted(null)
       clearTempFiles()
       closeIfInterrupted(null)

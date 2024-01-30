@@ -13,6 +13,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.net.URL
 
 /**
  * Instrumentation tests for just CacheDatastore. Tests in here are for things that require a real
@@ -81,6 +82,23 @@ class CacheDatastoreInstrumentationTests {
       "index db should be created",
       dbFile.exists() &&! dbFile.isDirectory && dbFile.length() > 0
     )
+  }
+
+  @Test
+  fun testCreateTempDownloadFile() {
+    val datastore = CacheDatastore(appContext)
+    datastore.use {
+      it.open()
+
+      val url = URL("https://some.host.com/path1/path2/basename.ts")
+      val tempFile1 = datastore.createTempDownloadFile(url)
+      val tempFile2 = datastore.createTempDownloadFile(url)
+
+      Assert.assertNotEquals(
+        "Temp files are always unique",
+        tempFile1.absoluteFile, tempFile2.absoluteFile
+      )
+    }
   }
 
   private fun expectedFileTempDir(context: Context): File =
