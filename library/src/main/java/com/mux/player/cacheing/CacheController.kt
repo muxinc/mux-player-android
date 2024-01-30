@@ -188,6 +188,8 @@ internal object CacheController {
       fileOutputStream?.write(data.toByteArray(Charsets.US_ASCII))
     }
 
+    // todo - method to call if the proxy encounters an error, closes & deletes temp file
+
     /**
      * Call when you've reached the end of the body input. This closes the streams to the player
      * socket and file (if any)
