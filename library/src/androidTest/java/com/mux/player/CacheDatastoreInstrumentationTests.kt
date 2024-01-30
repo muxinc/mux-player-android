@@ -6,13 +6,15 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.mux.player.cacheing.CacheConstants
 import com.mux.player.cacheing.CacheDatastore
 import com.mux.player.cacheing.filesDirNoBackupCompat
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.net.URL
 
 /**
@@ -80,7 +82,7 @@ class CacheDatastoreInstrumentationTests {
     )
     Assert.assertTrue(
       "index db should be created",
-      dbFile.exists() &&! dbFile.isDirectory && dbFile.length() > 0
+      dbFile.exists() && !dbFile.isDirectory && dbFile.length() > 0
     )
   }
 
@@ -101,10 +103,47 @@ class CacheDatastoreInstrumentationTests {
     }
   }
 
+  @Test
+  fun testMoveFromTempFile() {
+    val basename = "basename.ts"
+    val url = URL("https://some.host.com/path1/path2/$basename")
+    val oldFileData = "old data".toByteArray(Charsets.UTF_8)
+    val newFileData = "new data".toByteArray(Charsets.UTF_8)
+
+    val datastore = CacheDatastore(appContext)
+    datastore.open()
+    datastore.use {
+      // Write one file...
+      val oldTempFile = datastore.createTempDownloadFile(url)
+      BufferedOutputStream(FileOutputStream(oldTempFile)).use { it.write(oldFileData) }
+      val permanentFile1 = datastore.moveFromTempFile(oldTempFile, url)
+      Assert.assertEquals(
+        "The 'permanent' file should have the content: [$oldFileData]",
+        oldFileData.decodeToString(),
+        BufferedInputStream(FileInputStream(permanentFile1)).use { it.readBytes() }.decodeToString()
+      )
+
+      val newTempFile = datastore.createTempDownloadFile(url)
+      BufferedOutputStream(FileOutputStream(newTempFile)).use { it.write(newFileData) }
+      val permanentFile2 = datastore.moveFromTempFile(newTempFile, url)
+      Assert.assertEquals(
+        "The second 'permanent' file should replace the first one",
+        permanentFile1.absoluteFile, permanentFile2.absoluteFile
+      )
+      Assert.assertEquals(
+        "The new 'permanent' file should have the content: [$newFileData]",
+        newFileData.decodeToString(),
+        BufferedInputStream(FileInputStream(permanentFile2)).use { it.readBytes() }.decodeToString()
+      )
+    }
+  }
+
   private fun expectedFileTempDir(context: Context): File =
     File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
+
   private fun expectedFileCacheDir(context: Context): File =
     File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
+
   private fun expectedIndexDbDir(context: Context): File =
     File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
 }
