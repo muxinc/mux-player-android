@@ -60,6 +60,9 @@ internal class CacheDatastore(val context: Context) {
    * state. You can reopen it by calling [open] again.
    */
   fun close() {
+    // em - it's definitely all copacetic to call close() to handle errors from open(), or to
+    // close() during opening. if you immediately call open() after close(), your second open() may
+    // fail intermittently. But maybe that's just a theoretical risk, so todo - test cranking this
     val openFuture = openTask.get()
     try {
       if (openFuture != null) {
