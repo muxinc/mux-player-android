@@ -32,8 +32,6 @@ class CacheDatastoreInstrumentationTests {
 
   // todo - more test cases
   //  writing:
-  //  moveFromTempFile: File written when moveFromTempFile, has content of temp file
-  //    .. even if there was another file first
   //  writeRecord: Returns successful if a new row
   //    still returns successful if not a new row
   //    does eviction pass after writing
