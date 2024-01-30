@@ -13,6 +13,7 @@ import com.mux.player.oneOf
 import java.io.File
 import java.io.IOException
 import java.net.URL
+import java.util.concurrent.CancellationException
 import java.util.concurrent.FutureTask
 import java.util.concurrent.atomic.AtomicReference
 
@@ -244,10 +245,14 @@ internal class CacheDatastore(val context: Context) {
 
       val helper = DbHelper(context, indexDbDir())
       val db = helper.writableDatabase
-      helper.writableDatabase
       // todo- eviction pass with that db
 
-      return helper
+      if (Thread.interrupted()) {
+        helper.close()
+        throw CancellationException()
+      } else {
+        return helper
+      }
     }
 
     val needToStart = openTask.compareAndSet(null, FutureTask { doOpen() })
