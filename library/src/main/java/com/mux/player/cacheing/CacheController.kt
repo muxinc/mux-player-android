@@ -3,6 +3,7 @@ package com.mux.player.cacheing
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
+import com.mux.player.cacheing.CacheController.setup
 import com.mux.player.internal.cache.FileRecord
 import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
@@ -131,8 +132,10 @@ internal object CacheController {
 
   private fun Map<String, List<String>>.getCacheControl(): String? =
     mapKeys { it.key.lowercase() }["cache-control"]?.last()
+
   private fun Map<String, List<String>>.getETag(): String? =
     mapKeys { it.key.lowercase() }["etag"]?.last()
+
   private fun Map<String, List<String>>.getAge(): String? =
     mapKeys { it.key.lowercase() }["age"]?.last()
 
@@ -201,7 +204,7 @@ internal object CacheController {
         val cacheControl = responseHeaders.getCacheControl()
         val etag = responseHeaders.getETag()
         if (cacheControl != null && etag != null) {
-          val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
+          val cacheFile = datastore.moveFromTempFile(tempFile, URL(url), etag)
           val nowUtc = System.currentTimeMillis().let { timeMs ->
             val timezone = TimeZone.getDefault()
             (timeMs + timezone.getOffset(timeMs)) / 1000
@@ -225,8 +228,10 @@ internal object CacheController {
           // todo - return a fail or throw somerthing
         } else {
           // todo: need a logger
-          Log.w("CacheController", "Had temp file but not enough info to cache. " +
-                  "cache-control: [$cacheControl] etag $etag")
+          Log.w(
+            "CacheController", "Had temp file but not enough info to cache. " +
+                    "cache-control: [$cacheControl] etag $etag"
+          )
         }
 
         //datastore.writeRecord()

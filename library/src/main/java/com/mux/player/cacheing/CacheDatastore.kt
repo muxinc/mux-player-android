@@ -31,7 +31,7 @@ internal class CacheDatastore(val context: Context) {
     Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
 
   private val dbHelper: DbHelper get() = awaitDbHelper()
-  
+
   /**
    * Opens the datastore, blocking until it is ready to use
    *
@@ -94,8 +94,12 @@ internal class CacheDatastore(val context: Context) {
   /**
    * Move a completed download from the temp file to the cache where it will live until it falls out
    */
-  fun moveFromTempFile(tempFile: File, remoteUrl: URL): File {
-    val cacheFile = createCacheFile(remoteUrl)
+  fun moveFromTempFile(
+    tempFile: File,
+    remoteUrl: URL,
+    eTag: String
+  ): File {
+    val cacheFile = createCacheFile(remoteUrl, eTag)
     tempFile.renameTo(cacheFile)
     return cacheFile
   }
@@ -105,7 +109,7 @@ internal class CacheDatastore(val context: Context) {
       IndexSchema.FilesTable.name, null,
       fileRecord.toContentValues(),
       SQLiteDatabase.CONFLICT_REPLACE
-      )
+    )
 
     return if (rowId >= 0) {
       Result.success(Unit)
@@ -213,8 +217,11 @@ internal class CacheDatastore(val context: Context) {
    * Creates a new cache file named after its associated cache key. If a file with that name already
    * existed, it will be deleted.
    */
-  private fun createCacheFile(url: URL): File {
-    val basename = safeCacheKey(url)
+  private fun createCacheFile(
+    url: URL,
+    eTag: String,
+  ): File {
+    val basename = "${safeCacheKey(url)}-$eTag"
     val cacheFile = File(fileCacheDir(), basename)
     cacheFile.delete()
     cacheFile.createNewFile()
@@ -245,7 +252,7 @@ internal class CacheDatastore(val context: Context) {
       val helper = DbHelper(context, indexDbDir())
       val db = helper.writableDatabase
       // todo- eviction pass with that db
-      
+
       return helper
     }
 
@@ -311,7 +318,8 @@ private class DbHelper(
   }
 
   override fun onCreate(db: SQLiteDatabase?) {
-    db?.execSQL("""
+    db?.execSQL(
+      """
         create table if not exists ${IndexSchema.FilesTable.name} (
             ${IndexSchema.FilesTable.Columns.lookupKey} text not null primary key,
             ${IndexSchema.FilesTable.Columns.remoteUrl} text not null,
@@ -322,7 +330,8 @@ private class DbHelper(
             ${IndexSchema.FilesTable.Columns.resourceAgeUnixTime} integer not null default 0,
             ${IndexSchema.FilesTable.Columns.cacheControl} text not null
         )
-      """.trimIndent())
+      """.trimIndent()
+    )
   }
 
   override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
