@@ -14,20 +14,21 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 
+/**
+ * Instrumentation tests for just CacheDatastore. Tests in here are for things that require a real
+ * android environment, but not necessarily a physical phone. Examples might include functions that
+ * involve database queries, functions that manage files (as opposed to generate paths), etc
+ *
+ * There are also unit tests for functions that are all business logic, in the `test` sourceSet,
+ * where everything is nicely mocked and repeatable by default.
+ */
 @RunWith(AndroidJUnit4::class)
 class CacheDatastoreInstrumentationTests {
 
   private val appContext get() = InstrumentationRegistry.getInstrumentation().targetContext
 
-  // todo -test cases
-  //  basic init: Dirs created, temp dir clear, db file in place
-  //  open-close: (if possible) Like the caller handled an exception we weren't a part of, making sure db not allocated
-  //  open-close-open: Same conditions as basic init should be satisfied
-  //  open-open: Same conditions as basic init
-  //
   // todo - more test cases
   //  writing:
-  //  createTempDownloadFile: creates file, file has basename in it
   //  moveFromTempFile: File written when moveFromTempFile, has content of temp file
   //    .. even if there was another file first
   //  writeRecord: Returns successful if a new row
@@ -72,6 +73,10 @@ class CacheDatastoreInstrumentationTests {
       expectedFileTempDir(appContext).let { it.exists() && it.isDirectory }
     )
     val dbFile = File(expectedIndexDbDir(appContext), "mux-player-cache.db")
+    Assert.assertTrue(
+      "cache temp files dir should exist after open()",
+      expectedIndexDbDir(appContext).let { it.exists() && it.isDirectory }
+    )
     Assert.assertTrue(
       "index db should be created",
       dbFile.exists() &&! dbFile.isDirectory && dbFile.length() > 0
