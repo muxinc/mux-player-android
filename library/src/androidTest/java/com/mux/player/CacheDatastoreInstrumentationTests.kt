@@ -6,6 +6,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.mux.player.cacheing.CacheConstants
 import com.mux.player.cacheing.CacheDatastore
 import com.mux.player.cacheing.filesDirNoBackupCompat
+import com.mux.player.internal.cache.FileRecord
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -30,13 +31,11 @@ class CacheDatastoreInstrumentationTests {
 
   private val appContext get() = InstrumentationRegistry.getInstrumentation().targetContext
 
-  // todo - more test cases
-  //  writing:
+  // todo - more test cases once more of the Datastore is done
   //  writeRecord: Returns successful if a new row
-  //    still returns successful if not a new row
   //    does eviction pass after writing
-  //  readRecord: Works for segments (written data = read data)
-  //    Works for not-segments (written data = read data)
+  //  readRecord: Works for segments (written data == read data)
+  //    Works for not-segments (written data == read data)
   //    Misses gracefully if the file underneath is deleted
   //    (after eviction) Misses & evicts if entry is eviction candidate
   //  evictionPass: Evicts according to max-age (including Age)
@@ -133,6 +132,46 @@ class CacheDatastoreInstrumentationTests {
         newFileData.decodeToString(),
         BufferedInputStream(FileInputStream(permanentFile2)).use { it.readBytes() }.decodeToString()
       )
+    }
+  }
+
+  @Test
+  fun testWriteRecordReplacesOnKey() {
+    val datastore = CacheDatastore(appContext)
+    datastore.use {
+      val originalRecord = FileRecord(
+        url = "url",
+        etag = "etag1",
+        file = File("cacheFile"),
+        lookupKey = "lookupKey",
+        downloadedAtUtcSecs = 1L,
+        cacheMaxAge = 2L,
+        resourceAge = 3L,
+        cacheControl = "cacheControl"
+      )
+      val secondRecord = FileRecord(
+        url = "url2",
+        etag = "etag2",
+        file = File("cacheFile"),
+        lookupKey = "lookupKey",
+        downloadedAtUtcSecs = 1L,
+        cacheMaxAge = 2L,
+        resourceAge = 3L,
+        cacheControl = "cacheControl"
+      )
+
+      val writeResult1 = datastore.writeRecord(originalRecord)
+      Assert.assertTrue(
+        "First write of record with key ${originalRecord.lookupKey} should succeed",
+        writeResult1.isSuccess
+      )
+      val writeResult2 = datastore.writeRecord(secondRecord)
+      Assert.assertTrue(
+        "next write of record with key ${secondRecord.lookupKey} should succeed",
+        writeResult2.isSuccess
+      )
+
+      // todo - read-out the record and ensure it is equal to the second record
     }
   }
 
