@@ -10,6 +10,7 @@ import android.util.Base64
 import android.util.Log
 import com.mux.player.internal.cache.FileRecord
 import com.mux.player.oneOf
+import java.io.Closeable
 import java.io.File
 import java.io.IOException
 import java.net.URL
@@ -21,8 +22,12 @@ import java.util.concurrent.atomic.AtomicReference
  * Represents the on-disk datastore for the cache. This class provides methods that allow for
  * reading and writing from the cache, as well as methods for obtaining files for the Proxy to
  * download into.
+ *
+ * You should keep an instance of this class open as long as the cache could likely be accessed.
+ * CacheController is immediately responsible for deciding this (though in this in-dev iteration it
+ * just never closes anything, which we should change before 1.0)
  */
-internal class CacheDatastore(val context: Context) {
+internal class CacheDatastore(val context: Context) : Closeable {
 
   companion object {
     private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
@@ -45,13 +50,15 @@ internal class CacheDatastore(val context: Context) {
    *
    * This method is safe to call multiple times. Subsequent calls will await the same task,
    * or do nothing if the db is already open.
+   *
+   * @throws IOException if there was an error opening the cache, or if
    */
-  fun open(): Result<Unit> {
-    return try {
+  @Throws(IOException::class)
+  fun open() {
+    try {
       awaitDbHelper()
-      Result.success(Unit)
-    } catch (e: Exception) {
-      Result.failure(e)
+    } catch (_: CancellationException) {
+      // swallow cancellation errors, they are not that important
     }
   }
 
@@ -59,7 +66,7 @@ internal class CacheDatastore(val context: Context) {
    * Closes the datastore. This will close the index database and revert the datastore to a closed
    * state. You can reopen it by calling [open] again.
    */
-  fun close() {
+  override fun close() {
     // em - it's definitely all copacetic to call close() to handle errors from open(), or to
     // close() during opening. if you immediately call open() after close(), your second open() may
     // fail intermittently. But maybe that's just a theoretical risk, so todo - test cranking this
@@ -199,7 +206,7 @@ internal class CacheDatastore(val context: Context) {
 
   private fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
   private fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
-  private fun indexDbDir(): File = File(context.filesDirCompat, CacheConstants.CACHE_BASE_DIR)
+  private fun indexDbDir(): File = File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
 
   /**
    * Creates a new temp file for downloading-into. Temp files go in a special dir that gets cleared
@@ -221,15 +228,6 @@ internal class CacheDatastore(val context: Context) {
     return cacheFile
   }
 
-  private val Context.filesDirCompat: File
-    @SuppressLint("ObsoleteSdkInt") get() {
-      return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-        noBackupFilesDir
-      } else {
-        filesDir
-      }
-    }
-
   // Starts opening the DB unless it's open or being opened. If it's open, you get the DbHelper.
   //  If it's still being opened on another thread, this method will block until the db has been
   //  opened.
@@ -243,6 +241,8 @@ internal class CacheDatastore(val context: Context) {
       }
     }
     fun doOpen(): DbHelper {
+      // todo - we should also consider getting our cacheQuota here, that will take a long time
+      //  so maybe do it async & only consider the cache quota once we have it
       closeIfInterrupted(null)
       clearTempFiles()
       closeIfInterrupted(null)
@@ -339,6 +339,18 @@ private class DbHelper(
     //  migration here by adding or altering tables or whatever.
   }
 }
+
+/**
+ * Returns this app's no-backup internal files dir, or the regular files dir on older api levels
+ */
+internal val Context.filesDirNoBackupCompat: File
+  @SuppressLint("ObsoleteSdkInt") get() {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+      noBackupFilesDir
+    } else {
+      filesDir
+    }
+  }
 
 /**
  * Schema for the cache index
