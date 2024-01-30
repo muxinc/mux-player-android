@@ -12,6 +12,7 @@ import java.io.OutputStream
 import java.io.StringReader
 import java.lang.NumberFormatException
 import java.lang.StringBuilder
+import java.net.URI
 import java.nio.ByteBuffer
 import java.util.Hashtable
 
@@ -24,9 +25,18 @@ class HttpParser(val input:InputStream) {
     val headers: Hashtable<String, String> = Hashtable<String, String>()
     var body:ByteBuffer? = null
     var method = ""
-    var httpVersion = "1.0"
+    var httpVersion = "HTTP/1.1"
     var statusCode = -1
     var path:String = "/"
+      set(value) {
+        field = value
+        updateRequestLine()
+    }
+    var query = ""
+        set(value) {
+            field = value
+            updateRequestLine()
+        }
     private val bufferSize = 12000
     val readBuffer = ByteArray(bufferSize)
 
@@ -42,6 +52,10 @@ class HttpParser(val input:InputStream) {
         }
         method = requestLine.split(" ")[0]
         path = requestLine.split(" ")[1]
+        if (path.contains("?")) {
+            query = path.split("?")[1]
+            path = path.split("?")[0]
+        }
         httpVersion = requestLine.substringAfterLast(" ")
         line = reader.readLine()
         while (line.isNotEmpty()) {
@@ -78,6 +92,14 @@ class HttpParser(val input:InputStream) {
             }
         }
         parseBody(reader)
+    }
+
+    private fun updateRequestLine() {
+        if (query.isEmpty()) {
+            requestLine = "$method $path $httpVersion"
+        } else {
+            requestLine = "$method $path $httpVersion?$query"
+        }
     }
 
     private fun parseBody(reader:BufferedReader) {
@@ -161,7 +183,7 @@ class HttpParser(val input:InputStream) {
 
     fun serializeRequest(out:OutputStream) {
         val response = StringBuilder()
-        response.append("requestLine\r\n")
+        response.append("$requestLine\r\n")
         for((header:String, value:String) in headers) {
             response.append("$header: $value\r\n")
         }

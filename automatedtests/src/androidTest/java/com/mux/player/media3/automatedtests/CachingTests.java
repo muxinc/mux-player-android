@@ -6,6 +6,8 @@ import android.util.Log;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import com.mux.player.cacheing.ProxyServer;
+import java.net.MalformedURLException;
+import java.net.URL;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -18,9 +20,16 @@ public class CachingTests extends TestBase{
 
   @Before
   public void init() {
-    urlToPlay = "http://localhost:6000/.m3u8";
     // start proxy server on port 6000, run in seprate thread by default
     proxyServer = new ProxyServer(6000);
+    try {
+      urlToPlay = proxyServer.encodeUrl(
+          new URL(
+              "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8")
+      ).toString();
+    } catch (MalformedURLException ex) {
+      fail(ex.getMessage());
+    }
     super.init();
   }
 

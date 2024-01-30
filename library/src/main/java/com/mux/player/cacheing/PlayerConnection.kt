@@ -6,17 +6,11 @@ import java.net.URL
 import java.util.concurrent.BlockingDeque
 import java.util.concurrent.LinkedBlockingDeque
 
-class PlayerConnection(val socket: Socket) {
+class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
 
     val TAG:String = "||ProxyPlayerConnection"
 
-//    val cdn_url_str = "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"
-    val cdn_url_str = "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism"
-//    val cdn_url_str = "http://d3rlna7iyyu8wu.cloudfront.net/skip_armstrong/skip_armstrong_stereo_subs.m3u8"
-    val cdn_url:URL = URL(cdn_url_str)
-
-    private var cdnConnection: CDNConnection = CDNConnection(this)
-    private val httpParser: HttpParser = HttpParser(socket.getInputStream())
+    private val httpParser: HttpParser? = null
     private var running:Boolean = true
     private var cdnInputQueue: BlockingDeque<ByteArray> = LinkedBlockingDeque()
 
@@ -28,9 +22,13 @@ class PlayerConnection(val socket: Socket) {
     }
 
     init{
-        cdnConnection.openConnection(cdn_url)
-        readThread.start()
-        writeThread.start()
+        try {
+            HttpParser(socket.getInputStream())
+            readThread.start()
+            writeThread.start()
+        } catch (ex:Exception) {
+            ex.printStackTrace()
+        }
     }
 
     fun send(chunk:ByteArray) {
@@ -48,15 +46,25 @@ class PlayerConnection(val socket: Socket) {
      */
     private fun read() {
         try {
-            httpParser.parseRequest()
-            Log.i(TAG, "FROM_PLAYER>>\n" + httpParser.getRequestString())
-            var hostHeaderValue = cdn_url.host
-            if (cdn_url.port != -1) {
-                hostHeaderValue = cdn_url.host + ":" + cdn_url.port
+            httpParser!!.parseRequest()
+            Log.i(TAG, "FROM_PLAYER>>\n" + httpParser!!.getRequestString())
+            var cdnHostHeaderValue = httpParser!!.getHeader("host")
+            if (cdnHostHeaderValue.isEmpty()) {
+                throw HttpFormatException("Missing Host header in player request")
             }
-            httpParser.setHeader("Host", hostHeaderValue)
-            httpParser.setHeader("Connection", "close")
-            cdnConnection.send(httpParser)
+            val localUrl = "http://" + cdnHostHeaderValue + httpParser!!.path
+            var cdnUrl = parent.decodeUrl(URL(localUrl))
+            var cdnConnection = CDNConnection(this, parent)
+            cdnConnection.openConnection(cdnUrl)
+
+            var hostHeaderValue = cdnUrl.host
+            if (cdnUrl.port != -1) {
+                hostHeaderValue = cdnUrl.host + ":" + cdnUrl.port
+            }
+            httpParser!!.setHeader("Host", hostHeaderValue)
+            httpParser!!.setHeader("Connection", "close")
+            httpParser!!.path = cdnUrl.path
+            cdnConnection.send(httpParser!!)
             cdnConnection.processResponse()
         } catch(ex:Exception) {
             Log.e(TAG, "What happend !!!");
@@ -66,7 +74,7 @@ class PlayerConnection(val socket: Socket) {
 
     private fun write() {
         val writeHandle = CacheController.downloadStarted(
-            requestUrl = cdn_url_str,
+            requestUrl = "How to get this",
             responseHeaders = mapOf(), // todo - real headers
             socket.getOutputStream()
         )

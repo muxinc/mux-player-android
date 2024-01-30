@@ -20,7 +20,7 @@ import javax.net.SocketFactory
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLSocketFactory
 
-class CDNConnection(val playerConnection: PlayerConnection) {
+class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServer) {
 
     val TAG = "||ProxyCDNConnection"
 
@@ -33,9 +33,11 @@ class CDNConnection(val playerConnection: PlayerConnection) {
     private var socket: Socket? = null
     private var contextType = MediaContextType.UNKNOWN
     private var outputWriter:PrintWriter? = null
+    private var cdnUrl:URL? = null
 
 
     fun openConnection(url: URL) {
+        cdnUrl = url
         var socketFactory = SocketFactory.getDefault()
         var defaultPort = 80
         if (url.protocol.startsWith("https", true)) {
@@ -138,15 +140,38 @@ class CDNConnection(val playerConnection: PlayerConnection) {
         }
     }
 
-    private fun rewriteManifest(httpParser: HttpParser):String {
+    fun rewriteManifest(httpParser: HttpParser):String {
         val manifest = StringBuilder()
         val bain = ByteArrayInputStream(httpParser.body!!.array())
         val reader = BufferedReader(InputStreamReader(bain, Charsets.ISO_8859_1))
         var line = reader.readLine()
         // TODO: check if this line correspond to manifest first line
+        var lineIsUrl = false
         while(line != null) {
-            // TODO: rewrite each relative or absolute path to local path
-            manifest.append(line)
+            if (lineIsUrl) {
+                if(line.startsWith("http")) {
+                    // This is absolute URL, convert to local url
+                    line = parent.encodeUrl(URL(line)).toString()
+                } else {
+                    // This is relative url, convert to absolute local
+                    val pathSegments = cdnUrl!!.path.split("/")
+                    val lastSegment = pathSegments[pathSegments.size -1]
+                    var absUrlPath = cdnUrl!!.path.replace(lastSegment, line)
+                    var absUrlQuery = ""
+                    if (cdnUrl!!.query != null && cdnUrl!!.query.isNotEmpty()) {
+                        absUrlQuery = "?" + cdnUrl!!.query
+                    }
+                    var absUrlPort = ""
+                    if (cdnUrl!!.port > 0) {
+                        absUrlPort = ":" + cdnUrl!!.port
+                    }
+                    val absPath = cdnUrl!!.protocol + "://" + cdnUrl!!.host + absUrlPort + absUrlPath +
+                            absUrlQuery
+                    line = parent.encodeUrl(URL(absPath)).toString()
+                }
+            }
+            lineIsUrl = line.startsWith("#EXT-X-STREAM") || line.startsWith("#EXTINF")
+            manifest.append("$line\n")
             line = reader.readLine()
         }
         return manifest.toString()
