@@ -48,7 +48,7 @@ jobs:
       max-parallel: 2
       # TODO - Use an emulator for the tests in library
       matrix:
-        module: ['debug', 'automatedtests']
+        module: ['library', 'automatedtests']
 
     env:
       app_apk: debug\/${{ matrix.module }}-debug.apk
