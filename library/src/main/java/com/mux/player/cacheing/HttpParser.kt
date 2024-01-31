@@ -23,7 +23,7 @@ class HttpParser(val input:InputStream) {
     var requestLine: String = ""
     var responseLine: String = ""
     val headers: Hashtable<String, String> = Hashtable<String, String>()
-    var body:ByteBuffer? = null
+    var body:ByteArray? = null
     var method = ""
     var httpVersion = "HTTP/1.1"
     var statusCode = -1
@@ -116,7 +116,7 @@ class HttpParser(val input:InputStream) {
                 bytesRead += line.length
                 line = reader.readLine()
             }
-            body = ByteBuffer.wrap(tmpBuff.copyOfRange(0, bytesRead))
+            body = tmpBuff
         }
     }
 
@@ -127,22 +127,22 @@ class HttpParser(val input:InputStream) {
         } catch (err:NumberFormatException) {
             return false
         }
-        body = ByteBuffer.allocateDirect(contentLength)
+        body = ByteArray(contentLength)
         // copy remaining data from reader to body if there is some
         var bytesRead = 0
         if (reader != null) {
             var line = reader!!.readLine()
             while (line != null) {
-                line.toByteArray().copyInto(body!!.array(), bytesRead, 0, line.length)
+                line.toByteArray().copyInto(body!!, bytesRead, 0, line.length)
                 bytesRead += line.length
-                body!!.array()[bytesRead] = '\n'.code.toByte()
+                body!![bytesRead] = '\n'.code.toByte()
                 bytesRead++
                 line = reader!!.readLine()
             }
         }
         while(bytesRead < contentLength) {
             // See if this is a blocking mode
-            val read = input.read(body!!.array(), bytesRead, contentLength - bytesRead)
+            val read = input.read(body!!, bytesRead, contentLength - bytesRead)
             if (read == -1) {
                 // Maybe break in this case
                 Thread.sleep(50)
@@ -155,7 +155,7 @@ class HttpParser(val input:InputStream) {
 
     fun readNextChunk():ByteArray {
         var bytesRead = input.read(readBuffer)
-        while(bytesRead == 0) {
+        while(bytesRead <= 0) {
             Thread.sleep(50)
             bytesRead = input.read(readBuffer)
         }
@@ -190,7 +190,7 @@ class HttpParser(val input:InputStream) {
         response.append("\r\n")
         out.write(response.toString().toByteArray(Charsets.ISO_8859_1))
         if (body != null) {
-            out.write(body!!.array(), 0, body!!.position())
+            out.write(body!!)
         }
     }
 
@@ -219,7 +219,7 @@ class HttpParser(val input:InputStream) {
         builder.append("\r\n")
         var bodySize = 0
         if (body != null) {
-            bodySize = body!!.array().size
+            bodySize = body!!.size
         }
         builder.append("Body, size: " + bodySize)
     }

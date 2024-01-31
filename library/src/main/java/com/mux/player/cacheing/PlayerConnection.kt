@@ -10,7 +10,7 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
 
     val TAG:String = "||ProxyPlayerConnection"
 
-    private val httpParser: HttpParser? = null
+    private var httpParser: HttpParser? = null
     private var running:Boolean = true
     private var cdnInputQueue: BlockingDeque<ByteArray> = LinkedBlockingDeque()
 
@@ -23,7 +23,7 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
 
     init{
         try {
-            HttpParser(socket.getInputStream())
+            httpParser = HttpParser(socket.getInputStream())
             readThread.start()
             writeThread.start()
         } catch (ex:Exception) {

@@ -125,8 +125,8 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
         playerConnection.send(response.toByteArray(Charsets.ISO_8859_1))
         if (httpParser.body != null) {
             Log.e(TAG, "Sending to player what we have in body, size: "
-                    + httpParser.body!!.array().size)
-            playerConnection.send(httpParser.body!!.array())
+                    + httpParser.body!!.size)
+            playerConnection.send(httpParser.body!!)
         }
         try {
             while(true) {
@@ -142,7 +142,7 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
 
     fun rewriteManifest(httpParser: HttpParser):String {
         val manifest = StringBuilder()
-        val bain = ByteArrayInputStream(httpParser.body!!.array())
+        val bain = ByteArrayInputStream(httpParser.body!!)
         val reader = BufferedReader(InputStreamReader(bain, Charsets.ISO_8859_1))
         var line = reader.readLine()
         // TODO: check if this line correspond to manifest first line
