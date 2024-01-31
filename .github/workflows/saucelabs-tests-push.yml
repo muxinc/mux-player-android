@@ -48,25 +48,11 @@ jobs:
       max-parallel: 2
       # TODO - Use an emulator for the tests in library
       matrix:
-        apks: [
-          dict:
-            app_artifact: library\/build\/outputs\/apk\/debug\/library-debug.apk
-            test_artifact: library\/build\/outputs\/apk\/androidTest\/debug\/library-debug-androidTest.apk
-            app_apk: debug\/library-debug.apk
-            test_apk: androidTest\/debug\/library-debug-androidTest.apk
-          ,
-          dict:
-            app_artifact: automatedtests\/build\/outputs\/apk\/debug\/automatedtests-debug.apk
-            test_artifact: automatedtests\/build\/outputs\/apk\/androidTest\/debug\/automatedtests-debug-androidTest.apk
-            app_apk: debug\/automatedtests-debug.apk
-            test_apk: androidTest\/debug\/automatedtests-debug-androidTest.apk
-        ]
+        module: ['debug', 'automatedtests']
 
     env:
-      app_artifact: ${{ matrix.dict.app_artifact }}
-      test_artifact: ${{ matrix.dict.test_artifact }}
-      app_apk: ${{ matrix.dict.app_apk }}
-      test_apk: ${{ matrix.dict.test_apk }}
+      app_apk: debug\/${{ matrix.module }}-debug.apk
+      test_apk: androidTest\/debug\/${{ matrix.module }}-debug-androidTest.apk
 
     steps:
       - uses: actions/checkout@v3
