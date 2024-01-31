@@ -51,8 +51,8 @@ jobs:
         module: ['library', 'automatedtests']
 
     env:
-      app_apk: debug\/${{ matrix.module }}-debug.apk
-      test_apk: androidTest\/debug\/${{ matrix.module }}-debug-androidTest.apk
+      app_apk: ${{ matrix.module}}\/buildout\/outputs\/apk\/debug\/${{ matrix.module }}-debug.apk
+      test_apk: ${{ matrix.module}}\/buildout\/outputs\/apk\/androidTest\/debug\/${{ matrix.module }}-debug-androidTest.apk
 
     steps:
       - uses: actions/checkout@v3
