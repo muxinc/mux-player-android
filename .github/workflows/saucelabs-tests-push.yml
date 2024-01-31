@@ -37,7 +37,7 @@ jobs:
             automatedtests/build/outputs/apk/androidTest/debug/automatedtests-debug-androidTest.apk
             automatedtests/build/outputs/apk/debug/automatedtests-debug.apk
             library/build/outputs/apk/androidTest/debug/library-debug-androidTest.apk
-            library/build/outputs/apk/debug/library-debug.apk
+            library/build/outputs/aar/debug/library-debug.aar
 
   test:
     name: Run Sauce Labs Tests
@@ -49,10 +49,16 @@ jobs:
       # TODO - Use an emulator for the tests in library
       matrix:
         module: ['library', 'automatedtests']
+        type: ['aar', 'apk']
+        exclude:
+          - module: 'library'
+            type: 'apk'
+          - module: 'automatedtests'
+            type: 'aar'
 
     env:
-      app_apk: ${{ matrix.module }}\/build\/outputs\/apk\/debug\/${{ matrix.module }}-debug.apk
-      test_apk: ${{ matrix.module }}\/build\/outputs\/apk\/androidTest\/debug\/${{ matrix.module }}-debug-androidTest.apk
+      app_apk: ${{ matrix.module }}\/build\/outputs\/${{ matrix.type }}\/debug\/${{ matrix.module }}-debug.${{ matrix.type }}
+      test_apk: ${{ matrix.module }}\/build\/outputs\/${{ matrix.type }}\/androidTest\/debug\/${{ matrix.module }}-debug-androidTest.${{ matrix.type }}
 
     steps:
       - uses: actions/checkout@v3
