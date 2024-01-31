@@ -26,7 +26,9 @@ jobs:
       - name: Build automated tests
         uses: gradle/gradle-build-action@v2.3.3
         with:
-          arguments: automatedtests:assembleDebug :automatedtests:assembleDebugAndroidTest
+          arguments: >
+            automatedtests:assembleDebug :automatedtests:assembleDebugAndroidTest
+            library:assembleDebug :library:assembleDebugAndroidTest
       - name: Upload Test APKs
         uses: actions/upload-artifact@v3
         with:
@@ -34,6 +36,8 @@ jobs:
           path: |
             automatedtests/build/outputs/apk/androidTest/debug/automatedtests-debug-androidTest.apk
             automatedtests/build/outputs/apk/debug/automatedtests-debug.apk
+            library/build/outputs/apk/androidTest/debug/library-debug-androidTest.apk
+            library/build/outputs/apk/debug/library-debug.apk
 
   test:
     name: Run Sauce Labs Tests
@@ -42,12 +46,29 @@ jobs:
 
     strategy:
       max-parallel: 2
+      matrix:
+        app_artifact: [
+          library\/build\/outputs\/apk\/debug\/library-debug.apk,
+          automatedtests\/build\/outputs\/apk\/debug\/automatedtests-debug.apk,
+        ]
+        test_artifact: [
+          library\/build\/outputs\/apk\/androidTest\/debug\/library-debug-androidTest.apk ,
+          automatedtests\/build\/outputs\/apk\/androidTest\/debug\/automatedtests-debug-androidTest.apk
+        ]
+        app_apk: [
+          debug\/library-debug.apk,
+          debug\/automatedtests-debug.apk
+        ]
+        test_apk: [
+          androidTest\/debug\/library-debug-androidTest.apk,
+          androidTest\/debug\/automatedtests-debug-androidTest.apk
+        ]
 
     env:
-      app_artifact: automatedtests\/build\/outputs\/apk\/debug\/automatedtests-debug.apk
-      test_artifact: automatedtests\/build\/outputs\/apk\/androidTest\/debug\/automatedtests-debug-androidTest.apk
-      app_apk:  debug\/automatedtests-debug.apk
-      test_apk: androidTest\/debug\/automatedtests-debug-androidTest.apk
+      app_artifact: ${{ matrix.app_artifact }}
+      test_artifact: ${{ matrix.test_artifact }}
+      app_apk: ${{ matrix.app_apk }}
+      test_apk: ${{ matrix.test_apk }}
 
     steps:
       - uses: actions/checkout@v3
