@@ -46,29 +46,27 @@ jobs:
 
     strategy:
       max-parallel: 2
+      # TODO - Use an emulator for the tests in library
       matrix:
-        app_artifact: [
-          library\/build\/outputs\/apk\/debug\/library-debug.apk,
-          automatedtests\/build\/outputs\/apk\/debug\/automatedtests-debug.apk,
-        ]
-        test_artifact: [
-          library\/build\/outputs\/apk\/androidTest\/debug\/library-debug-androidTest.apk ,
-          automatedtests\/build\/outputs\/apk\/androidTest\/debug\/automatedtests-debug-androidTest.apk
-        ]
-        app_apk: [
-          debug\/library-debug.apk,
-          debug\/automatedtests-debug.apk
-        ]
-        test_apk: [
-          androidTest\/debug\/library-debug-androidTest.apk,
-          androidTest\/debug\/automatedtests-debug-androidTest.apk
+        apks: [
+          dict:
+            app_artifact: library\/build\/outputs\/apk\/debug\/library-debug.apk
+            test_artifact: library\/build\/outputs\/apk\/androidTest\/debug\/library-debug-androidTest.apk
+            app_apk: debug\/library-debug.apk
+            test_apk: androidTest\/debug\/library-debug-androidTest.apk
+          ,
+          dict:
+            app_artifact: automatedtests\/build\/outputs\/apk\/debug\/automatedtests-debug.apk
+            test_artifact: automatedtests\/build\/outputs\/apk\/androidTest\/debug\/automatedtests-debug-androidTest.apk
+            app_apk: debug\/automatedtests-debug.apk
+            test_apk: androidTest\/debug\/automatedtests-debug-androidTest.apk
         ]
 
     env:
-      app_artifact: ${{ matrix.app_artifact }}
-      test_artifact: ${{ matrix.test_artifact }}
-      app_apk: ${{ matrix.app_apk }}
-      test_apk: ${{ matrix.test_apk }}
+      app_artifact: ${{ matrix.dict.app_artifact }}
+      test_artifact: ${{ matrix.dict.test_artifact }}
+      app_apk: ${{ matrix.dict.app_apk }}
+      test_apk: ${{ matrix.dict.test_apk }}
 
     steps:
       - uses: actions/checkout@v3
