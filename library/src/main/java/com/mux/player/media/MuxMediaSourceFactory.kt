@@ -24,8 +24,6 @@ class MuxMediaSourceFactory(
   private val innerFactory: DefaultMediaSourceFactory = DefaultMediaSourceFactory(ctx),
 ) : MediaSource.Factory by innerFactory {
 
-//  constructor(context: Context) : this(context)
-
   init {
     innerFactory.setCmcdConfigurationFactory(CmcdConfiguration.Factory.DEFAULT)
     innerFactory.setDataSourceFactory(dataSourceFactory)
