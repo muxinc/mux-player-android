@@ -10,6 +10,8 @@ import org.junit.Assert
 import org.junit.Test
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.net.Socket
 import java.net.URL
@@ -18,7 +20,7 @@ import java.nio.charset.Charset
 import kotlin.random.Random
 
 class ProxyServerUnitTests {
-//    @Test
+    @Test
     fun urlDecodingAndEncoding() {
         val pServer = ProxyServer(6000)
         val cdnUrl = URL("https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8")
@@ -94,7 +96,7 @@ class ProxyServerUnitTests {
         
     """.trimIndent()
 
-//    @Test
+    @Test
     fun manifestTransformationTest() {
         val pServer = ProxyServer(6000)
         val socket = Socket()
@@ -148,14 +150,14 @@ class ProxyServerUnitTests {
 
     @Test
     fun httpRequestParserTest() {
-//        var parser = HttpParser(ByteArrayInputStream(httpRequestStr.toByteArray(Charsets.ISO_8859_1)))
-//        parser.parseResponse()
-//        assert(parser.headers.size == 12)
-//        var contentLength = parser.getHeader("Content-Length").toInt()
-//        assert(contentLength == 1097)
-//        assert(parser.body!!.toArray().size == contentLength)
-//        val bodyAsStr = parser.body!!.toString(Charsets.ISO_8859_1)
-//        assert(bodyAsStr.equals(mainManifest, false))
+        var parser = HttpParser(ByteArrayInputStream(httpRequestStr.toByteArray(Charsets.ISO_8859_1)))
+        parser.parseResponse()
+        assert(parser.headers.size == 12)
+        var contentLength = parser.getHeader("Content-Length").toInt()
+        assert(contentLength == 1097)
+        assert(parser.body!!.toArray().size == contentLength)
+        val bodyAsStr = parser.body!!.toString(Charsets.ISO_8859_1)
+        assert(bodyAsStr.equals(mainManifest, false))
         // TODO: send a large response
         val r = Random(254)
         val longResponseData = ByteArray(100000)
@@ -163,10 +165,17 @@ class ProxyServerUnitTests {
         val longResponseContentLength:Int = (15000..90000).random()
         val responseTemplate = "HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Length: $longResponseContentLength\r\n\r\n"
         responseTemplate.toByteArray(Charsets.ISO_8859_1).copyInto(longResponseData, 0, 0, responseTemplate.length)
-        var parser = HttpParser(ByteArrayInputStream(longResponseData))
+        parser = HttpParser(ByteArrayInputStream(longResponseData))
         val responseTemplateLength = responseTemplate.length
         parser.parseResponse()
-        for(index in 0..longResponseContentLength) {
+        val inputFile = File("input.raw")
+        val bodyFile = File("body.raw")
+        val inputOut = FileOutputStream(inputFile)
+        val bodyOut = FileOutputStream(bodyFile)
+        inputOut.write(longResponseData, responseTemplate.length, longResponseContentLength)
+        bodyOut.write(parser.body!!)
+
+        for(index in 0 until longResponseContentLength) {
             if(longResponseData[responseTemplateLength + index] != parser.body!![index]) {
                 fail("Body byte at index: $index does not match the input data")
                 break;
