@@ -3,6 +3,8 @@ package com.mux.player.media
 import android.content.Context
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.CmcdConfiguration
@@ -17,13 +19,18 @@ import androidx.media3.exoplayer.upstream.CmcdConfiguration
  */
 @OptIn(UnstableApi::class)
 class MuxMediaSourceFactory private constructor(
-  @Suppress("MemberVisibilityCanBePrivate") val innerFactory: DefaultMediaSourceFactory
-): MediaSource.Factory by innerFactory {
+  @Suppress("MemberVisibilityCanBePrivate")
+  val innerFactory: DefaultMediaSourceFactory,
+  @Suppress("MemberVisibilityCanBePrivate")
+  val upstreamDataSrcFac: DataSource.Factory = MuxDataSource.Factory(
+    upstream = DefaultHttpDataSource.Factory()
+  ),
+) : MediaSource.Factory by innerFactory {
 
-  constructor(context: Context): this(DefaultMediaSourceFactory(context))
+  constructor(context: Context) : this(DefaultMediaSourceFactory(context))
 
   init {
     setCmcdConfigurationFactory(CmcdConfiguration.Factory.DEFAULT)
-    // TODO: Figure out what else to put here/if I need to configure the CmcdConfigFactory
+    innerFactory.setDataSourceFactory(upstreamDataSrcFac) // default is DefaultHttpDataSource
   }
 }
