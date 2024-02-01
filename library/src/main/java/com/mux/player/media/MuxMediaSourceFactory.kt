@@ -4,30 +4,27 @@ import android.content.Context
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
-import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.CmcdConfiguration
 
 /**
  * A [MediaSource.Factory] configured to work best with Mux Video. Prefer to use this over
- * [DefaultMediaSourceFactory] so we can provide our own defaults (eg, turning on CMCD, etc)
+ * [DefaultMediaSourceFactory] so we can provide our own defaults (turning on CMCD, caching, etc)
  *
- * It's backed by a [DefaultMediaSourceFactory] that you can configure further using [innerFactory]
- *
- * @see innerFactory
+ * If you wish to inject your own `DefaultMediaSourceFactory` then its `DataSource.Factory` will be
+ * superseded by Mux's custom one. To override that, you can provide your own value for
+ * [innerFactory]
  */
 @OptIn(UnstableApi::class)
-class MuxMediaSourceFactory private constructor(
-  @Suppress("MemberVisibilityCanBePrivate")
-  val innerFactory: DefaultMediaSourceFactory,
-  @Suppress("MemberVisibilityCanBePrivate")
-  val dataSourceFactory: DataSource.Factory = MuxDataSource.Factory(
-    upstream = DefaultHttpDataSource.Factory()
-  ),
+class MuxMediaSourceFactory(
+  ctx: Context,
+  dataSourceFactory: DataSource.Factory = DefaultDataSource.Factory(ctx, MuxDataSource.Factory()),
+  private val innerFactory: DefaultMediaSourceFactory = DefaultMediaSourceFactory(ctx),
 ) : MediaSource.Factory by innerFactory {
 
-  constructor(context: Context) : this(DefaultMediaSourceFactory(context))
+//  constructor(context: Context) : this(context)
 
   init {
     innerFactory.setCmcdConfigurationFactory(CmcdConfiguration.Factory.DEFAULT)

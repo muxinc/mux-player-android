@@ -5,6 +5,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
 import com.mux.player.cacheing.CacheConstants
@@ -23,7 +24,7 @@ class MuxDataSource private constructor(
    * data that Mux's cache cannot provide
    */
   class Factory(
-    private val upstream: HttpDataSource.Factory
+    private val upstream: HttpDataSource.Factory = DefaultHttpDataSource.Factory()
   ) : DataSource.Factory {
     override fun createDataSource(): DataSource {
       return MuxDataSource(upstream.createDataSource())
