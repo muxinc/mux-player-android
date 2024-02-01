@@ -22,7 +22,7 @@ class MuxMediaSourceFactory private constructor(
   @Suppress("MemberVisibilityCanBePrivate")
   val innerFactory: DefaultMediaSourceFactory,
   @Suppress("MemberVisibilityCanBePrivate")
-  val upstreamDataSrcFac: DataSource.Factory = MuxDataSource.Factory(
+  val dataSourceFactory: DataSource.Factory = MuxDataSource.Factory(
     upstream = DefaultHttpDataSource.Factory()
   ),
 ) : MediaSource.Factory by innerFactory {
@@ -31,6 +31,6 @@ class MuxMediaSourceFactory private constructor(
 
   init {
     innerFactory.setCmcdConfigurationFactory(CmcdConfiguration.Factory.DEFAULT)
-    innerFactory.setDataSourceFactory(upstreamDataSrcFac)
+    innerFactory.setDataSourceFactory(dataSourceFactory)
   }
 }
