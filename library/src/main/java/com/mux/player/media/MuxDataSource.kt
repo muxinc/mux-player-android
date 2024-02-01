@@ -44,7 +44,7 @@ class MuxDataSource private constructor(
     upstreamSrc.addTransferListener(transferListener)
 
   override fun open(dataSpec: DataSpec): Long {
-    // todo - hey, do we need the app to enable plaintext http for this the proxy to work?
+    // todo - hey, do we need the app to enable plaintext http for the proxy to work?
     //  maybe some companies already would for ads or something, but some people won't want to
     val proxyUri = dataSpec.uri.run {
       val replaceScheme = if (scheme.equals("https")) "1~" else "0~"
