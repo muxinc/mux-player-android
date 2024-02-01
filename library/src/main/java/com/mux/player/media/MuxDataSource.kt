@@ -49,6 +49,7 @@ class MuxDataSource private constructor(
 
       buildUpon()
         .authority("localhost:${CacheConstants.PROXY_PORT}")
+        .scheme("http")
         .path(replacePath)
         .build()
     }
