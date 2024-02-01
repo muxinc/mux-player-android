@@ -48,7 +48,7 @@ class MuxDataSource private constructor(
       val replacePath = "$replaceScheme${host}${path}"
 
       buildUpon()
-        .authority("localhost:${CacheConstants.PROXY_PORT}")
+        .encodedAuthority("localhost:${CacheConstants.PROXY_PORT}")
         .scheme("http")
         .path(replacePath)
         .build()
