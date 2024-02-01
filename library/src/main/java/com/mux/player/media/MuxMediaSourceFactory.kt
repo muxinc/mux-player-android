@@ -30,7 +30,7 @@ class MuxMediaSourceFactory private constructor(
   constructor(context: Context) : this(DefaultMediaSourceFactory(context))
 
   init {
-    setCmcdConfigurationFactory(CmcdConfiguration.Factory.DEFAULT)
-    innerFactory.setDataSourceFactory(upstreamDataSrcFac) // default is DefaultHttpDataSource
+    innerFactory.setCmcdConfigurationFactory(CmcdConfiguration.Factory.DEFAULT)
+    innerFactory.setDataSourceFactory(upstreamDataSrcFac)
   }
 }
