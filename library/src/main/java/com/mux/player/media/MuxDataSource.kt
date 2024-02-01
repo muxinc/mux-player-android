@@ -15,10 +15,6 @@ class MuxDataSource private constructor(
  val upstreamSrc: HttpDataSource
 ) : DataSource {
 
-  // Yes! The proper solution is to do as HttpDataSource and be its "downstream" rather than
-  //  be anyone's upstream. And we can keep an HttpDataSource for our own upstream, like DDS does
-  // todo - how to get our factory into exoplayer?
-
   /**
    * Creates a new instance of [MuxDataSource]. The upstream data source will be invoked for any
    * data that Mux's cache cannot provide
