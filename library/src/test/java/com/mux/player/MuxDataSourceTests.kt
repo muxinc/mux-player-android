@@ -20,13 +20,12 @@ class MuxDataSourceTests : AbsRobolectricTest() {
         .setUri(uriIn)
         .build()
       val slot = slot<DataSpec>()
-      val mockUpstreamDataSrcFac =
-        mockk<HttpDataSource.Factory> {
-          every { createDataSource() } returns
-                  mockk<HttpDataSource>() {
-                    every { open(capture(slot)) } returns 0
-                  }
-        }
+      val mockUpstreamDataSrcFac = mockk<HttpDataSource.Factory> {
+        every { createDataSource() } returns
+                mockk<HttpDataSource>() {
+                  every { open(capture(slot)) } returns 0
+                }
+      }
 
       // object under test
       val muxDataSource = MuxDataSource.Factory(mockUpstreamDataSrcFac).createDataSource()
@@ -38,14 +37,16 @@ class MuxDataSourceTests : AbsRobolectricTest() {
     val httpUriIn = Uri.parse("http://something.mux.com/a/path/that/ends?q1=dog&q2=cat")
 
     val httpsUriOut = tryCase(httpsUriIn)
-    val expectedHttpsOut = Uri.parse("http://localhost:${CacheConstants.PROXY_PORT}/1~something.mux.com/a/path/that/ends?q1=dog&q2=cat")
+    val expectedHttpsOut =
+      Uri.parse("http://localhost:${CacheConstants.PROXY_PORT}/1~something.mux.com/a/path/that/ends?q1=dog&q2=cat")
     Assert.assertEquals(
       "Input URI $httpsUriIn transforms to $expectedHttpsOut",
       expectedHttpsOut, httpsUriOut
     )
 
     val httpUriOut = tryCase(httpUriIn)
-    val expectedHttpOut = Uri.parse("http://localhost:${CacheConstants.PROXY_PORT}/0~something.mux.com/a/path/that/ends?q1=dog&q2=cat")
+    val expectedHttpOut =
+      Uri.parse("http://localhost:${CacheConstants.PROXY_PORT}/0~something.mux.com/a/path/that/ends?q1=dog&q2=cat")
     Assert.assertEquals(
       "Input URI $httpUriIn transforms to $expectedHttpOut",
       expectedHttpOut, httpUriOut
