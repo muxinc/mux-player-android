@@ -46,6 +46,8 @@ class ProxyServer (val port:Int = 5000): Thread() {
         if (url.query != null) {
             cdnQuery = "?" + url.query
         }
+        // TODO: we are assuming that localhost is valid name on all android devices, maybe find a
+        //  programmatic way to obtain this localhost ip
         var resultStr = "http://localhost:" + port + "/" + protocolCode + url.host + cdnPort +
                 url.path + cdnQuery
         return URL(resultStr)

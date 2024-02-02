@@ -2,6 +2,7 @@ package com.mux.player.cacheing
 
 import android.util.Log
 import java.net.Socket
+import java.net.SocketException
 import java.net.URL
 import java.util.concurrent.BlockingDeque
 import java.util.concurrent.LinkedBlockingDeque
@@ -32,7 +33,6 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
     }
 
     fun send(chunk:ByteArray) {
-        Log.e(TAG, "PlayerSend>> size: " + chunk.size + "\n" + chunk)
         cdnInputQueue.put(chunk)
     }
 
@@ -78,16 +78,18 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
             responseHeaders = mapOf(), // todo - real headers
             socket.getOutputStream()
         )
-        while(running) {
-            val chunk = cdnInputQueue.takeFirst()
-            Log.w(TAG, "writing chunk, size:" + chunk.size)
-            //writer.write(chunk)
-            // todo - how much are we writing here?
-            writeHandle.write(chunk)
+        try {
+            while (running) {
+                val chunk = cdnInputQueue.takeFirst()
+                // todo - how much are we writing here?
+                writeHandle.write(chunk)
 
-            // todo - when is EOF?
+                // todo - when is EOF?
+            }
+            // todo - get here somehow.. After we reach the end of the request
+            writeHandle.finishedWriting()
+        } catch(ex:SocketException) {
+            Log.i(TAG, "Player closed the connection")
         }
-        // todo - get here somehow.. After we reach the end of the request
-        writeHandle.finishedWriting()
     }
 }

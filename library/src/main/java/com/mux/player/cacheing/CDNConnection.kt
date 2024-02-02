@@ -88,46 +88,38 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
             copyToPlayer(httpParser)
         }
         else if (httpParser.statusCode < 200 || httpParser.statusCode >= 400 ) {
-            Log.i(TAG, "Error")
             copyToPlayer(httpParser)
         } else {
             if (contextType == MediaContextType.MANIFEST) {
                 val rewrittenManifest = rewriteManifest(httpParser)
-                var response = httpParser.responseLine + "\r\n"
-                for(header:String in httpParser.headers.keys) {
-                    if (header.equals("Content-Length", true)) {
-                        response += header + ": "  + rewrittenManifest.length + "\r\n"
-                    } else {
-                        response += header + ": "  + httpParser.headers.get(header) + "\r\n"
-                    }
-                }
-                response += "\r\n"
-                response += rewrittenManifest
-                Log.i(TAG, "SENDING_TO_PLAYER>>\nresponse")
-                playerConnection.send(response.toByteArray(Charsets.ISO_8859_1))
-            }
-            else if(contextType == MediaContextType.SEGMENT) {
-                Log.i(TAG, "Serve segment")
+                httpParser.body = rewrittenManifest.toByteArray(Charsets.ISO_8859_1)
+                httpParser.setHeader("Content-Length", httpParser.body!!.size.toString())
                 copyToPlayer(httpParser)
-            } else {
-                // This should not happens
-                Log.e(TAG, "Not good")
+            }
+            else {
+                // This is segment
+                copyToPlayer(httpParser)
             }
         }
     }
 
     private fun copyToPlayer(httpParser:HttpParser) {
+        Log.i(TAG, "SENDING_TO_PLAYER>>\n" + httpParser.getResponseeString())
         var response = httpParser.responseLine + "\r\n"
         for(header:String in httpParser.headers.keys) {
             response += header + ": "  + httpParser.headers.get(header) + "\r\n"
         }
         response += "\r\n"
-        playerConnection.send(response.toByteArray(Charsets.ISO_8859_1))
+        var responseChunkSize = response.length
         if (httpParser.body != null) {
-            Log.e(TAG, "Sending to player what we have in body, size: "
-                    + httpParser.body!!.size)
-            playerConnection.send(httpParser.body!!)
+            responseChunkSize = response.length + httpParser.body!!.size
         }
+        val chunk = ByteArray(responseChunkSize)
+        response.toByteArray(Charsets.ISO_8859_1).copyInto(chunk)
+        if (httpParser.body != null) {
+            httpParser.body!!.copyInto(chunk, response.length, 0, httpParser.body!!.size)
+        }
+        playerConnection.send(chunk)
         try {
             while(true) {
                 val chunk = httpParser.readNextChunk()
@@ -136,7 +128,7 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
             }
         } catch (ex:IOException) {
             // Socketr closed.
-            Log.i(TAG, "Socket closed ....")
+            Log.i(TAG, "CDN closed the connection")
         }
     }
 

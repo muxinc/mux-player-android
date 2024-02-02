@@ -83,10 +83,6 @@ class HttpParser(val input:InputStream) {
     }
 
     private fun parseBody() {
-        // TODO: Cover status code 206 partal content
-        if (statusCode == 206) {
-            throw HttpFormatException("Partal content not supported")
-        }
         var contentLength = 0
         try {
             contentLength = getHeader("Content-Length").toInt()
@@ -233,7 +229,7 @@ class HttpParser(val input:InputStream) {
         }
 
         private fun rewindReadBuffer() {
-            if (position > limit/2) {
+            if (position > bufferSize/2) {
                 // Move remaining bytes to the begining
                 readBuffer.copyInto(readBuffer, 0, position, limit - position)
                 limit = limit - position
@@ -247,7 +243,7 @@ class HttpParser(val input:InputStream) {
                 limit = 0
                 // Read next chunk, block if necessary
                 limit = input.read(readBuffer)
-                while(limit == 0) {
+                while(limit <= 0) {
                     if (limit == 0) {
                         Thread.sleep(50)
                     }
@@ -256,16 +252,17 @@ class HttpParser(val input:InputStream) {
                     }
                     limit = input.read(readBuffer)
                 }
-            } else if (limit < bufferSize) {
-                rewindReadBuffer()
-                // Try to fill the rest of the buffer if possible, do not block
-                val read = input.read(readBuffer, limit, bufferSize - limit)
-                if (limit == -1) {
-                    throw SocketException("Socket closed")
-                } else {
-                    limit += read
-                }
             }
+//            else if (limit < bufferSize) {
+//                rewindReadBuffer()
+//                // Try to fill the rest of the buffer if possible, do not block
+//                val read = input.read(readBuffer, limit, bufferSize - limit)
+//                if (read == -1) {
+//                    return
+//                } else {
+//                    limit += read
+//                }
+//            }
         }
     }
 
