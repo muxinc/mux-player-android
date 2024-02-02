@@ -27,6 +27,8 @@ class MuxDataSource private constructor(
     }
   }
 
+  private var originalUri: Uri? = null
+
   init {
     // todo - only once, must start the proxy.
     //  ideally, have CacheController do it when a MuxPlayer is made and then stop it when the last
@@ -53,12 +55,12 @@ class MuxDataSource private constructor(
         .path(replacePath)
         .build()
     }
+
+    this.originalUri = uri
     return upstreamSrc.open(dataSpec.withUri(proxyUri))
   }
 
-  override fun getUri(): Uri? =
-    upstreamSrc.uri
+  override fun getUri(): Uri? = originalUri
 
-  override fun close() =
-    upstreamSrc.close()
+  override fun close() = upstreamSrc.close()
 }
