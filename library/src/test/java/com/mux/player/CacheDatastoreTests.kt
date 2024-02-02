@@ -1,11 +1,10 @@
 package com.mux.player
 
 import android.content.Context
-import com.mux.player.cacheing.CacheController
 import com.mux.player.cacheing.CacheDatastore
 import com.mux.player.cacheing.IndexSchema
 import com.mux.player.cacheing.toContentValues
-import com.mux.player.internal.cache.FileRecord
+import com.mux.player.internal.cache.CachedResourceRecord
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert
@@ -13,7 +12,6 @@ import org.junit.Before
 import org.junit.Test
 import java.io.File
 import java.net.URL
-import java.util.concurrent.TimeUnit
 
 class CacheDatastoreTests: AbsRobolectricTest() {
 
@@ -69,7 +67,7 @@ class CacheDatastoreTests: AbsRobolectricTest() {
 
   @Test
   fun `FileRecord-toContentValues generates correct content values for its fields`() {
-    val record = FileRecord(
+    val record = CachedResourceRecord(
       url = "url",
       etag = "etag",
       file = File("cacheFile"),

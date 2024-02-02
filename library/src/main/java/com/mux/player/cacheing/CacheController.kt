@@ -3,7 +3,7 @@ package com.mux.player.cacheing
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
-import com.mux.player.internal.cache.FileRecord
+import com.mux.player.internal.cache.CachedResourceRecord
 import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -175,7 +175,16 @@ internal object CacheController {
     /**
      * Writes the given bytes to both the player socket and the file
      */
-    fun write(data: ByteArray) {
+    fun write(data: ByteArray, startByte: Int, endByte: Int) {
+      // todo - also need segment-length
+
+      // todo - Handle if we only get partial content.  (using startByte and endByte)
+      //  every 'span' is own file
+
+      // somefilename-0-1024.part
+      // somefilename-key-1025-2048.part
+      // somefilename-key-3055-10444.part
+
       playerOutputStream.write(data)
       fileOutputStream?.write(data)
     }
@@ -184,6 +193,8 @@ internal object CacheController {
      * Writes the given String's bytes to both the player socket and the file
      */
     fun write(data: String) {
+      // todo - Handle if we only get partial content.
+
       playerOutputStream.write(data.toByteArray(Charsets.US_ASCII))
       fileOutputStream?.write(data.toByteArray(Charsets.US_ASCII))
     }
@@ -211,7 +222,7 @@ internal object CacheController {
           val recordAge = responseHeaders.getAge()?.toLongOrNull()
           val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(cacheControl)
 
-          val record = FileRecord(
+          val record = CachedResourceRecord(
             url = url,
             etag = etag,
             file = cacheFile,
@@ -244,10 +255,23 @@ internal object CacheController {
    */
   class ReadHandle(
     val url: String,
-    val file: FileRecord,
+    val file: CachedResourceRecord,
     // todo - figure out real fields
 //    val fileRecord: FileRecord,
 //    val cacheControlRecord: CacheControlRecord,
     val fileInput: InputStream,
-  )
+  ) {
+//    enum Result {
+//      HIT, MISS, HOLE
+//    }
+
+    sealed class Result {
+      class HIT : Result,
+      class MISS()
+    }
+
+    fun read(urlss, offsets...): ByteArray {
+      ///
+    }
+  }
 }

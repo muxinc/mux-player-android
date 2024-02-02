@@ -34,3 +34,7 @@ google-services.json
 
 # automatedtests results
 automatedtests/automated_test_results/**
+
+# test output
+*.raw
+

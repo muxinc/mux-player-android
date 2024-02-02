@@ -6,7 +6,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.mux.player.cacheing.CacheConstants
 import com.mux.player.cacheing.CacheDatastore
 import com.mux.player.cacheing.filesDirNoBackupCompat
-import com.mux.player.internal.cache.FileRecord
+import com.mux.player.internal.cache.CachedResourceRecord
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -139,7 +139,7 @@ class CacheDatastoreInstrumentationTests {
   fun testWriteRecordReplacesOnKey() {
     val datastore = CacheDatastore(appContext)
     datastore.use {
-      val originalRecord = FileRecord(
+      val originalRecord = CachedResourceRecord(
         url = "url",
         etag = "etag1",
         file = File("cacheFile"),
@@ -149,7 +149,7 @@ class CacheDatastoreInstrumentationTests {
         resourceAge = 3L,
         cacheControl = "cacheControl"
       )
-      val secondRecord = FileRecord(
+      val secondRecord = CachedResourceRecord(
         url = "url2",
         etag = "etag2",
         file = File("cacheFile"),

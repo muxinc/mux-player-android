@@ -90,6 +90,7 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
         else if (httpParser.statusCode < 200 || httpParser.statusCode >= 400 ) {
             copyToPlayer(httpParser)
         } else {
+          // todo - try to on
             if (contextType == MediaContextType.MANIFEST) {
                 val rewrittenManifest = rewriteManifest(httpParser)
                 httpParser.body = rewrittenManifest.toByteArray(Charsets.ISO_8859_1)
@@ -97,7 +98,13 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
                 copyToPlayer(httpParser)
             }
             else {
-                // This is segment
+              // todo - try not to cache
+              /// todo - Access Cache for writing
+              val writeHandle = CacheController.downloadStarted(
+                requestUrl = cdnUrl,
+                responseHeaders = headers,
+              )
+              // This is segment
                 copyToPlayer(httpParser)
             }
         }

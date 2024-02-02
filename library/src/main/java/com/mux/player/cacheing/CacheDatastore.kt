@@ -8,7 +8,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.os.Build
 import android.util.Base64
 import android.util.Log
-import com.mux.player.internal.cache.FileRecord
+import com.mux.player.internal.cache.CachedResourceRecord
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
@@ -107,7 +107,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
     return cacheFile
   }
 
-  fun writeRecord(fileRecord: FileRecord): Result<Unit> {
+  fun writeRecord(fileRecord: CachedResourceRecord): Result<Unit> {
     val rowId = dbHelper.writableDatabase.insertWithOnConflict(
       IndexSchema.FilesTable.name, null,
       fileRecord.toContentValues(),
@@ -121,7 +121,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
     }
   }
 
-  fun readRecord(url: String): FileRecord? {
+  fun readRecord(url: String): CachedResourceRecord? {
     // todo - try to read a record for the given URL, returning it if there's a hit
     return null
   }
@@ -276,7 +276,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
 }
 
 @JvmSynthetic
-internal fun FileRecord.toContentValues(): ContentValues {
+internal fun CachedResourceRecord.toContentValues(): ContentValues {
   val values = ContentValues()
 
   values.apply {
@@ -325,10 +325,18 @@ private class DbHelper(
             ${IndexSchema.FilesTable.Columns.remoteUrl} text not null,
             ${IndexSchema.FilesTable.Columns.etag} text not null,
             ${IndexSchema.FilesTable.Columns.filePath} text not null,
+            TOTAL_SEGMENT_SIZE,
+            
+            // cache-control
             ${IndexSchema.FilesTable.Columns.downloadedAtUnixTime} integer not null,
             ${IndexSchema.FilesTable.Columns.maxAgeUnixTime} integer not null,
             ${IndexSchema.FilesTable.Columns.resourceAgeUnixTime} integer not null default 0,
             ${IndexSchema.FilesTable.Columns.cacheControl} text not null
+        )
+        
+        create table 'parts-of-segments'(
+            START_OFFSET_IN_SEGMENT integer not null,
+            END_OFFSET_IN_SEGMENT,
         )
       """.trimIndent()
     )

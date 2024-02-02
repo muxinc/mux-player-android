@@ -47,6 +47,10 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
     private fun read() {
         try {
             httpParser!!.parseRequest()
+
+            // todo - query if we should use cdn connection
+            // todo - handle 'cache holes'
+
             Log.i(TAG, "FROM_PLAYER>>\n" + httpParser!!.getRequestString())
             var cdnHostHeaderValue = httpParser!!.getHeader("host")
             if (cdnHostHeaderValue.isEmpty()) {
