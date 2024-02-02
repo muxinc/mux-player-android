@@ -77,7 +77,7 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
     }
 
     private fun write() {
-      // todo - not here
+      // todo - not here, goes in CDNConnection
         val writeHandle = CacheController.downloadStarted(
             requestUrl = "How to get this",
             responseHeaders = mapOf(), // todo - real headers
