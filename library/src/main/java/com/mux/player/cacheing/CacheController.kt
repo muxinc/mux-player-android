@@ -135,6 +135,9 @@ internal object CacheController {
     mapKeys { it.key.lowercase() }["etag"]?.last()
   private fun Map<String, List<String>>.getAge(): String? =
     mapKeys { it.key.lowercase() }["age"]?.last()
+  private fun Map<String, List<String>>.getContentLength(): Long? =
+    mapKeys { it.key.lowercase() }["content-length"]?.last()?.toLongOrNull()
+  // todo - content-range too
 
   private fun parseSMaxAge(cacheControl: String): Long? {
     val matchResult = RX_S_MAX_AGE.matchEntire(cacheControl)
@@ -213,7 +216,10 @@ internal object CacheController {
       if (tempFile != null) {
         val cacheControl = responseHeaders.getCacheControl()
         val etag = responseHeaders.getETag()
-        if (cacheControl != null && etag != null) {
+        // todo - Instead of assuming whole file, we must write the number of bytes we really wrote
+        val contentLength = responseHeaders.getContentLength()
+
+        if (cacheControl != null && etag != null && contentLength != null) {
           val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
           val nowUtc = System.currentTimeMillis().let { timeMs ->
             val timezone = TimeZone.getDefault()
@@ -227,6 +233,7 @@ internal object CacheController {
             etag = etag,
             file = cacheFile,
             lookupKey = datastore.safeCacheKey(URL(url)),
+            resourceSizeBytes = contentLength,
             downloadedAtUtcSecs = nowUtc,
             cacheMaxAge = maxAge ?: TimeUnit.SECONDS.convert(7, TimeUnit.DAYS),
             resourceAge = recordAge ?: 0L,
@@ -265,13 +272,12 @@ internal object CacheController {
 //      HIT, MISS, HOLE
 //    }
 
-    sealed class Result {
-      class HIT : Result,
-      class MISS()
-    }
-
-    fun read(urlss, offsets...): ByteArray {
-      ///
-    }
+//    sealed class Result {
+//      class HIT : Result,
+//      class MISS()
+//    }
+//
+//    fun read(urlss, offsets...): ByteArray {
+//    }
   }
 }
