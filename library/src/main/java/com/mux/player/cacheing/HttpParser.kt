@@ -1,18 +1,11 @@
 package com.mux.player.cacheing
 
 import android.util.Log
-import androidx.browser.trusted.sharing.ShareTarget.EncodingType
-import java.io.BufferedReader
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.IOException
 import java.io.InputStream
-import java.io.InputStreamReader
 import java.io.OutputStream
-import java.io.StringReader
 import java.lang.NumberFormatException
 import java.lang.StringBuilder
-import java.nio.ByteBuffer
+import java.net.SocketException
 import java.util.Hashtable
 
 class HttpParser(val input:InputStream) {
@@ -22,19 +15,27 @@ class HttpParser(val input:InputStream) {
     var requestLine: String = ""
     var responseLine: String = ""
     val headers: Hashtable<String, String> = Hashtable<String, String>()
-    var body:ByteBuffer? = null
+    var body:ByteArray? = null
     var method = ""
-    var httpVersion = "1.0"
+    var httpVersion = "HTTP/1.1"
     var statusCode = -1
     var path:String = "/"
-    private val bufferSize = 12000
-    val readBuffer = ByteArray(bufferSize)
+      set(value) {
+        field = value
+        updateRequestLine()
+    }
+    var query = ""
+        set(value) {
+            field = value
+            updateRequestLine()
+        }
+    private val reader = InputReader(input)
+
 
 //    private val reader:BufferedReader = BufferedReader(InputStreamReader(input))
     private val running:Boolean = true;
 
     fun parseRequest() {
-        var reader = getReader()
         var line = reader.readLine()
         requestLine = line
         if (requestLine == null) {
@@ -42,22 +43,20 @@ class HttpParser(val input:InputStream) {
         }
         method = requestLine.split(" ")[0]
         path = requestLine.split(" ")[1]
+        if (path.contains("?")) {
+            query = path.split("?")[1]
+            path = path.split("?")[0]
+        }
         httpVersion = requestLine.substringAfterLast(" ")
         line = reader.readLine()
         while (line.isNotEmpty()) {
             appendHeaderParameter(line)
             line = reader.readLine()
-            if (line == null) {
-                // Read more data from socket
-                reader = getReader()
-                line = reader.readLine()
-            }
         }
-        parseBody(reader)
+        parseBody()
     }
 
     fun parseResponse() {
-        var reader = getReader()
         var line = reader.readLine()
         responseLine = line
         val statusCodeStr = responseLine.split(" ")[1]
@@ -71,73 +70,32 @@ class HttpParser(val input:InputStream) {
         while (line.isNotEmpty()) {
             appendHeaderParameter(line)
             line = reader.readLine()
-            if (line == null) {
-                // Read more data from socket
-                reader = getReader()
-                line = reader.readLine()
-            }
         }
-        parseBody(reader)
+        parseBody()
     }
 
-    private fun parseBody(reader:BufferedReader) {
-        if(!parseBodyByContentLength(reader)) {
-            // copy whatever is remaining in the reader to the body
-            val tmpBuff = ByteArray(bufferSize)
-            var bytesRead = 0
-            var line = reader.readLine()
-            while (line != null) {
-                if (line.length + bytesRead > bufferSize) {
-                    Log.e(TAG, "This should never happend")
-                }
-                line.toByteArray().copyInto(tmpBuff, bytesRead, line.length)
-                bytesRead += line.length
-                line = reader.readLine()
-            }
-            body = ByteBuffer.wrap(tmpBuff.copyOfRange(0, bytesRead))
+    private fun updateRequestLine() {
+        if (query.isEmpty()) {
+            requestLine = "$method $path $httpVersion"
+        } else {
+            requestLine = "$method $path $httpVersion?$query"
         }
     }
 
-    private fun parseBodyByContentLength(reader:BufferedReader? = null): Boolean {
+    private fun parseBody() {
         var contentLength = 0
         try {
             contentLength = getHeader("Content-Length").toInt()
         } catch (err:NumberFormatException) {
-            return false
+            Log.e(TAG, "No ContentLengthHeader")
+            return
         }
-        body = ByteBuffer.allocateDirect(contentLength)
-        // copy remaining data from reader to body if there is some
-        var bytesRead = 0
-        if (reader != null) {
-            var line = reader!!.readLine()
-            while (line != null) {
-                line.toByteArray().copyInto(body!!.array(), bytesRead, 0, line.length)
-                bytesRead += line.length
-                body!!.array()[bytesRead] = '\n'.code.toByte()
-                bytesRead++
-                line = reader!!.readLine()
-            }
-        }
-        while(bytesRead < contentLength) {
-            // See if this is a blocking mode
-            val read = input.read(body!!.array(), bytesRead, contentLength - bytesRead)
-            if (read == -1) {
-                // Maybe break in this case
-                Thread.sleep(50)
-            } else {
-                bytesRead += read
-            }
-        }
-        return true
+        body = ByteArray(contentLength)
+        reader.readAllBytes(body!!)
     }
 
     fun readNextChunk():ByteArray {
-        var bytesRead = input.read(readBuffer)
-        while(bytesRead == 0) {
-            Thread.sleep(50)
-            bytesRead = input.read(readBuffer)
-        }
-        return readBuffer.copyOfRange(0, bytesRead)
+        return reader.readNextChunk()
     }
 
     fun setHeader(name:String, value:String) {
@@ -161,14 +119,14 @@ class HttpParser(val input:InputStream) {
 
     fun serializeRequest(out:OutputStream) {
         val response = StringBuilder()
-        response.append("requestLine\r\n")
+        response.append("$requestLine\r\n")
         for((header:String, value:String) in headers) {
             response.append("$header: $value\r\n")
         }
         response.append("\r\n")
         out.write(response.toString().toByteArray(Charsets.ISO_8859_1))
         if (body != null) {
-            out.write(body!!.array(), 0, body!!.position())
+            out.write(body!!)
         }
     }
 
@@ -197,7 +155,7 @@ class HttpParser(val input:InputStream) {
         builder.append("\r\n")
         var bodySize = 0
         if (body != null) {
-            bodySize = body!!.array().size
+            bodySize = body!!.size
         }
         builder.append("Body, size: " + bodySize)
     }
@@ -211,16 +169,101 @@ class HttpParser(val input:InputStream) {
         headers.put(header.substring(0, idx), header.substring(idx + 1).trim())
     }
 
-    private fun getReader(): BufferedReader {
-        var read = 0
-        while(read == 0) {
-            read = input.read(readBuffer)
-            if (read == 0) {
-                Thread.sleep(50)
+    class InputReader(val input:InputStream) {
+        val TAG = "InputReader||Proxy"
+
+        private val bufferSize = 12000
+        private val readBuffer = ByteArray(bufferSize)
+        private var position = 0
+        private var limit = 0
+
+        fun readLine() : String {
+            readFromInput()
+            for(index in position..limit) {
+                if (readBuffer[index] == '\n'.code.toByte()) {
+                    val result = readBuffer.copyOfRange(position, index).toString(Charsets.ISO_8859_1).trim()
+                    position = index + 1
+                    return result
+                }
+            }
+            return readBuffer.copyOfRange(position, limit).toString(Charsets.ISO_8859_1).trim()
+        }
+
+        fun readAllBytes(destination:ByteArray) {
+            var read = 0;
+            while(read < destination.size) {
+                readFromInput()
+                try {
+                    val remaining = destination.size - read
+                    if (remaining < limit - position) {
+                        readBuffer.copyInto(destination, read, position, remaining)
+                        read += remaining
+                        position += remaining
+                    } else {
+                        readBuffer.copyInto(destination, read, position, limit)
+//                        readBuffer.copyInto(destination, read, position, limit - position)
+                        read += limit - position
+                        position = limit
+                    }
+                } catch (ex:Exception) {
+                    ex.printStackTrace()
+                }
+//                Log.i(TAG, "Read: $read bytes of total ${destination.size}")
+                System.out.println("Read: $read bytes of total ${destination.size}")
             }
         }
-        val bain = ByteArrayInputStream(readBuffer, 0, read)
-        return BufferedReader(InputStreamReader(bain, Charsets.ISO_8859_1))
+
+//        fun readBytes(destination:ByteArray) : Int {
+//            readFromInput()
+//            readBuffer.copyInto(destination, 0, position, limit - position)
+//            val copied = limit - position
+//            position = limit
+//            return copied
+//        }
+
+        fun readNextChunk() : ByteArray {
+            readFromInput()
+            val result = readBuffer.copyOfRange(position, limit)
+            position = limit
+            return result
+        }
+
+        private fun rewindReadBuffer() {
+            if (position > bufferSize/2) {
+                // Move remaining bytes to the begining
+                readBuffer.copyInto(readBuffer, 0, position, limit - position)
+                limit = limit - position
+                position = 0
+            }
+        }
+
+        private fun readFromInput() {
+            if (position == limit) {
+                position = 0
+                limit = 0
+                // Read next chunk, block if necessary
+                limit = input.read(readBuffer)
+                while(limit <= 0) {
+                    if (limit == 0) {
+                        Thread.sleep(50)
+                    }
+                    if (limit == -1) {
+                        throw SocketException("Socket closed")
+                    }
+                    limit = input.read(readBuffer)
+                }
+            }
+//            else if (limit < bufferSize) {
+//                rewindReadBuffer()
+//                // Try to fill the rest of the buffer if possible, do not block
+//                val read = input.read(readBuffer, limit, bufferSize - limit)
+//                if (read == -1) {
+//                    return
+//                } else {
+//                    limit += read
+//                }
+//            }
+        }
     }
 
 }
