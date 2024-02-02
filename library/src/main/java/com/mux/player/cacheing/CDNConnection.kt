@@ -100,10 +100,10 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
             else {
               // todo - try not to cache
               /// todo - Access Cache for writing
-              val writeHandle = CacheController.downloadStarted(
-                requestUrl = cdnUrl,
-                responseHeaders = headers,
-              )
+//              val writeHandle = CacheController.downloadStarted(
+//                requestUrl = cdnUrl,
+//                responseHeaders = headers,
+//              )
               // This is segment
                 copyToPlayer(httpParser)
             }

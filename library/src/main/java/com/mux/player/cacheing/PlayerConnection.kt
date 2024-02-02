@@ -77,6 +77,7 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
     }
 
     private fun write() {
+      // todo - not here
         val writeHandle = CacheController.downloadStarted(
             requestUrl = "How to get this",
             responseHeaders = mapOf(), // todo - real headers
@@ -85,7 +86,7 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
         try {
             while (running) {
                 val chunk = cdnInputQueue.takeFirst()
-                // todo - how much are we writing here?
+                // todo - how muc are we writing here?
                 writeHandle.write(chunk)
 
                 // todo - when is EOF?

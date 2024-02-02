@@ -178,7 +178,7 @@ internal object CacheController {
     /**
      * Writes the given bytes to both the player socket and the file
      */
-    fun write(data: ByteArray, startByte: Int, endByte: Int) {
+    fun write(data: ByteArray) {
       // todo - also need segment-length
 
       // todo - Handle if we only get partial content.  (using startByte and endByte)
