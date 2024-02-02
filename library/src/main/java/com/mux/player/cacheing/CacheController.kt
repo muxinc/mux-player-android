@@ -3,6 +3,7 @@ package com.mux.player.cacheing
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
+import com.mux.player.cacheing.CacheController.setup
 import com.mux.player.internal.cache.CachedResourceRecord
 import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
@@ -84,6 +85,9 @@ internal object CacheController {
     return if (shouldCacheResponse(requestUrl, responseHeaders)) {
       val tempFile = datastore.createTempDownloadFile(URL(requestUrl))
 
+      // todo - insert the resource record now. We want to update based on that cache-control stuff
+      //  so always insert (but leave a comment that maybe it's bad)
+
       WriteHandle(
         controller = this,
         tempFile = tempFile,
@@ -131,13 +135,31 @@ internal object CacheController {
 
   private fun Map<String, List<String>>.getCacheControl(): String? =
     mapKeys { it.key.lowercase() }["cache-control"]?.last()
+
   private fun Map<String, List<String>>.getETag(): String? =
     mapKeys { it.key.lowercase() }["etag"]?.last()
+
   private fun Map<String, List<String>>.getAge(): String? =
     mapKeys { it.key.lowercase() }["age"]?.last()
+
   private fun Map<String, List<String>>.getContentLength(): Long? =
     mapKeys { it.key.lowercase() }["content-length"]?.last()?.toLongOrNull()
-  // todo - content-range too
+
+  private fun Map<String, List<String>>.getContentRange(): ContentRange? =
+    mapKeys { it.key.lowercase() }["content-range"]?.last()?.let { parseContentRange(it) }
+  private fun parseContentRange(headerValue: String): ContentRange? {
+    val contentRangeRx = Regex("""bytes ([0-9])-([0-9])/([0-9])""")
+    val matchResult = contentRangeRx.find(headerValue)
+    return if (matchResult != null) {
+      ContentRange(
+        startByte = matchResult.groupValues[0].toLong(),
+        endByte = matchResult.groupValues[1].toLong(),
+        totalBytes = matchResult.groupValues[2].toLong(),
+      )
+    } else {
+      null
+    }
+  }
 
   private fun parseSMaxAge(cacheControl: String): Long? {
     val matchResult = RX_S_MAX_AGE.matchEntire(cacheControl)
@@ -163,6 +185,9 @@ internal object CacheController {
    * Object for writing to both the player and the cache. Call [downloadStarted] to get one of these
    * for any given web response. Writes to this handle will go to the player and also to the cache
    * if required
+   *
+   * There should be one instance of this per request being cached. Get an instance of this by
+   * calling [CacheController.downloadStarted].
    */
   class WriteHandle(
     val url: String,
@@ -175,19 +200,15 @@ internal object CacheController {
 
     private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
 
+    private var bytesWritten: Long = 0
+
+    val contentRange: ContentRange? = responseHeaders.getContentRange()
+    val contentLength: Long? = responseHeaders.getContentLength()
+
     /**
      * Writes the given bytes to both the player socket and the file
      */
     fun write(data: ByteArray) {
-      // todo - also need segment-length
-
-      // todo - Handle if we only get partial content.  (using startByte and endByte)
-      //  every 'span' is own file
-
-      // somefilename-0-1024.part
-      // somefilename-key-1025-2048.part
-      // somefilename-key-3055-10444.part
-
       playerOutputStream.write(data)
       fileOutputStream?.write(data)
     }
@@ -196,13 +217,13 @@ internal object CacheController {
      * Writes the given String's bytes to both the player socket and the file
      */
     fun write(data: String) {
-      // todo - Handle if we only get partial content.
-
       playerOutputStream.write(data.toByteArray(Charsets.US_ASCII))
       fileOutputStream?.write(data.toByteArray(Charsets.US_ASCII))
     }
 
     // todo - method to call if the proxy encounters an error, closes & deletes temp file
+
+    // todo - close() that calls finishedWriting() if not finished? Or just make it close()
 
     /**
      * Call when you've reached the end of the body input. This closes the streams to the player
@@ -210,6 +231,9 @@ internal object CacheController {
      */
     fun finishedWriting() {
       playerOutputStream.close()
+
+      // todo - however much we wrote, insert the row and move the file
+      //  dete
 
       // If there's a temp file, we are caching it so move it from the temp file and write to index
       fileOutputStream?.close()
@@ -245,8 +269,10 @@ internal object CacheController {
           // todo - return a fail or throw somerthing
         } else {
           // todo: need a logger
-          Log.w("CacheController", "Had temp file but not enough info to cache. " +
-                  "cache-control: [$cacheControl] etag $etag")
+          Log.w(
+            "CacheController", "Had temp file but not enough info to cache. " +
+                    "cache-control: [$cacheControl] etag $etag"
+          )
         }
 
         //datastore.writeRecord()
@@ -280,4 +306,11 @@ internal object CacheController {
 //    fun read(urlss, offsets...): ByteArray {
 //    }
   }
+
+  data class ContentRange(
+    val startByte: Long,
+    val endByte: Long,
+    val totalBytes: Long?,
+  )
+
 }
