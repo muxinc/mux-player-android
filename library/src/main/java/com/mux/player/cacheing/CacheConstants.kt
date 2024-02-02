@@ -7,6 +7,8 @@ internal object CacheConstants {
   const val EXT_M4S = "m4s"
   const val EXT_TS = "ts"
 
+  const val PROXY_PORT = 6000
+
   /**
    * Can be rooted in cache or files dir on either internal or external storage
    */
