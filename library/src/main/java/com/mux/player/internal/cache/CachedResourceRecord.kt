@@ -11,7 +11,7 @@ import java.io.File
 data class CachedResourceRecord(
   val url: String,
   val etag: String,
-  val file: File,
+//  val file: File,
   val lookupKey: String,
   val downloadedAtUtcSecs: Long,
   val cacheMaxAge: Long,

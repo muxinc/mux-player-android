@@ -160,12 +160,12 @@ class CacheDatastoreInstrumentationTests {
         cacheControl = "cacheControl"
       )
 
-      val writeResult1 = datastore.writeRecord(originalRecord)
+      val writeResult1 = datastore.writeResourceRecord(originalRecord)
       Assert.assertTrue(
         "First write of record with key ${originalRecord.lookupKey} should succeed",
         writeResult1.isSuccess
       )
-      val writeResult2 = datastore.writeRecord(secondRecord)
+      val writeResult2 = datastore.writeResourceRecord(secondRecord)
       Assert.assertTrue(
         "next write of record with key ${secondRecord.lookupKey} should succeed",
         writeResult2.isSuccess

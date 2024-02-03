@@ -81,35 +81,35 @@ class CacheDatastoreTests: AbsRobolectricTest() {
     val contentValues = record.toContentValues()
     Assert.assertEquals(
       "url should be saved",
-      "url", contentValues.getAsString(IndexSchema.FilesTable.Columns.remoteUrl)
+      "url", contentValues.getAsString(IndexSchema.ResourcesTable.Columns.remoteUrl)
     )
     Assert.assertEquals(
       "etag should be saved",
-      "etag", contentValues.getAsString(IndexSchema.FilesTable.Columns.etag)
+      "etag", contentValues.getAsString(IndexSchema.ResourcesTable.Columns.etag)
     )
     Assert.assertEquals(
       "file should be saved",
-      "cacheFile", contentValues.getAsString(IndexSchema.FilesTable.Columns.filePath)
+      "cacheFile", contentValues.getAsString(IndexSchema.ResourcesTable.Columns.filePath)
     )
     Assert.assertEquals(
       "lookup key should be saved",
-      "lookupKey", contentValues.getAsString(IndexSchema.FilesTable.Columns.lookupKey)
+      "lookupKey", contentValues.getAsString(IndexSchema.ResourcesTable.Columns.lookupKey)
     )
     Assert.assertEquals(
       "downloadedAt should be saved",
-      1L, contentValues.getAsLong(IndexSchema.FilesTable.Columns.downloadedAtUnixTime)
+      1L, contentValues.getAsLong(IndexSchema.ResourcesTable.Columns.downloadedAtUnixTime)
     )
     Assert.assertEquals(
       "cacheMaxAge should be saved",
-      2L, contentValues.getAsLong(IndexSchema.FilesTable.Columns.maxAgeUnixTime)
+      2L, contentValues.getAsLong(IndexSchema.ResourcesTable.Columns.maxAgeUnixTime)
     )
     Assert.assertEquals(
       "age should be saved",
-      3L, contentValues.getAsLong(IndexSchema.FilesTable.Columns.resourceAgeUnixTime)
+      3L, contentValues.getAsLong(IndexSchema.ResourcesTable.Columns.resourceAgeUnixTime)
     )
     Assert.assertEquals(
       "cache-control should be saved for future reference",
-      "cacheControl", contentValues.getAsString(IndexSchema.FilesTable.Columns.cacheControl)
+      "cacheControl", contentValues.getAsString(IndexSchema.ResourcesTable.Columns.cacheControl)
     )
   }
 }

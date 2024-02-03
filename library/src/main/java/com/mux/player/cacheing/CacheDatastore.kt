@@ -107,9 +107,9 @@ internal class CacheDatastore(val context: Context) : Closeable {
     return cacheFile
   }
 
-  fun writeRecord(fileRecord: CachedResourceRecord): Result<Unit> {
+  fun writeResourceRecord(fileRecord: CachedResourceRecord): Result<Unit> {
     val rowId = dbHelper.writableDatabase.insertWithOnConflict(
-      IndexSchema.FilesTable.name, null,
+      IndexSchema.ResourcesTable.name, null,
       fileRecord.toContentValues(),
       SQLiteDatabase.CONFLICT_REPLACE
     )
@@ -280,14 +280,14 @@ internal fun CachedResourceRecord.toContentValues(): ContentValues {
   val values = ContentValues()
 
   values.apply {
-    put(IndexSchema.FilesTable.Columns.lookupKey, lookupKey)
-    put(IndexSchema.FilesTable.Columns.etag, etag)
-    put(IndexSchema.FilesTable.Columns.filePath, file.path)
-    put(IndexSchema.FilesTable.Columns.remoteUrl, url)
-    put(IndexSchema.FilesTable.Columns.downloadedAtUnixTime, downloadedAtUtcSecs)
-    put(IndexSchema.FilesTable.Columns.maxAgeUnixTime, cacheMaxAge)
-    put(IndexSchema.FilesTable.Columns.resourceAgeUnixTime, resourceAge)
-    put(IndexSchema.FilesTable.Columns.cacheControl, cacheControl)
+    put(IndexSchema.ResourcesTable.Columns.lookupKey, lookupKey)
+    put(IndexSchema.ResourcesTable.Columns.etag, etag)
+    put(IndexSchema.ResourcesTable.Columns.filePath, file.path)
+    put(IndexSchema.ResourcesTable.Columns.remoteUrl, url)
+    put(IndexSchema.ResourcesTable.Columns.downloadedAtUnixTime, downloadedAtUtcSecs)
+    put(IndexSchema.ResourcesTable.Columns.maxAgeUnixTime, cacheMaxAge)
+    put(IndexSchema.ResourcesTable.Columns.resourceAgeUnixTime, resourceAge)
+    put(IndexSchema.ResourcesTable.Columns.cacheControl, cacheControl)
   }
 
   return values
@@ -320,21 +320,22 @@ private class DbHelper(
   override fun onCreate(db: SQLiteDatabase?) {
     db?.execSQL(
       """
-        create table if not exists ${IndexSchema.FilesTable.name} (
-            ${IndexSchema.FilesTable.Columns.lookupKey} text not null primary key,
-            ${IndexSchema.FilesTable.Columns.remoteUrl} text not null,
-            ${IndexSchema.FilesTable.Columns.etag} text not null,
-            ${IndexSchema.FilesTable.Columns.filePath} text not null,
+        create table if not exists ${IndexSchema.ResourcesTable.name} (
+            ${IndexSchema.ResourcesTable.Columns.lookupKey} text not null primary key,
+            ${IndexSchema.ResourcesTable.Columns.remoteUrl} text not null,
+            ${IndexSchema.ResourcesTable.Columns.etag} text not null,
             TOTAL_SEGMENT_SIZE,
             
             // cache-control
-            ${IndexSchema.FilesTable.Columns.downloadedAtUnixTime} integer not null,
-            ${IndexSchema.FilesTable.Columns.maxAgeUnixTime} integer not null,
-            ${IndexSchema.FilesTable.Columns.resourceAgeUnixTime} integer not null default 0,
-            ${IndexSchema.FilesTable.Columns.cacheControl} text not null
+            ${IndexSchema.ResourcesTable.Columns.downloadedAtUnixTime} integer not null,
+            ${IndexSchema.ResourcesTable.Columns.maxAgeUnixTime} integer not null,
+            ${IndexSchema.ResourcesTable.Columns.resourceAgeUnixTime} integer not null default 0,
+            ${IndexSchema.ResourcesTable.Columns.cacheControl} text not null
         )
         
-        create table 'parts-of-segments'(
+        create table 'files'(
+            ${IndexSchema.ResourcesTable.Columns.lookupKey} text not null,
+            ${IndexSchema.ResourcesTable.Columns.filePath} text not null,
             START_OFFSET_IN_SEGMENT integer not null,
             END_OFFSET_IN_SEGMENT,
         )
@@ -367,7 +368,7 @@ internal object IndexSchema {
 
   const val version = 1
 
-  object FilesTable {
+  object ResourcesTable {
     const val name = "files"
 
     object Columns {

@@ -60,7 +60,7 @@ internal object CacheController {
     // todo - check for initialization and throw Something
 
     val fileRecord = datastore.readRecord(requestUrl)
-    return if (fileRecord == null || !fileRecord.file.exists()) {
+    return if (fileRecord == null) {
       null
     } else {
       ReadHandle(
@@ -76,18 +76,51 @@ internal object CacheController {
    * can use to write your data. See [WriteHandle] for more information
    */
   fun downloadStarted(
-    requestUrl: String,
+    requestUrl: String, //todo should be URL
     responseHeaders: Map<String, List<String>>,
     playerOutputStream: OutputStream,
   ): WriteHandle {
     // todo - check for initialization and throw or something
 
-    return if (shouldCacheResponse(requestUrl, responseHeaders)) {
+    val etag = responseHeaders.getETag()
+    val cacheControl = responseHeaders.getCacheControl()
+
+    return if (
+      shouldCacheResponse(
+        requestUrl,
+        responseHeaders
+      ) && etag != null && cacheControl != null
+    ) {
+      val contentRange = responseHeaders.getContentRange()
+      val contentLength = responseHeaders.getContentLength()
+
+      // resourceSize can be null if neither content-length nor content-range header was present
+      val resourceSize = if (contentRange != null) {
+        contentRange.totalBytes
+      } else contentLength
+      val nowUtc = System.currentTimeMillis().let { timeMs ->
+        val timezone = TimeZone.getDefault()
+        (timeMs + timezone.getOffset(timeMs)) / 1000
+      }
+      val recordAge = responseHeaders.getAge()?.toLongOrNull()
+      val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(cacheControl)
+
+      val record = CachedResourceRecord(
+        url = requestUrl,
+        etag = etag,
+        lookupKey = datastore.safeCacheKey(URL(requestUrl)),
+        resourceSizeBytes = resourceSize ?: -1, //todo - constant
+        downloadedAtUtcSecs = nowUtc,
+        cacheMaxAge = maxAge ?: TimeUnit.SECONDS.convert(7, TimeUnit.DAYS),
+        resourceAge = recordAge ?: 0L,
+        cacheControl = cacheControl,
+      )
+      val result = datastore.writeResourceRecord(record)
+      // todo - make sure it didn't fail
+
       val tempFile = datastore.createTempDownloadFile(URL(requestUrl))
 
-      // todo - insert the resource record now. We want to update based on that cache-control stuff
-      //  so always insert (but leave a comment that maybe it's bad)
-
+      // Return a WriteHandle that can write to the given cache file
       WriteHandle(
         controller = this,
         tempFile = tempFile,
@@ -147,6 +180,7 @@ internal object CacheController {
 
   private fun Map<String, List<String>>.getContentRange(): ContentRange? =
     mapKeys { it.key.lowercase() }["content-range"]?.last()?.let { parseContentRange(it) }
+
   private fun parseContentRange(headerValue: String): ContentRange? {
     val contentRangeRx = Regex("""bytes ([0-9])-([0-9])/([0-9])""")
     val matchResult = contentRangeRx.find(headerValue)
@@ -199,11 +233,11 @@ internal object CacheController {
   ) {
 
     private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
-
-    private var bytesWritten: Long = 0
+    private var fileBytesWritten: Long = 0
 
     val contentRange: ContentRange? = responseHeaders.getContentRange()
     val contentLength: Long? = responseHeaders.getContentLength()
+
 
     /**
      * Writes the given bytes to both the player socket and the file
@@ -211,14 +245,21 @@ internal object CacheController {
     fun write(data: ByteArray) {
       playerOutputStream.write(data)
       fileOutputStream?.write(data)
+      if (tempFile != null) {
+        fileBytesWritten += data.size
+      }
     }
 
     /**
      * Writes the given String's bytes to both the player socket and the file
      */
     fun write(data: String) {
-      playerOutputStream.write(data.toByteArray(Charsets.US_ASCII))
-      fileOutputStream?.write(data.toByteArray(Charsets.US_ASCII))
+      val dataBytes = data.toByteArray(Charsets.US_ASCII)
+      playerOutputStream.write(dataBytes)
+      fileOutputStream?.write(dataBytes)
+      if (tempFile != null) {
+        fileBytesWritten += dataBytes.size
+      }
     }
 
     // todo - method to call if the proxy encounters an error, closes & deletes temp file
@@ -238,13 +279,23 @@ internal object CacheController {
       // If there's a temp file, we are caching it so move it from the temp file and write to index
       fileOutputStream?.close()
       if (tempFile != null) {
+
+        // todo - ok so now we have a 'span', which is what a FileRecord is. Could be partial,
+        //  could be the whole thing, not this method's problem. We need to write the record and
+        //  then move the file
+        // so before that lets go back to the schema
+
+
         val cacheControl = responseHeaders.getCacheControl()
         val etag = responseHeaders.getETag()
         // todo - Instead of assuming whole file, we must write the number of bytes we really wrote
         val contentLength = responseHeaders.getContentLength()
 
-        if (cacheControl != null && etag != null && contentLength != null) {
+        if (cacheControl != null && etag != null &&) {
+
           val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
+
+
           val nowUtc = System.currentTimeMillis().let { timeMs ->
             val timezone = TimeZone.getDefault()
             (timeMs + timezone.getOffset(timeMs)) / 1000
@@ -252,19 +303,19 @@ internal object CacheController {
           val recordAge = responseHeaders.getAge()?.toLongOrNull()
           val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(cacheControl)
 
-          val record = CachedResourceRecord(
-            url = url,
-            etag = etag,
-            file = cacheFile,
-            lookupKey = datastore.safeCacheKey(URL(url)),
-            resourceSizeBytes = contentLength,
-            downloadedAtUtcSecs = nowUtc,
-            cacheMaxAge = maxAge ?: TimeUnit.SECONDS.convert(7, TimeUnit.DAYS),
-            resourceAge = recordAge ?: 0L,
-            cacheControl = cacheControl,
-          )
-
-          val result = datastore.writeRecord(record)
+//          val record = CachedResourceRecord(
+//            url = url,
+//            etag = etag,
+//            file = cacheFile,
+//            lookupKey = datastore.safeCacheKey(URL(url)),
+//            resourceSizeBytes = contentLength,
+//            downloadedAtUtcSecs = nowUtc,
+//            cacheMaxAge = maxAge ?: TimeUnit.SECONDS.convert(7, TimeUnit.DAYS),
+//            resourceAge = recordAge ?: 0L,
+//            cacheControl = cacheControl,
+//          )
+//
+//          val result = datastore.writeRecord(record)
 
           // todo - return a fail or throw somerthing
         } else {
