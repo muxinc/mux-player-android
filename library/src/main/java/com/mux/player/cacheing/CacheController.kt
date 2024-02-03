@@ -291,7 +291,7 @@ internal object CacheController {
         // todo - Instead of assuming whole file, we must write the number of bytes we really wrote
         val contentLength = responseHeaders.getContentLength()
 
-        if (cacheControl != null && etag != null &&) {
+        if (cacheControl != null && etag != null) {
 
           val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
 
