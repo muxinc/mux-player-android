@@ -101,9 +101,10 @@ internal class CacheDatastore(val context: Context) : Closeable {
   /**
    * Move a completed download from the temp file to the cache where it will live until it falls out
    */
-  fun moveFromTempFile(tempFile: File,
-                       remoteUrl: URL,
-                       contentRange: CacheController.ContentRange? = null
+  fun moveFromTempFile(
+    tempFile: File,
+    remoteUrl: URL,
+    contentRange: CacheController.ContentRange? = null
   ): File {
     // todo - we need to add more to the filename, since we can have many per segment
     val cacheFile = createCacheFile(remoteUrl, contentRange)
@@ -231,7 +232,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
       key
     } else {
       // we don't ever read the start/end from the name, but it makes the file unique enough
-      key + "${contentRange.startByte}-${contentRange.endByte}"
+      key + "-${contentRange.startByte}-${contentRange.endByte}"
     }
     val cacheFile = File(fileCacheDir(), basename)
     cacheFile.delete()

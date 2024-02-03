@@ -274,7 +274,6 @@ internal object CacheController {
       playerOutputStream.close()
 
       // todo - however much we wrote, insert the row and move the file
-      //  dete
 
       // If there's a temp file, we are caching it so move it from the temp file and write to index
       fileOutputStream?.close()
