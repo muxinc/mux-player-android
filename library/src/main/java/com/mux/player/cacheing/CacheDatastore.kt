@@ -389,6 +389,7 @@ internal object IndexSchema {
     object Columns {
       const val lookupKey = "lookup_key"
       const val filePath = "file_path"
+      const val fileSize = "file_size"
       const val startOffset = "start_offset"
       const val endOffset = "end_offset"
       const val lastAccessedUtc = "last_access"
