@@ -114,6 +114,12 @@ internal class CacheDatastore(val context: Context) : Closeable {
     return cacheFile
   }
 
+  /**
+   * Returns all cached data ranges for the resource with the given URL
+   *
+   * Ranges will be ordered by their starting index, but are not guaranteed to be contiguous, may
+   * overlap, etc.
+   */
   fun readCachedRanges(remoteUrl: URL): Result<Pair<CachedResourceRecord, List<RangeFileRecord>>> {
     val db = dbHelper.writableDatabase
     db.beginTransaction()
@@ -134,7 +140,8 @@ internal class CacheDatastore(val context: Context) : Closeable {
           null,
           """${IndexSchema.FilesTable.Columns.lookupKey} is ?""",
           arrayOf(key),
-          null, null, null
+          null, null,
+          /* orderBy = */ "${IndexSchema.FilesTable.Columns.startOffset} ASC"
         )
         return if (fileRangeCursor.count > 0 && fileRangeCursor.moveToFirst()) {
           val spans = mutableListOf<RangeFileRecord>()

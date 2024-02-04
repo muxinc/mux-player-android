@@ -3,14 +3,17 @@ package com.mux.player.cacheing
 import android.annotation.SuppressLint
 import android.content.Context
 import android.database.Cursor
+import android.renderscript.ScriptGroup.Input
 import androidx.core.database.getStringOrNull
 import com.mux.player.cacheing.CacheController.setup
 import com.mux.player.internal.cache.CachedResourceRecord
 import com.mux.player.internal.cache.RangeFileRecord
+import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
 import java.io.Closeable
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -18,6 +21,7 @@ import java.io.OutputStream
 import java.net.URL
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
+import kotlin.math.min
 
 /**
  * Controls access to Mux Player's cache
@@ -324,17 +328,62 @@ internal object CacheController {
     val url: String,
     val file: CachedResourceRecord,
     val directory: File,
-    val haveByteRanges: RangeFileRecord,
+    val haveByteRanges: List<RangeFileRecord>,
   ): Closeable {
 
-    private val openStreams: MutableMap<ContentRange, OutputStream> = mutableMapOf()
+    // The ContentRanges in this map must always match up with ones in our haveByteRanges
+//    private val openStreams: MutableMap<ContentRange, Pair<OutputStream, Long>> = mutableMapOf()
 
-    fun read(into: ByteArray, startOffset: Long, endOffset: Long): Int {
+    /**
+     * Tries to read the specified byte range of the given resource. It may not be able to if it
+     * encounters missing data, or if the output fills up
+     *
+     * If it reaches the end of the resource, returns -1
+     * If it reaches a hole while reading, it returns whatever data it could read.
+     * If the startOffset is not present at all, returns -2
+     */
+    fun read(into: ByteArray, startOffset: Long, endOffset: Long): Long {
+      val openStreams: MutableList<InputStream> = mutableListOf()
+      var bytesRead: Long = 0
 
+      try {
+        // Find ByteRange containing the start
+        val startingRange = haveByteRanges.indexOfFirst { it.startOffsetInResource <= startOffset }
+        if (startingRange < 0) {
+          // We didn't have the start of the range in the cache so we hit a hole :(
+          return -2
+        }
+
+        // walk ranges starting from the one with starting byte until we should stop
+        var lastRange: RangeFileRecord? = null
+        for (rangeIdx in startingRange..haveByteRanges.lastIndex) {
+          val range = haveByteRanges[rangeIdx]
+          if(lastRange != null && range.startOffsetInResource != lastRange.endOffsetInResource) {
+            // there's a hole if the start of this range isn't adjacent to the last one, break
+            break;
+          } else if (range.endOffsetInResource >= endOffset) {
+            // end of requested range is in the file. Read up to it and break
+            val file = File(directory, range.relativePath)
+            val inputStream = BufferedInputStream(FileInputStream(file))
+            openStreams += inputStream
+
+            val lenToRead = min(into.size - bytesRead, file.length())
+            bytesRead += inputStream.read(into, 0, lenToRead.toInt())
+
+            break;
+          }
+          // end of requested range is in another file, keep looping
+          lastRange = range
+        }
+      } finally {
+        openStreams.forEach { it.close() }
+      }
+
+      return bytesRead
     }
 
     override fun close() {
-      openStreams.forEach { it.value.close() }
+//      openStreams.forEach { it.value.first.close() }
       // todo - Eviction: Files marked as "safe from eviction" should be unmarked here
     }
   }
@@ -344,7 +393,6 @@ internal object CacheController {
     val endByte: Long,
     val totalBytes: Long?,
   )
-
 }
 
 @Throws(IOException::class)
