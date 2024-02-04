@@ -9,6 +9,7 @@ import com.mux.player.internal.cache.CachedResourceRecord
 import com.mux.player.internal.cache.RangeFileRecord
 import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
+import java.io.Closeable
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -318,27 +319,24 @@ internal object CacheController {
    * Object for reading from the Cache. The methods on this object will read bytes from a cache copy
    * of the remote resource.
    *
-   * Use [read] or [readAll] to read out of the cache
    */
   class ReadHandle(
     val url: String,
     val file: CachedResourceRecord,
-    // todo - figure out real fields
-//    val fileRecord: FileRecord,
-//    val cacheControlRecord: CacheControlRecord,
-    val fileInput: InputStream,
-  ) {
-//    enum Result {
-//      HIT, MISS, HOLE
-//    }
+    val directory: File,
+    val haveByteRanges: RangeFileRecord,
+  ): Closeable {
 
-//    sealed class Result {
-//      class HIT : Result,
-//      class MISS()
-//    }
-//
-//    fun read(urlss, offsets...): ByteArray {
-//    }
+    private val openStreams: MutableMap<ContentRange, OutputStream> = mutableMapOf()
+
+    fun read(into: ByteArray, startOffset: Long, endOffset: Long): Int {
+
+    }
+
+    override fun close() {
+      openStreams.forEach { it.value.close() }
+      // todo - Eviction: Files marked as "safe from eviction" should be unmarked here
+    }
   }
 
   data class ContentRange(

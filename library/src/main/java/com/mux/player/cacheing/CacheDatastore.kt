@@ -141,6 +141,10 @@ internal class CacheDatastore(val context: Context) : Closeable {
           do {
             spans += fileRangeCursor.toRangeRecord()
           } while (fileRangeCursor.moveToNext())
+
+          // todo - During eviction, files in a ReadHandles should immune from eviction. set that
+          //  here before we end the transaction
+
           db.setTransactionSuccessful()
           Result.success(Pair(resource, spans))
         } else {
