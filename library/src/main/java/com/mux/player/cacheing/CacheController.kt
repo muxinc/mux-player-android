@@ -65,17 +65,16 @@ internal object CacheController {
   fun tryRead(
     requestUrl: String
   ): ReadHandle? {
-    // todo - check for initialization and throw Something
+    val data = datastore.readCachedRanges(URL(requestUrl)).getOrNull()
 
-    val fileRecord = datastore.readRecord(requestUrl)
-
-    return if (fileRecord == null) {
+    return if (data == null) {
       null
     } else {
       ReadHandle(
         url = requestUrl,
-        file = fileRecord,
-        fileInput = ByteArrayInputStream(ByteArray(5))
+        file = data.first,
+        directory = datastore.fileCacheDir(),
+        haveByteRanges = data.second
       )
     }
   }

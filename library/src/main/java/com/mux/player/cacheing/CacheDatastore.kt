@@ -192,11 +192,6 @@ internal class CacheDatastore(val context: Context) : Closeable {
     }
   }
 
-  fun readRecord(url: String): CachedResourceRecord? {
-    // todo - try to read a record for the given URL, returning it if there's a hit
-    return null
-  }
-
   /**
    * Mux Video segments have special cache keys because their URLs follow a known format even
    * across CDNs.
@@ -275,9 +270,10 @@ internal class CacheDatastore(val context: Context) : Closeable {
     }
   }
 
-  private fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
-  private fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
-  private fun indexDbDir(): File =
+  // todo - organizatio: move these up to the public methods
+  fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
+  fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
+  fun indexDbDir(): File =
     File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
 
   /**
