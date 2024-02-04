@@ -1,7 +1,10 @@
 package com.mux.player.internal.cache
 
 import android.content.ContentValues
+import android.database.Cursor
 import com.mux.player.cacheing.IndexSchema
+import com.mux.player.cacheing.getLongOrThrow
+import com.mux.player.cacheing.getStringOrThrow
 import java.io.File
 
 /**
@@ -13,25 +16,27 @@ import java.io.File
 data class CachedResourceRecord(
   val url: String,
   val etag: String,
-//  val file: File,
   val lookupKey: String,
   val downloadedAtUtcSecs: Long,
   val cacheMaxAge: Long,
   val resourceAge: Long,
   val cacheControl: String,
-  /**
-   * The size of the resource in bytes. For 'normal' HTTP responses, this is set by the Content-Length
-   * header. For Partial-Content responses, this is set based on the total size in the Content-Range
-   * header
-   */
   val resourceSizeBytes: Long,
-
-  // Have thse byte ranges in the cache
-  //  todo - this needs to go on ReadHandle instead
-  // tryRead() can do this
-//  val haveByteRanges: List<Pair<Long, Long>>,
 )
 
+@JvmSynthetic
+internal fun Cursor.toResourceRecord(): CachedResourceRecord {
+  return CachedResourceRecord(
+    url = getStringOrThrow(IndexSchema.ResourcesTable.Columns.remoteUrl),
+    etag = getStringOrThrow(IndexSchema.ResourcesTable.Columns.etag),
+    lookupKey = getStringOrThrow(IndexSchema.ResourcesTable.Columns.lookupKey),
+    downloadedAtUtcSecs = getLongOrThrow(IndexSchema.ResourcesTable.Columns.downloadedAtUnixTime),
+    cacheMaxAge = getLongOrThrow(IndexSchema.ResourcesTable.Columns.maxAgeUnixTime),
+    resourceAge = getLongOrThrow(IndexSchema.ResourcesTable.Columns.resourceAgeUnixTime),
+    cacheControl = getStringOrThrow(IndexSchema.ResourcesTable.Columns.cacheControl),
+    resourceSizeBytes = getLongOrThrow(IndexSchema.ResourcesTable.Columns.totalSize)
+  )
+}
 // todo - Ok so how to refactor ReadHandle and WriteHandle?
 //  Make them Closeable? Yep
 //  WriteHandle: Needs to understand Content-Range

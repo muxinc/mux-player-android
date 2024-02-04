@@ -10,6 +10,8 @@ import android.util.Log
 import com.mux.player.internal.cache.CachedResourceRecord
 import com.mux.player.internal.cache.RangeFileRecord
 import com.mux.player.internal.cache.toContentValues
+import com.mux.player.internal.cache.toRangeRecord
+import com.mux.player.internal.cache.toResourceRecord
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
@@ -112,27 +114,38 @@ internal class CacheDatastore(val context: Context) : Closeable {
     return cacheFile
   }
 
-  fun readCachedRanges(remoteUrl: URL): Result<Pair<CachedResourceRecord, RangeFileRecord>> {
+  fun readCachedRanges(remoteUrl: URL): Result<Pair<CachedResourceRecord, List<RangeFileRecord>>> {
     val db = dbHelper.writableDatabase
     db.beginTransaction()
     try {
       val key = safeCacheKey(remoteUrl)
-      // todo - left join would be more efficient
+      // todo - left join would be more efficient than two queries in a transaction, do that when no one is blocked
       val resourceCursor = db.query(IndexSchema.ResourcesTable.name,
         null,
         """${IndexSchema.ResourcesTable.Columns.lookupKey} is ?""",
         arrayOf(key),
         null, null, null
         )
-      if (resourceCursor.count > 0) {
-        val fileCursor = db.query(IndexSchema.FilesTable.name,
+      if (resourceCursor.count > 0 && resourceCursor.moveToFirst()) {
+        resourceCursor.moveToFirst()
+        val resource = resourceCursor.toResourceRecord()
+
+        val fileRangeCursor = db.query(IndexSchema.FilesTable.name,
           null,
           """${IndexSchema.FilesTable.Columns.lookupKey} is ?""",
           arrayOf(key),
           null, null, null
         )
-
-        
+        return if (fileRangeCursor.count > 0 && fileRangeCursor.moveToFirst()) {
+          val spans = mutableListOf<RangeFileRecord>()
+          do {
+            spans += fileRangeCursor.toRangeRecord()
+          } while (fileRangeCursor.moveToNext())
+          db.setTransactionSuccessful()
+          Result.success(Pair(resource, spans))
+        } else {
+          Result.failure(Exception("Not found"))
+        }
       } else {
         return Result.failure(Exception("Not found"))
       }
