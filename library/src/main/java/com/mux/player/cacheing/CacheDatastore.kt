@@ -1,7 +1,6 @@
 package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
-import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
@@ -9,6 +8,8 @@ import android.os.Build
 import android.util.Base64
 import android.util.Log
 import com.mux.player.internal.cache.CachedResourceRecord
+import com.mux.player.internal.cache.RangeFileRecord
+import com.mux.player.internal.cache.toContentValues
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
@@ -112,10 +113,23 @@ internal class CacheDatastore(val context: Context) : Closeable {
     return cacheFile
   }
 
-  fun writeResourceRecord(fileRecord: CachedResourceRecord): Result<Unit> {
+  fun writeFileRecord(fileRecord: RangeFileRecord): Result<Unit> {
+    val rowId = dbHelper.writableDatabase.insertWithOnConflict(
+      IndexSchema.FilesTable.name, null,
+      fileRecord.toContentValues(),
+      SQLiteDatabase.CONFLICT_REPLACE
+    )
+    return if (rowId >= 0) {
+      Result.success(Unit)
+    } else {
+      Result.failure(IOException("Failed to write to cache index"))
+    }
+  }
+
+  fun writeResourceRecord(entireResourceRecord: CachedResourceRecord): Result<Unit> {
     val rowId = dbHelper.writableDatabase.insertWithOnConflict(
       IndexSchema.ResourcesTable.name, null,
-      fileRecord.toContentValues(),
+      entireResourceRecord.toContentValues(),
       SQLiteDatabase.CONFLICT_REPLACE
     )
 
@@ -286,23 +300,6 @@ internal class CacheDatastore(val context: Context) : Closeable {
       throw IOException(e)
     }
   }
-}
-
-@JvmSynthetic
-internal fun CachedResourceRecord.toContentValues(): ContentValues {
-  val values = ContentValues()
-
-  values.apply {
-    put(IndexSchema.ResourcesTable.Columns.lookupKey, lookupKey)
-    put(IndexSchema.ResourcesTable.Columns.etag, etag)
-    put(IndexSchema.ResourcesTable.Columns.remoteUrl, url)
-    put(IndexSchema.ResourcesTable.Columns.downloadedAtUnixTime, downloadedAtUtcSecs)
-    put(IndexSchema.ResourcesTable.Columns.maxAgeUnixTime, cacheMaxAge)
-    put(IndexSchema.ResourcesTable.Columns.resourceAgeUnixTime, resourceAge)
-    put(IndexSchema.ResourcesTable.Columns.cacheControl, cacheControl)
-  }
-
-  return values
 }
 
 private class DbHelper(

@@ -3,7 +3,7 @@ package com.mux.player
 import android.content.Context
 import com.mux.player.cacheing.CacheDatastore
 import com.mux.player.cacheing.IndexSchema
-import com.mux.player.cacheing.toContentValues
+import com.mux.player.internal.cache.toContentValues
 import com.mux.player.internal.cache.CachedResourceRecord
 import io.mockk.every
 import io.mockk.mockk

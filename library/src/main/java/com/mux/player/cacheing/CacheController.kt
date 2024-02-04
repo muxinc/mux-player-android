@@ -5,10 +5,12 @@ import android.content.Context
 import android.util.Log
 import com.mux.player.cacheing.CacheController.setup
 import com.mux.player.internal.cache.CachedResourceRecord
+import com.mux.player.internal.cache.RangeFileRecord
 import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.URL
@@ -264,86 +266,66 @@ internal object CacheController {
 
     // todo - method to call if the proxy encounters an error, closes & deletes temp file
 
-    // todo - close() that calls finishedWriting() if not finished? Or just make it close()
-
     /**
      * Call when you've reached the end of the body input. This closes the streams to the player
      * socket and file (if any)
+     *
+     * Do not write to this handle anymore after calling this method.
      */
     fun finishedWriting() {
       playerOutputStream.close()
 
-      // todo - however much we wrote, insert the row and move the file
-
       // If there's a temp file, we are caching it so move it from the temp file and write to index
       fileOutputStream?.close()
       if (tempFile != null) {
-
-        // todo - ok so now we have a 'span', which is what a FileRecord is. Could be partial,
-        //  could be the whole thing, not this method's problem. We need to write the record and
-        //  then move the file
-        // so before that lets go back to the schema
-
-
         val cacheControl = responseHeaders.getCacheControl()
-        val etag = responseHeaders.getETag()
-        // todo - Instead of assuming whole file, we must write the number of bytes we really wrote
-        val contentLength = responseHeaders.getContentLength()
 
-        if (cacheControl != null && etag != null) {
-
+        if (cacheControl != null) {
           val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
-
-
           val nowUtc = System.currentTimeMillis().let { timeMs ->
             val timezone = TimeZone.getDefault()
             (timeMs + timezone.getOffset(timeMs)) / 1000
           }
-          val recordAge = responseHeaders.getAge()?.toLongOrNull()
-          val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(cacheControl)
-
-//          val record = CachedResourceRecord(
-//            url = url,
-//            etag = etag,
-//            file = cacheFile,
-//            lookupKey = datastore.safeCacheKey(URL(url)),
-//            resourceSizeBytes = contentLength,
-//            downloadedAtUtcSecs = nowUtc,
-//            cacheMaxAge = maxAge ?: TimeUnit.SECONDS.convert(7, TimeUnit.DAYS),
-//            resourceAge = recordAge ?: 0L,
-//            cacheControl = cacheControl,
-//          )
-//
-//          val result = datastore.writeRecord(record)
-
-          // todo - return a fail or throw somerthing
-        } else {
-          // todo: need a logger
-          Log.w(
-            "CacheController", "Had temp file but not enough info to cache. " +
-                    "cache-control: [$cacheControl] etag $etag"
+          @Suppress("IfThenToElvis") //suggested code is unreadable
+          val contentRange = if (contentRange != null) {
+            contentRange
+          } else if (contentLength != null) {
+            ContentRange(0, contentLength, contentLength)
+          } else {
+            // I don't think this case will be very common, CF/Fastly/Mux all do it right
+            throw IOException("Expected to have Content-Length or Content-Range")
+          }
+          val result = datastore.writeFileRecord(
+            RangeFileRecord(
+              lookupKey = datastore.generateCacheKey(URL(url)),
+              file = cacheFile,
+              fileSize = fileBytesWritten,
+              lastAccessedAtUtcSecs = nowUtc,
+              startOffsetInResource = contentRange.startByte,
+              endOffsetInResource = contentRange.endByte,
+            )
           )
+          // todo - handle write failures (but they shouldn't be common)
         }
-
-        //datastore.writeRecord()
       }
     }
   }
+}
 
-  /**
-   * Object for reading from the Cache. The methods on this object will read bytes from a cache copy
-   * of the remote resource.
-   *
-   * Use [read] or [readAll] to read out of the cache
-   */
-  class ReadHandle(
-    val url: String,
-    val file: CachedResourceRecord,
-    // todo - figure out real fields
+/**
+ * Object for reading from the Cache. The methods on this object will read bytes from a cache copy
+ * of the remote resource.
+ *
+ * Use [read] or [readAll] to read out of the cache
+ */
+class ReadHandle(
+  val url: String,
+  val file: CachedResourceRecord,
+  // todo - figure out real fields
 //    val fileRecord: FileRecord,
 //    val cacheControlRecord: CacheControlRecord,
-    val fileInput: InputStream,
-  ) {
+  val fileInput: InputStream,
+) {
 //    enum Result {
 //      HIT, MISS, HOLE
 //    }
@@ -355,12 +337,11 @@ internal object CacheController {
 //
 //    fun read(urlss, offsets...): ByteArray {
 //    }
-  }
-
-  data class ContentRange(
-    val startByte: Long,
-    val endByte: Long,
-    val totalBytes: Long?,
-  )
-
 }
+
+data class ContentRange(
+  val startByte: Long,
+  val endByte: Long,
+  val totalBytes: Long?,
+)
+

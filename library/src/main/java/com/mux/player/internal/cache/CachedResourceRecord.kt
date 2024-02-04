@@ -1,5 +1,7 @@
 package com.mux.player.internal.cache
 
+import android.content.ContentValues
+import com.mux.player.cacheing.IndexSchema
 import java.io.File
 
 /**
@@ -49,3 +51,20 @@ data class CachedResourceRecord(
 
 // todo - note about eviction: LRU is based on cached span files, but age is based off whole segment
 //  so remember that in the query [[IMplies that span table needs a last-access, CRR does not]]
+
+@JvmSynthetic
+internal fun CachedResourceRecord.toContentValues(): ContentValues {
+  val values = ContentValues()
+
+  values.apply {
+    put(IndexSchema.ResourcesTable.Columns.lookupKey, lookupKey)
+    put(IndexSchema.ResourcesTable.Columns.etag, etag)
+    put(IndexSchema.ResourcesTable.Columns.remoteUrl, url)
+    put(IndexSchema.ResourcesTable.Columns.downloadedAtUnixTime, downloadedAtUtcSecs)
+    put(IndexSchema.ResourcesTable.Columns.maxAgeUnixTime, cacheMaxAge)
+    put(IndexSchema.ResourcesTable.Columns.resourceAgeUnixTime, resourceAge)
+    put(IndexSchema.ResourcesTable.Columns.cacheControl, cacheControl)
+  }
+
+  return values
+}

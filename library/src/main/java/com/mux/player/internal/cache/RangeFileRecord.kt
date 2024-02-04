@@ -1,23 +1,40 @@
 package com.mux.player.internal.cache
 
+import android.content.ContentValues
+import com.mux.player.cacheing.IndexSchema
 import java.io.File
 
 /**
  * Represents a cached resource from a stream. Could be a segment, static rendition, or whatever
  *
+ * The file is a contiguous part of an overall resource (segment, mp4 file, etc). It may be only
+ * part of a full resource. To get all the spans cached
+ *
  * We may only have part of the file, and the `CacheDatastore` may choose to store this data on the
  * fs in smaller pieces, all in one file, or something else.
+ *
+ * The size of the entire resource can be found on the [CachedResourceRecord]
  */
-data class FileRecord(
-//  val file: File,
+data class RangeFileRecord(
   val lookupKey: String,
   val file: File,
   val fileSize: Long,
   val lastAccessedAtUtcSecs: Long,
-  val startIndexInResource: Long,
-  val endIndexInResource: String,
-  val resourceSizeBytes: Long,
+  val startOffsetInResource: Long,
+  val endOffsetInResource: Long,
 )
+
+@JvmSynthetic
+internal fun RangeFileRecord.toContentValues(): ContentValues {
+  return ContentValues().apply {
+    put(IndexSchema.FilesTable.Columns.lookupKey, lookupKey)
+    put(IndexSchema.FilesTable.Columns.filePath, file.path)
+    put(IndexSchema.FilesTable.Columns.fileSize, fileSize)
+    put(IndexSchema.FilesTable.Columns.lastAccessedUtc, lastAccessedAtUtcSecs)
+    put(IndexSchema.FilesTable.Columns.startOffset, startOffsetInResource)
+    put(IndexSchema.FilesTable.Columns.endOffset, endOffsetInResource)
+  }
+}
 
 // todo - Ok so how to refactor ReadHandle and WriteHandle?
 //  Make them Closeable? Yep
