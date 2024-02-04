@@ -330,9 +330,6 @@ internal object CacheController {
     val haveByteRanges: List<RangeFileRecord>,
   ): Closeable {
 
-    // The ContentRanges in this map must always match up with ones in our haveByteRanges
-//    private val openStreams: MutableMap<ContentRange, Pair<OutputStream, Long>> = mutableMapOf()
-
     /**
      * Tries to read the specified byte range of the given resource. It may not be able to if it
      * encounters missing data, or if the output fills up
@@ -358,7 +355,7 @@ internal object CacheController {
         for (rangeIdx in startingRange..haveByteRanges.lastIndex) {
           val range = haveByteRanges[rangeIdx]
           if(lastRange != null && range.startOffsetInResource != lastRange.endOffsetInResource) {
-            // there's a hole if the start of this range isn't adjacent to the last one, break
+            // there's a hole if the start of this range isn't adjacent to the last one, that's it
             break;
           } else if (range.endOffsetInResource >= endOffset) {
             // end of requested range is in the file. Read up to it and break
