@@ -112,6 +112,35 @@ internal class CacheDatastore(val context: Context) : Closeable {
     return cacheFile
   }
 
+  fun readCachedRanges(remoteUrl: URL): Result<Pair<CachedResourceRecord, RangeFileRecord>> {
+    val db = dbHelper.writableDatabase
+    db.beginTransaction()
+    try {
+      val key = safeCacheKey(remoteUrl)
+      // todo - left join would be more efficient
+      val resourceCursor = db.query(IndexSchema.ResourcesTable.name,
+        null,
+        """${IndexSchema.ResourcesTable.Columns.lookupKey} is ?""",
+        arrayOf(key),
+        null, null, null
+        )
+      if (resourceCursor.count > 0) {
+        val fileCursor = db.query(IndexSchema.FilesTable.name,
+          null,
+          """${IndexSchema.FilesTable.Columns.lookupKey} is ?""",
+          arrayOf(key),
+          null, null, null
+        )
+
+        
+      } else {
+        return Result.failure(Exception("Not found"))
+      }
+    } finally {
+      db.endTransaction()
+    }
+  }
+
   fun writeFileRecord(fileRecord: RangeFileRecord): Result<Unit> {
     val rowId = dbHelper.writableDatabase.insertWithOnConflict(
       IndexSchema.FilesTable.name, null,
