@@ -1,7 +1,10 @@
 package com.mux.player.internal.cache
 
 import android.content.ContentValues
+import android.database.Cursor
 import com.mux.player.cacheing.IndexSchema
+import com.mux.player.cacheing.getLongOrThrow
+import com.mux.player.cacheing.getStringOrThrow
 import java.io.File
 
 /**
@@ -17,7 +20,7 @@ import java.io.File
  */
 data class RangeFileRecord(
   val lookupKey: String,
-  val file: File,
+  val relativePath: String,
   val fileSize: Long,
   val lastAccessedAtUtcSecs: Long,
   val startOffsetInResource: Long,
@@ -28,12 +31,24 @@ data class RangeFileRecord(
 internal fun RangeFileRecord.toContentValues(): ContentValues {
   return ContentValues().apply {
     put(IndexSchema.FilesTable.Columns.lookupKey, lookupKey)
-    put(IndexSchema.FilesTable.Columns.filePath, file.path)
+    put(IndexSchema.FilesTable.Columns.filePath, relativePath)
     put(IndexSchema.FilesTable.Columns.fileSize, fileSize)
     put(IndexSchema.FilesTable.Columns.lastAccessedUtc, lastAccessedAtUtcSecs)
     put(IndexSchema.FilesTable.Columns.startOffset, startOffsetInResource)
     put(IndexSchema.FilesTable.Columns.endOffset, endOffsetInResource)
   }
+}
+
+@JvmSynthetic
+internal fun Cursor.toRangeRecord(): RangeFileRecord {
+ return RangeFileRecord(
+   lookupKey = getStringOrThrow(IndexSchema.FilesTable.Columns.lookupKey),
+   relativePath = getStringOrThrow(IndexSchema.FilesTable.Columns.filePath),
+   fileSize = getLongOrThrow(IndexSchema.FilesTable.Columns.fileSize),
+   lastAccessedAtUtcSecs = getLongOrThrow(IndexSchema.FilesTable.Columns.lastAccessedUtc),
+   startOffsetInResource = getLongOrThrow(IndexSchema.FilesTable.Columns.startOffset),
+   endOffsetInResource = getLongOrThrow(IndexSchema.FilesTable.Columns.endOffset),
+ )
 }
 
 // todo - Ok so how to refactor ReadHandle and WriteHandle?

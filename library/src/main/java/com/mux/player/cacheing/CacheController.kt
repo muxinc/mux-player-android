@@ -2,6 +2,8 @@ package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.database.Cursor
+import androidx.core.database.getStringOrNull
 import com.mux.player.cacheing.CacheController.setup
 import com.mux.player.internal.cache.CachedResourceRecord
 import com.mux.player.internal.cache.RangeFileRecord
@@ -299,7 +301,7 @@ internal object CacheController {
           val result = datastore.writeFileRecord(
             RangeFileRecord(
               lookupKey = datastore.generateCacheKey(URL(url)),
-              file = cacheFile,
+              relativePath = cacheFile.path,
               fileSize = fileBytesWritten,
               lastAccessedAtUtcSecs = nowUtc,
               startOffsetInResource = contentRange.startByte,
@@ -345,4 +347,24 @@ internal object CacheController {
     val totalBytes: Long?,
   )
 
+}
+
+@Throws(IOException::class)
+fun Cursor.getStringOrThrow(name: String): String {
+  val idx = getColumnIndex(name)
+  return if (idx >= 0) {
+    getString(idx)
+  } else {
+    throw IOException("Could not find expected column: $name")
+  }
+}
+
+@Throws(IOException::class)
+fun Cursor.getLongOrThrow(name: String): Long {
+  val idx = getColumnIndex(name)
+  return if (idx >= 0) {
+    getLong(idx)
+  } else {
+    throw IOException("Could not find expected column: $name")
+  }
 }
