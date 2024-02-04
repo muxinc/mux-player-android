@@ -1,12 +1,9 @@
 package com.mux.player.cacheing
 
 import android.util.Log
-import java.io.OutputStreamWriter
-import java.io.PrintWriter
 import java.net.Socket
 import java.net.SocketException
 import java.net.URL
-import java.nio.charset.StandardCharsets
 import java.util.concurrent.BlockingDeque
 import java.util.concurrent.LinkedBlockingDeque
 
@@ -80,18 +77,24 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
     }
 
     private fun write() {
-      val writer = //PrintWriter(
-        OutputStreamWriter(
-          socket.getOutputStream(), StandardCharsets.US_ASCII
-        )//, true
-      //)
-      val outputStream = socket.getOutputStream()
-      while(running) {
-        val chunk = cdnInputQueue.takeFirst()
-        Log.w(TAG, "writing chunk:\n" + chunk.contentToString())
-        outputStream.write(chunk)
-//        writer.write(chunk)
-        // todo - Write to the cache too.
-      }
+      // todo - not here, goes in CDNConnection
+        val writeHandle = CacheController.downloadStarted(
+            requestUrl = "How to get this",
+            responseHeaders = mapOf(), // todo - real headers
+            socket.getOutputStream()
+        )
+        try {
+            while (running) {
+                val chunk = cdnInputQueue.takeFirst()
+                // todo - how muc are we writing here?
+                writeHandle.write(chunk)
+
+                // todo - when is EOF?
+            }
+            // todo - get here somehow.. After we reach the end of the request
+            writeHandle.finishedWriting()
+        } catch(ex:SocketException) {
+            Log.i(TAG, "Player closed the connection")
+        }
     }
 }
