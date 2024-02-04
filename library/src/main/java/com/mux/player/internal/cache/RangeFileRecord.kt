@@ -37,11 +37,6 @@ internal fun RangeFileRecord.toContentValues(): ContentValues {
 }
 
 // todo - Ok so how to refactor ReadHandle and WriteHandle?
-//  Make them Closeable? Yep
-//  WriteHandle: Needs to understand Content-Range
-//    tryWrite(whatever): Need to write CachedResourceRecord first
-//    finishedWriting() needs to write amount actually written, not assume entire amount
-//    finishedWriting() -> close()
 //  ReadHandle/tryRead:
 //    tryRead() must take a content range
 //    ReadHandle should tell the caller how much data it actually has available (could be less)

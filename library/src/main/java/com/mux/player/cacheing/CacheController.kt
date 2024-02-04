@@ -2,7 +2,6 @@ package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.util.Log
 import com.mux.player.cacheing.CacheController.setup
 import com.mux.player.internal.cache.CachedResourceRecord
 import com.mux.player.internal.cache.RangeFileRecord
@@ -62,6 +61,7 @@ internal object CacheController {
     // todo - check for initialization and throw Something
 
     val fileRecord = datastore.readRecord(requestUrl)
+
     return if (fileRecord == null) {
       null
     } else {
@@ -286,6 +286,7 @@ internal object CacheController {
             val timezone = TimeZone.getDefault()
             (timeMs + timezone.getOffset(timeMs)) / 1000
           }
+
           @Suppress("IfThenToElvis") //suggested code is unreadable
           val contentRange = if (contentRange != null) {
             contentRange
@@ -310,22 +311,21 @@ internal object CacheController {
       }
     }
   }
-}
 
-/**
- * Object for reading from the Cache. The methods on this object will read bytes from a cache copy
- * of the remote resource.
- *
- * Use [read] or [readAll] to read out of the cache
- */
-class ReadHandle(
-  val url: String,
-  val file: CachedResourceRecord,
-  // todo - figure out real fields
+  /**
+   * Object for reading from the Cache. The methods on this object will read bytes from a cache copy
+   * of the remote resource.
+   *
+   * Use [read] or [readAll] to read out of the cache
+   */
+  class ReadHandle(
+    val url: String,
+    val file: CachedResourceRecord,
+    // todo - figure out real fields
 //    val fileRecord: FileRecord,
 //    val cacheControlRecord: CacheControlRecord,
-  val fileInput: InputStream,
-) {
+    val fileInput: InputStream,
+  ) {
 //    enum Result {
 //      HIT, MISS, HOLE
 //    }
@@ -337,11 +337,12 @@ class ReadHandle(
 //
 //    fun read(urlss, offsets...): ByteArray {
 //    }
+  }
+
+  data class ContentRange(
+    val startByte: Long,
+    val endByte: Long,
+    val totalBytes: Long?,
+  )
+
 }
-
-data class ContentRange(
-  val startByte: Long,
-  val endByte: Long,
-  val totalBytes: Long?,
-)
-

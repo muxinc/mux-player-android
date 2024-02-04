@@ -107,7 +107,6 @@ internal class CacheDatastore(val context: Context) : Closeable {
     remoteUrl: URL,
     contentRange: CacheController.ContentRange? = null
   ): File {
-    // todo - we need to add more to the filename, since we can have many per segment
     val cacheFile = createCacheFile(remoteUrl, contentRange)
     tempFile.renameTo(cacheFile)
     return cacheFile
