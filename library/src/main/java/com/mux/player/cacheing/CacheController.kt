@@ -325,7 +325,7 @@ internal object CacheController {
     val file: CachedResourceRecord,
     val directory: File,
     val haveByteRanges: List<RangeFileRecord>,
-  ): Closeable {
+  ) : Closeable {
 
     /**
      * Tries to read the specified byte range of the given resource. It may not be able to if it
@@ -339,40 +339,37 @@ internal object CacheController {
      * If the startOffset is not present at all, returns -2
      */
     fun read(into: ByteArray, startOffset: Long, endOffset: Long): Long {
-      val openStreams: MutableList<InputStream> = mutableListOf()
       val totalBytesRequested = endOffset - startOffset
       var bytesRead: Long = 0
 
-      try {
-        // Find ByteRange containing the start
-        val startingRange = haveByteRanges.indexOfFirst { it.startOffsetInResource <= startOffset }
-        if (startingRange < 0) {
-          // We didn't have the start of the range in the cache so we hit a hole :(
-          return -2
+      // Find ByteRange containing the start
+      val startingRange = haveByteRanges.indexOfFirst { it.startOffsetInResource <= startOffset }
+      if (startingRange < 0) {
+        // We didn't have the start of the range in the cache so we hit a hole :(
+        return -2
+      }
+
+      // walk ranges starting from the one with starting byte until we should stop
+      var lastRange: RangeFileRecord? = null
+      for (rangeIdx in startingRange..haveByteRanges.lastIndex) {
+        val range = haveByteRanges[rangeIdx]
+        if (lastRange != null && range.startOffsetInResource != lastRange.endOffsetInResource) {
+          // there's a hole if the start of this range isn't adjacent to the last one, that's it
+          break;
         }
 
-        // walk ranges starting from the one with starting byte until we should stop
-        var lastRange: RangeFileRecord? = null
-        for (rangeIdx in startingRange..haveByteRanges.lastIndex) {
-          val range = haveByteRanges[rangeIdx]
-          if(lastRange != null && range.startOffsetInResource != lastRange.endOffsetInResource) {
-            // there's a hole if the start of this range isn't adjacent to the last one, that's it
-            break;
-          }
+        val file = File(directory, range.relativePath)
+        val readBytes = if (range.endOffsetInResource >= endOffset) {
+          // file has more than we want
+          totalBytesRequested - bytesRead
+        } else {
+          // file has less than amount we want
+          file.length()
+        }
 
-          val file = File(directory, range.relativePath)
-          val readBytes = if (range.endOffsetInResource >= endOffset) {
-            // file has more than we want
-            totalBytesRequested - bytesRead
-          } else {
-            // file has less than amount we want
-            file.length()
-          }
-
-          // end of requested range is in the file. Read up to it and break
-          val inputStream = BufferedInputStream(FileInputStream(file))
-          openStreams += inputStream
-
+        // end of requested range is in the file. Read up to it and break
+        val inputStream = BufferedInputStream(FileInputStream(file))
+        try {
           val lenToRead = min(into.size.toLong(), readBytes)
           bytesRead += inputStream.read(into, bytesRead.toInt(), lenToRead.toInt())
 
@@ -383,9 +380,11 @@ internal object CacheController {
             // end of requested range is in another file, keep looping
             lastRange = range
           }
+        } finally {
+          try {
+            inputStream.close()
+          } catch (_: Exception) { }
         }
-      } finally {
-        openStreams.forEach { it.close() }
       }
 
       return bytesRead
