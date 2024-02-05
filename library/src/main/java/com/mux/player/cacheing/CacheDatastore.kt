@@ -1,14 +1,17 @@
 package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
-import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.os.Build
 import android.util.Base64
 import android.util.Log
-import com.mux.player.internal.cache.FileRecord
+import com.mux.player.internal.cache.CachedResourceRecord
+import com.mux.player.internal.cache.RangeFileRecord
+import com.mux.player.internal.cache.toContentValues
+import com.mux.player.internal.cache.toRangeRecord
+import com.mux.player.internal.cache.toResourceRecord
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
@@ -101,16 +104,84 @@ internal class CacheDatastore(val context: Context) : Closeable {
   /**
    * Move a completed download from the temp file to the cache where it will live until it falls out
    */
-  fun moveFromTempFile(tempFile: File, remoteUrl: URL): File {
-    val cacheFile = createCacheFile(remoteUrl)
+  fun moveFromTempFile(
+    tempFile: File,
+    remoteUrl: URL,
+    contentRange: CacheController.ContentRange? = null
+  ): File {
+    val cacheFile = createCacheFile(remoteUrl, contentRange)
     tempFile.renameTo(cacheFile)
     return cacheFile
   }
 
-  fun writeRecord(fileRecord: FileRecord): Result<Unit> {
+  /**
+   * Returns all cached data ranges for the resource with the given URL
+   *
+   * Ranges will be ordered by their starting index, but are not guaranteed to be contiguous, may
+   * overlap, etc.
+   */
+  fun readCachedRanges(remoteUrl: URL): Result<Pair<CachedResourceRecord, List<RangeFileRecord>>> {
+    val db = dbHelper.writableDatabase
+    db.beginTransaction()
+    try {
+      val key = safeCacheKey(remoteUrl)
+      // todo - left join would be more efficient than two queries in a transaction, do that when no one is blocked
+      val resourceCursor = db.query(IndexSchema.ResourcesTable.name,
+        null,
+        """${IndexSchema.ResourcesTable.Columns.lookupKey} is ?""",
+        arrayOf(key),
+        null, null, null
+        )
+      if (resourceCursor.count > 0 && resourceCursor.moveToFirst()) {
+        resourceCursor.moveToFirst()
+        val resource = resourceCursor.toResourceRecord()
+
+        val fileRangeCursor = db.query(IndexSchema.FilesTable.name,
+          null,
+          """${IndexSchema.FilesTable.Columns.lookupKey} is ?""",
+          arrayOf(key),
+          null, null,
+          /* orderBy = */ "${IndexSchema.FilesTable.Columns.startOffset} ASC"
+        )
+        return if (fileRangeCursor.count > 0 && fileRangeCursor.moveToFirst()) {
+          val spans = mutableListOf<RangeFileRecord>()
+          do {
+            spans += fileRangeCursor.toRangeRecord()
+          } while (fileRangeCursor.moveToNext())
+
+          // todo - During eviction, files in a ReadHandles should immune from eviction. set that
+          //  here before we end the transaction
+
+          db.setTransactionSuccessful()
+          Result.success(Pair(resource, spans))
+        } else {
+          Result.failure(Exception("Not found"))
+        }
+      } else {
+        return Result.failure(Exception("Not found"))
+      }
+    } finally {
+      db.endTransaction()
+    }
+  }
+
+  fun writeFileRecord(fileRecord: RangeFileRecord): Result<Unit> {
     val rowId = dbHelper.writableDatabase.insertWithOnConflict(
       IndexSchema.FilesTable.name, null,
       fileRecord.toContentValues(),
+      SQLiteDatabase.CONFLICT_REPLACE
+    )
+    return if (rowId >= 0) {
+      Result.success(Unit)
+    } else {
+      Result.failure(IOException("Failed to write to cache index"))
+    }
+  }
+
+  fun writeResourceRecord(entireResourceRecord: CachedResourceRecord): Result<Unit> {
+    val rowId = dbHelper.writableDatabase.insertWithOnConflict(
+      IndexSchema.ResourcesTable.name, null,
+      entireResourceRecord.toContentValues(),
       SQLiteDatabase.CONFLICT_REPLACE
     )
 
@@ -119,11 +190,6 @@ internal class CacheDatastore(val context: Context) : Closeable {
     } else {
       Result.failure(IOException("Failed to write to cache index"))
     }
-  }
-
-  fun readRecord(url: String): FileRecord? {
-    // todo - try to read a record for the given URL, returning it if there's a hit
-    return null
   }
 
   /**
@@ -204,9 +270,11 @@ internal class CacheDatastore(val context: Context) : Closeable {
     }
   }
 
-  private fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
-  private fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
-  private fun indexDbDir(): File = File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
+  // todo - organizatio: move these up to the public methods
+  fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
+  fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
+  fun indexDbDir(): File =
+    File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
 
   /**
    * Creates a new temp file for downloading-into. Temp files go in a special dir that gets cleared
@@ -220,8 +288,14 @@ internal class CacheDatastore(val context: Context) : Closeable {
    * Creates a new cache file named after its associated cache key. If a file with that name already
    * existed, it will be deleted.
    */
-  private fun createCacheFile(url: URL): File {
-    val basename = safeCacheKey(url)
+  private fun createCacheFile(url: URL, contentRange: CacheController.ContentRange? = null): File {
+    val key = safeCacheKey(url)
+    val basename = if (contentRange == null) {
+      key
+    } else {
+      // we don't ever read the start/end from the name, but it makes the file unique enough
+      key + "-${contentRange.startByte}-${contentRange.endByte}"
+    }
     val cacheFile = File(fileCacheDir(), basename)
     cacheFile.delete()
     cacheFile.createNewFile()
@@ -240,6 +314,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
         throw CancellationException("open interrupted")
       }
     }
+
     fun doOpen(): DbHelper {
       // todo - we should also consider getting our cacheQuota here, that will take a long time
       //  so maybe do it async & only consider the cache quota once we have it(..?)
@@ -275,24 +350,6 @@ internal class CacheDatastore(val context: Context) : Closeable {
   }
 }
 
-@JvmSynthetic
-internal fun FileRecord.toContentValues(): ContentValues {
-  val values = ContentValues()
-
-  values.apply {
-    put(IndexSchema.FilesTable.Columns.lookupKey, lookupKey)
-    put(IndexSchema.FilesTable.Columns.etag, etag)
-    put(IndexSchema.FilesTable.Columns.filePath, file.path)
-    put(IndexSchema.FilesTable.Columns.remoteUrl, url)
-    put(IndexSchema.FilesTable.Columns.downloadedAtUnixTime, downloadedAtUtcSecs)
-    put(IndexSchema.FilesTable.Columns.maxAgeUnixTime, cacheMaxAge)
-    put(IndexSchema.FilesTable.Columns.resourceAgeUnixTime, resourceAge)
-    put(IndexSchema.FilesTable.Columns.cacheControl, cacheControl)
-  }
-
-  return values
-}
-
 private class DbHelper(
   appContext: Context,
   directory: File,
@@ -320,23 +377,35 @@ private class DbHelper(
   override fun onCreate(db: SQLiteDatabase?) {
     db?.execSQL(
       """
+        create table if not exists ${IndexSchema.ResourcesTable.name} (
+            ${IndexSchema.ResourcesTable.Columns.lookupKey} text not null primary key,
+            ${IndexSchema.ResourcesTable.Columns.remoteUrl} text not null,
+            ${IndexSchema.ResourcesTable.Columns.etag} text not null,
+            TOTAL_SEGMENT_SIZE,
+            ${IndexSchema.ResourcesTable.Columns.downloadedAtUnixTime} integer not null,
+            ${IndexSchema.ResourcesTable.Columns.maxAgeUnixTime} integer not null,
+            ${IndexSchema.ResourcesTable.Columns.resourceAgeUnixTime} integer not null default 0,
+            ${IndexSchema.ResourcesTable.Columns.cacheControl} text not null
+        )
+        """
+    )
+    db?.execSQL(
+      """
         create table if not exists ${IndexSchema.FilesTable.name} (
-            ${IndexSchema.FilesTable.Columns.lookupKey} text not null primary key,
-            ${IndexSchema.FilesTable.Columns.remoteUrl} text not null,
-            ${IndexSchema.FilesTable.Columns.etag} text not null,
+            ${IndexSchema.FilesTable.Columns.lookupKey} text not null,
             ${IndexSchema.FilesTable.Columns.filePath} text not null,
-            ${IndexSchema.FilesTable.Columns.downloadedAtUnixTime} integer not null,
-            ${IndexSchema.FilesTable.Columns.maxAgeUnixTime} integer not null,
-            ${IndexSchema.FilesTable.Columns.resourceAgeUnixTime} integer not null default 0,
-            ${IndexSchema.FilesTable.Columns.cacheControl} text not null
+            ${IndexSchema.FilesTable.Columns.startOffset} integer not null,
+            ${IndexSchema.FilesTable.Columns.endOffset} integer not null,
+            ${IndexSchema.FilesTable.Columns.lastAccessedUtc} integer not null
         )
       """.trimIndent()
     )
   }
 
   override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-    // in the future, if we need to update the sql schema, we'd increment Schema.version and do the
-    //  migration here by adding or altering tables or whatever.
+    // todo - After we release this to people, we will need to start handling migrations (if we need
+    //  update the schema)
+    // for now, we just have to reinstall our apps
   }
 }
 
@@ -360,7 +429,20 @@ internal object IndexSchema {
   const val version = 1
 
   object FilesTable {
-    const val name = "files"
+    const val name = "file"
+
+    object Columns {
+      const val lookupKey = "lookup_key"
+      const val filePath = "file_path"
+      const val fileSize = "file_size"
+      const val startOffset = "start_offset"
+      const val endOffset = "end_offset"
+      const val lastAccessedUtc = "last_access"
+    }
+  }
+
+  object ResourcesTable {
+    const val name = "resources"
 
     object Columns {
       /**
@@ -389,6 +471,11 @@ internal object IndexSchema {
        * The path of the cached copy of the file. This path is relative to the app's cache dir
        */
       const val filePath = "file_path"
+
+      /**
+       * Total size of the resource being cached
+       */
+      const val totalSize = "total_size"
 
       /**
        * Age of the resource as described by the `Age` header

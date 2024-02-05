@@ -47,6 +47,10 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
     private fun read() {
         try {
             httpParser!!.parseRequest()
+
+            // todo - query if we should use cdn connection
+            // todo - handle 'cache holes'
+
             Log.i(TAG, "FROM_PLAYER>>\n" + httpParser!!.getRequestString())
             var cdnHostHeaderValue = httpParser!!.getHeader("host")
             if (cdnHostHeaderValue.isEmpty()) {
@@ -73,6 +77,7 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
     }
 
     private fun write() {
+      // todo - not here, goes in CDNConnection
         val writeHandle = CacheController.downloadStarted(
             requestUrl = "How to get this",
             responseHeaders = mapOf(), // todo - real headers
@@ -81,7 +86,7 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
         try {
             while (running) {
                 val chunk = cdnInputQueue.takeFirst()
-                // todo - how much are we writing here?
+                // todo - how muc are we writing here?
                 writeHandle.write(chunk)
 
                 // todo - when is EOF?
