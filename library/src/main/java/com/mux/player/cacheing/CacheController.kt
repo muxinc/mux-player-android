@@ -155,8 +155,12 @@ internal object CacheController {
     requestUrl: String,
     responseHeaders: Map<String, List<String>>
   ): Boolean {
-    val cacheControlLine = responseHeaders.getCacheControl()
+    val etag = responseHeaders.getETag()
+    if (etag == null) {
+      return false
+    }
 
+    val cacheControlLine = responseHeaders.getCacheControl()
     if (cacheControlLine == null) {
       return false
     }
