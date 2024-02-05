@@ -361,7 +361,7 @@ internal object CacheController {
           }
 
           val file = File(directory, range.relativePath)
-          val availableBytesForUs = if (range.endOffsetInResource >= endOffset) {
+          val readBytes = if (range.endOffsetInResource >= endOffset) {
             // file has more than we want
             totalBytesRequested - bytesRead
           } else {
@@ -373,7 +373,7 @@ internal object CacheController {
           val inputStream = BufferedInputStream(FileInputStream(file))
           openStreams += inputStream
 
-          val lenToRead = min(into.size.toLong(), availableBytesForUs)
+          val lenToRead = min(into.size.toLong(), readBytes)
           bytesRead += inputStream.read(into, bytesRead.toInt(), lenToRead.toInt())
 
           if (bytesRead >= totalBytesRequested || bytesRead >= into.size) {
