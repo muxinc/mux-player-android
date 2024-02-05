@@ -3,14 +3,11 @@ package com.mux.player.cacheing
 import android.annotation.SuppressLint
 import android.content.Context
 import android.database.Cursor
-import android.renderscript.ScriptGroup.Input
-import androidx.core.database.getStringOrNull
 import com.mux.player.cacheing.CacheController.setup
 import com.mux.player.internal.cache.CachedResourceRecord
 import com.mux.player.internal.cache.RangeFileRecord
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
-import java.io.ByteArrayInputStream
 import java.io.Closeable
 import java.io.File
 import java.io.FileInputStream
@@ -332,7 +329,10 @@ internal object CacheController {
 
     /**
      * Tries to read the specified byte range of the given resource. It may not be able to if it
-     * encounters missing data, or if the output fills up
+     * encounters missing data, or if the output fills up early.
+     *
+     * You can keep reading from the same [ReadHandle] by advancing `startOffset`, until there's
+     * a hole in the cached data.
      *
      * If it reaches the end of the resource, returns -1
      * If it reaches a hole while reading, it returns whatever data it could read.
@@ -340,6 +340,7 @@ internal object CacheController {
      */
     fun read(into: ByteArray, startOffset: Long, endOffset: Long): Long {
       val openStreams: MutableList<InputStream> = mutableListOf()
+      val totalBytesRequested = endOffset - startOffset
       var bytesRead: Long = 0
 
       try {
@@ -357,19 +358,31 @@ internal object CacheController {
           if(lastRange != null && range.startOffsetInResource != lastRange.endOffsetInResource) {
             // there's a hole if the start of this range isn't adjacent to the last one, that's it
             break;
-          } else if (range.endOffsetInResource >= endOffset) {
-            // end of requested range is in the file. Read up to it and break
-            val file = File(directory, range.relativePath)
-            val inputStream = BufferedInputStream(FileInputStream(file))
-            openStreams += inputStream
-
-            val lenToRead = min(into.size - bytesRead, file.length())
-            bytesRead += inputStream.read(into, 0, lenToRead.toInt())
-
-            break;
           }
-          // end of requested range is in another file, keep looping
-          lastRange = range
+
+          val file = File(directory, range.relativePath)
+          val availableBytesForUs = if (range.endOffsetInResource >= endOffset) {
+            // file has more than we want
+            totalBytesRequested - bytesRead
+          } else {
+            // file has less than amount we want
+            file.length()
+          }
+
+          // end of requested range is in the file. Read up to it and break
+          val inputStream = BufferedInputStream(FileInputStream(file))
+          openStreams += inputStream
+
+          val lenToRead = min(into.size.toLong(), availableBytesForUs)
+          bytesRead += inputStream.read(into, bytesRead.toInt(), lenToRead.toInt())
+
+          if (bytesRead >= totalBytesRequested || bytesRead >= into.size) {
+            // We read all we're supposed to (or all we can)
+            break;
+          } else {
+            // end of requested range is in another file, keep looping
+            lastRange = range
+          }
         }
       } finally {
         openStreams.forEach { it.close() }
