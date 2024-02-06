@@ -140,7 +140,7 @@ internal object CacheController {
   fun downloadStarted(
     requestUrl: String,
     responseHeaders: Map<String, List<String>>,
-    playerOutputStream: OutputStream,
+//    playerOutputStream: OutputStream,
   ): WriteHandle {
     // todo - check for initialization and throw or something
 
@@ -150,7 +150,7 @@ internal object CacheController {
       WriteHandle(
         controller = this,
         tempFile = tempFile,
-        playerOutputStream = playerOutputStream,
+//        playerOutputStream = playerOutputStream,
         responseHeaders = responseHeaders,
         datastore = datastore,
         url = requestUrl,
@@ -160,7 +160,7 @@ internal object CacheController {
       WriteHandle(
         controller = this,
         tempFile = null,
-        playerOutputStream = playerOutputStream,
+//        playerOutputStream = playerOutputStream,
         url = requestUrl,
         datastore = datastore,
         responseHeaders = responseHeaders,
@@ -245,8 +245,8 @@ internal object CacheController {
     private val controller: CacheController,
     private val datastore: CacheDatastore,
     private val tempFile: File?,
-    private val playerOutputStream: OutputStream,
-  ) {
+//    private val playerOutputStream: OutputStream,
+  ): Closeable {
 
     private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
 
@@ -254,7 +254,7 @@ internal object CacheController {
      * Writes the given bytes to both the player socket and the file
      */
     fun write(data: ByteArray, offset: Int, len: Int) {
-      playerOutputStream.write(data, offset, len)
+//      playerOutputStream.write(data, offset, len)
       fileOutputStream?.write(data, offset, len)
     }
 
@@ -271,7 +271,7 @@ internal object CacheController {
      * socket and file (if any)
      */
     fun finishedWriting() {
-      playerOutputStream.close()
+//      playerOutputStream.close()
 
       // If there's a temp file, we are caching it so move it from the temp file and write to index
       fileOutputStream?.close()
@@ -311,6 +311,10 @@ internal object CacheController {
         }
       }
     }
+
+    override fun close() {
+      fileOutputStream?.close()
+    }
   }
 
   /**
@@ -330,6 +334,14 @@ internal object CacheController {
     }
 
     private val fileInput = BufferedInputStream(FileInputStream(File(directory, file.relativePath)))
+
+    // todo - needs to be in schema for efficient eviction
+    val fileSize: Long = File(directory, file.relativePath).length()
+
+    @Throws(IOException::class)
+    fun read(into: ByteArray, offset: Int, len: Int): Int {
+      return fileInput.read(into, offset, len)
+    }
 
     @Throws(IOException::class)
     fun readAllInto(outputStream: OutputStream) {

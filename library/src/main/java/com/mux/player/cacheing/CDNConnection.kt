@@ -73,7 +73,7 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent: ProxySer
       val writeHandle = CacheController.downloadStarted(
         requestUrl = cdnUrl!!.toString(),
         responseHeaders = httpParser.headers.mapValues { listOf(it.value) },
-        playerOutputStream = playerConnection.getStreamToPlayer(),
+//        playerOutputStream = playerConnection.getStreamToPlayer(),
       )
       consumeIntoHandle(httpParser.input, writeHandle)
     }
