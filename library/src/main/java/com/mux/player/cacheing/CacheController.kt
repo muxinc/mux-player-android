@@ -1,22 +1,27 @@
 package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
+import android.annotation.TargetApi
 import android.content.Context
+import android.os.Build
 import android.util.Log
+import com.mux.player.cacheing.CacheController.setup
 import com.mux.player.internal.cache.FileRecord
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
-import java.io.ByteArrayInputStream
 import java.io.Closeable
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.io.InputStream
 import java.io.OutputStream
 import java.net.URL
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Controls access to Mux Player's cache
@@ -29,6 +34,9 @@ internal object CacheController {
 
   private lateinit var appContext: Context
   private lateinit var datastore: CacheDatastore
+
+  private val playersWithCache = AtomicInteger(0)
+  private val ioScope = CoroutineScope(Dispatchers.IO)
 
   val RX_NO_STORE = Regex("""no-store""")
   val RX_NO_CACHE = Regex("""no-cache""")
@@ -49,6 +57,46 @@ internal object CacheController {
     }
     if (!this::datastore.isInitialized) {
       datastore = cacheDatastore ?: CacheDatastore(appContext)
+    }
+  }
+
+  /**
+   * Call internally when a new MuxPlayer is created, if caching was enabled.
+   */
+  @JvmSynthetic
+  internal fun maybeOpen() {
+    val totalPlayersBefore = playersWithCache.getAndIncrement()
+    if (totalPlayersBefore == 0) {
+      ioScope.launch { datastore.open() }
+    }
+  }
+
+  /**
+   * Call internally when a MuxPlayer is released if caching was enabled.
+   *
+   * Try to call only once per player, even if caller calls release() multiple times
+   */
+  @JvmSynthetic
+  internal fun maybeClose() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+      closeDatastoreApiN()
+    } else {
+      closeDatastoreLegacy()
+    }
+  }
+
+  @TargetApi(Build.VERSION_CODES.N)
+  private fun closeDatastoreApiN() {
+    val totalPlayersNow = playersWithCache.updateAndGet { if (it > 0) it - 1 else it }
+    if (totalPlayersNow == 0) {
+      ioScope.launch { datastore.close() }
+    }
+  }
+
+  private fun closeDatastoreLegacy() {
+    val totalPlayersNow = playersWithCache.decrementAndGet()
+    if (totalPlayersNow == 0) {
+      ioScope.launch { datastore.close() }
     }
   }
 
@@ -146,10 +194,13 @@ internal object CacheController {
 
   private fun Map<String, List<String>>.getCacheControl(): String? =
     mapKeys { it.key.lowercase() }["cache-control"]?.last()
+
   private fun Map<String, List<String>>.getETag(): String? =
     mapKeys { it.key.lowercase() }["etag"]?.last()
+
   private fun Map<String, List<String>>.getAge(): String? =
     mapKeys { it.key.lowercase() }["age"]?.last()
+
   private fun Map<String, List<String>>.getContentType(): String? =
     mapKeys { it.key.lowercase() }["content-type"]?.last()
 
@@ -243,8 +294,10 @@ internal object CacheController {
           // todo - return a fail or throw somerthing
         } else {
           // todo: need a logger
-          Log.w("CacheController", "Had temp file but not enough info to cache. " +
-                  "cache-control: [$cacheControl] etag $etag")
+          Log.w(
+            "CacheController", "Had temp file but not enough info to cache. " +
+                    "cache-control: [$cacheControl] etag $etag"
+          )
         }
       }
     }
@@ -260,7 +313,7 @@ internal object CacheController {
     val url: String,
     val file: FileRecord,
     directory: File,
-  ): Closeable {
+  ) : Closeable {
 
     companion object {
       const val READ_SIZE = 32 * 1024
