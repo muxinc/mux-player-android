@@ -7,9 +7,11 @@ import com.mux.player.internal.cache.FileRecord
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
+import java.io.Closeable
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.URL
@@ -68,9 +70,7 @@ internal object CacheController {
       ReadHandle(
         url = requestUrl,
         file = fileRecord,
-        fileInput = BufferedInputStream(
-          FileInputStream(File(datastore.fileCacheDir(), fileRecord.relativePath))
-        )
+        directory = datastore.fileCacheDir(),
       )
     }
   }
@@ -186,14 +186,14 @@ internal object CacheController {
       playerOutputStream.write(data, offset, len)
       fileOutputStream?.write(data, offset, len)
     }
-    
+
     /**
      * Writes the given String's bytes to both the player socket and the file
      */
-    fun write(data: String) {
-      playerOutputStream.write(data.toByteArray(Charsets.US_ASCII))
-      fileOutputStream?.write(data.toByteArray(Charsets.US_ASCII))
-    }
+//    fun write(data: String) {
+//      playerOutputStream.write(data.toByteArray(Charsets.US_ASCII))
+//      fileOutputStream?.write(data.toByteArray(Charsets.US_ASCII))
+//    }
 
     /**
      * Call when you've reached the end of the body input. This closes the streams to the player
@@ -236,8 +236,6 @@ internal object CacheController {
           Log.w("CacheController", "Had temp file but not enough info to cache. " +
                   "cache-control: [$cacheControl] etag $etag")
         }
-
-        //datastore.writeRecord()
       }
     }
   }
@@ -246,14 +244,36 @@ internal object CacheController {
    * Object for reading from the Cache. The methods on this object will read bytes from a cache copy
    * of the remote resource.
    *
-   * Use [read] or [readAll] to read out of the cache
+   * Use [readAllInto] to read the entire file into an OutputStream.
    */
   class ReadHandle(
     val url: String,
     val file: FileRecord,
-    // todo - figure out real fields
-//    val fileRecord: FileRecord,
-//    val cacheControlRecord: CacheControlRecord,
-    val fileInput: InputStream,
-  )
+    directory: File,
+  ): Closeable {
+
+    companion object {
+      const val READ_SIZE = 32 * 1024
+    }
+
+    private val fileInput = BufferedInputStream(FileInputStream(File(directory, file.relativePath)))
+
+    @Throws(IOException::class)
+    fun readAllInto(outputStream: OutputStream) {
+      val buf = ByteArray(READ_SIZE)
+      while (true) {
+        val readBytes = fileInput.read(buf)
+        if (readBytes == -1) {
+          // done
+          break
+        } else {
+          outputStream.write(buf, 0, readBytes)
+        }
+      }
+    }
+
+    override fun close() {
+      runCatching { fileInput.close() }
+    }
+  }
 }
