@@ -175,9 +175,9 @@ internal object CacheController {
     /**
      * Writes the given bytes to both the player socket and the file
      */
-    fun write(data: ByteArray) {
-      playerOutputStream.write(data)
-      fileOutputStream?.write(data)
+    fun write(data: ByteArray, offset: Int, len: Int) {
+      playerOutputStream.write(data, offset, len)
+      fileOutputStream?.write(data, offset, len)
     }
 
     /**

@@ -3,7 +3,6 @@ package com.mux.player.cacheing
 import android.util.Log
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
-import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
@@ -11,13 +10,8 @@ import java.io.OutputStreamWriter
 import java.io.PrintWriter
 import java.net.Socket
 import java.net.URL
-import java.nio.ByteBuffer
-import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
-import java.util.concurrent.BlockingDeque
-import java.util.concurrent.LinkedBlockingDeque
 import javax.net.SocketFactory
-import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLSocketFactory
 
 class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServer) {
@@ -72,9 +66,17 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
 
     fun processResponse() {
         val httpParser = HttpParser(socket!!.getInputStream())
-        httpParser.parseResponse()
-        Log.i(TAG, "RESPONSE_FROM_CDN>>\n" + httpParser.getResponseeString())
+        httpParser.parseResponse(readBody = false)
         determineContentType(httpParser)
+
+        Log.i(TAG, "RESPONSE_FROM_CDN>>\n" + httpParser.getResponseeString())
+
+      val writeHandle = CacheController.downloadStarted(
+        requestUrl = cdnUrl!!.toString(),
+        responseHeaders = httpParser.headers.mapValues{ listOf(it.value) },
+        playerOutputStream = playerConnection.getStreamToPlayer()
+      )
+
         if (httpParser.statusCode in 300..399) {
             // This is a redirect, find location header
             var redirectLocation:String = httpParser.getHeader("location")
@@ -85,52 +87,78 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
                 )
             }
             // TODO: rewrite the location url and send to player
-            copyToPlayer(httpParser)
+            //copyToPlayer(httpParser)
+            consumeIntoHandle(httpParser.input, writeHandle)
         }
         else if (httpParser.statusCode < 200 || httpParser.statusCode >= 400 ) {
-            copyToPlayer(httpParser)
+            //copyToPlayer(httpParser)
+          consumeIntoHandle(httpParser.input, writeHandle)
         } else {
-            if (contextType == MediaContextType.MANIFEST) {
-                val rewrittenManifest = rewriteManifest(httpParser)
-                httpParser.body = rewrittenManifest.toByteArray(Charsets.ISO_8859_1)
-                httpParser.setHeader("Content-Length", httpParser.body!!.size.toString())
-                copyToPlayer(httpParser)
-            }
-            else {
-                // This is segment
-                copyToPlayer(httpParser)
-            }
+//            if (contextType == MediaContextType.MANIFEST) {
+//                val rewrittenManifest = rewriteManifest(httpParser)
+//                httpParser.body = rewrittenManifest.toByteArray(Charsets.ISO_8859_1)
+//                httpParser.setHeader("Content-Length", httpParser.body!!.size.toString())
+//                copyToPlayer(httpParser)
+//            }
+//            else {
+//                 This is segment
+//                copyToPlayer(httpParser)
+//            }
+          consumeIntoHandle(httpParser.input, writeHandle)
         }
     }
 
-    private fun copyToPlayer(httpParser:HttpParser) {
-        Log.i(TAG, "SENDING_TO_PLAYER>>\n" + httpParser.getResponseeString())
-        var response = httpParser.responseLine + "\r\n"
-        for(header:String in httpParser.headers.keys) {
-            response += header + ": "  + httpParser.headers.get(header) + "\r\n"
+    private val READ_SIZE = 64 * 1024
+
+    private fun consumeIntoHandle(
+      externalInput: InputStream,
+      writeHandle: CacheController.WriteHandle
+    ) {
+      val readBuf = ByteArray(READ_SIZE)
+
+      try {
+        while (true) {
+          val readBytes = externalInput.read(readBuf)
+          if (readBytes == -1) {
+            // done
+            break
+          } else {
+            writeHandle.write(readBuf, 0, readBytes)
+          }
         }
-        response += "\r\n"
-        var responseChunkSize = response.length
-        if (httpParser.body != null) {
-            responseChunkSize = response.length + httpParser.body!!.size
-        }
-        val chunk = ByteArray(responseChunkSize)
-        response.toByteArray(Charsets.ISO_8859_1).copyInto(chunk)
-        if (httpParser.body != null) {
-            httpParser.body!!.copyInto(chunk, response.length, 0, httpParser.body!!.size)
-        }
-        playerConnection.send(chunk)
-        try {
-            while(true) {
-                val chunk = httpParser.readNextChunk()
-                Log.e(TAG, "Sending next binary chunk, size: " + chunk.size)
-                playerConnection.send(chunk)
-            }
-        } catch (ex:IOException) {
-            // Socketr closed.
-            Log.i(TAG, "CDN closed the connection")
-        }
+      } finally {
+        writeHandle.finishedWriting()
+      }
     }
+
+//    private fun copyToPlayer(httpParser:HttpParser) {
+//        Log.i(TAG, "SENDING_TO_PLAYER>>\n" + httpParser.getResponseeString())
+//        var response = httpParser.responseLine + "\r\n"
+//        for(header:String in httpParser.headers.keys) {
+//            response += header + ": "  + httpParser.headers.get(header) + "\r\n"
+//        }
+//        response += "\r\n"
+//        var responseChunkSize = response.length
+//        if (httpParser.body != null) {
+//            responseChunkSize = response.length + httpParser.body!!.size
+//        }
+//        val chunk = ByteArray(responseChunkSize)
+//        response.toByteArray(Charsets.ISO_8859_1).copyInto(chunk)
+//        if (httpParser.body != null) {
+//            httpParser.body!!.copyInto(chunk, response.length, 0, httpParser.body!!.size)
+//        }
+////        playerConnection.send(chunk)
+//        try {
+//            while(true) {
+//                val chunk = httpParser.readNextChunk()
+//                Log.e(TAG, "Sending next binary chunk, size: " + chunk.size)
+////                playerConnection.send(chunk)
+//            }
+//        } catch (ex:IOException) {
+//            // Socketr closed.
+//            Log.i(TAG, "CDN closed the connection")
+//        }
+//    }
 
     fun rewriteManifest(httpParser: HttpParser):String {
         val manifest = StringBuilder()

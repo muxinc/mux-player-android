@@ -8,7 +8,7 @@ import java.lang.StringBuilder
 import java.net.SocketException
 import java.util.Hashtable
 
-class HttpParser(val input:InputStream) {
+class HttpParser(val input: InputStream) {
 
     val TAG:String = "Proxy||HttpParser"
 
@@ -56,7 +56,7 @@ class HttpParser(val input:InputStream) {
         parseBody()
     }
 
-    fun parseResponse() {
+    fun parseResponse(readBody: Boolean = true) {
         var line = reader.readLine()
         responseLine = line
         val statusCodeStr = responseLine.split(" ")[1]
@@ -71,7 +71,9 @@ class HttpParser(val input:InputStream) {
             appendHeaderParameter(line)
             line = reader.readLine()
         }
-        parseBody()
+        if (readBody) {
+          parseBody()
+        }
     }
 
     private fun updateRequestLine() {

@@ -1,6 +1,7 @@
 package com.mux.player.cacheing
 
 import android.util.Log
+import java.io.OutputStream
 import java.net.Socket
 import java.net.SocketException
 import java.net.URL
@@ -26,15 +27,17 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
         try {
             httpParser = HttpParser(socket.getInputStream())
             readThread.start()
-            writeThread.start()
+            //writeThread.start()
         } catch (ex:Exception) {
             ex.printStackTrace()
         }
     }
 
-    fun send(chunk:ByteArray) {
-        cdnInputQueue.put(chunk)
-    }
+  fun getStreamToPlayer(): OutputStream = socket.getOutputStream()
+
+//    fun send(chunk:ByteArray) {
+//        cdnInputQueue.put(chunk)
+//    }
 
     fun kill() {
         // TODO: kill all threads
@@ -54,6 +57,7 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
             }
             val localUrl = "http://" + cdnHostHeaderValue + httpParser!!.path
             var cdnUrl = parent.decodeUrl(URL(localUrl))
+
             var cdnConnection = CDNConnection(this, parent)
             cdnConnection.openConnection(cdnUrl)
 
@@ -73,23 +77,24 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
     }
 
     private fun write() {
-        val writeHandle = CacheController.downloadStarted(
-            requestUrl = "How to get this",
-            responseHeaders = mapOf(), // todo - real headers
-            socket.getOutputStream()
-        )
-        try {
-            while (running) {
-                val chunk = cdnInputQueue.takeFirst()
-                // todo - how much are we writing here?
-                writeHandle.write(chunk)
-
-                // todo - when is EOF?
-            }
-            // todo - get here somehow.. After we reach the end of the request
-            writeHandle.finishedWriting()
-        } catch(ex:SocketException) {
-            Log.i(TAG, "Player closed the connection")
-        }
+      // todo - write thread not necessary, we are writing from the CDNConnection using the stream
+//        val writeHandle = CacheController.downloadStarted(
+//            requestUrl = "How to get this",
+//            responseHeaders = mapOf(), // todo - real headers
+//            socket.getOutputStream()
+//        )
+//        try {
+//            while (running) {
+//                val chunk = cdnInputQueue.takeFirst()
+//                // todo - how much are we writing here?
+//                writeHandle.write(chunk)
+//
+//                // todo - when is EOF?
+//            }
+//            // todo - get here somehow.. After we reach the end of the request
+//            writeHandle.finishedWriting()
+//        } catch(ex:SocketException) {
+//            Log.i(TAG, "Player closed the connection")
+//        }
     }
 }
