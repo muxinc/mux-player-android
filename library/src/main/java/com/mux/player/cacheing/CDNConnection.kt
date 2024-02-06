@@ -116,19 +116,16 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
     ) {
       val readBuf = ByteArray(READ_SIZE)
 
-      try {
-        while (true) {
-          val readBytes = externalInput.read(readBuf)
-          if (readBytes == -1) {
-            // done
-            break
-          } else {
-            writeHandle.write(readBuf, 0, readBytes)
-          }
+      while (true) {
+        val readBytes = externalInput.read(readBuf)
+        if (readBytes == -1) {
+          // done
+          break
+        } else {
+          writeHandle.write(readBuf, 0, readBytes)
         }
-      } finally {
-        writeHandle.finishedWriting()
       }
+      writeHandle.finishedWriting()
     }
 
 //    private fun copyToPlayer(httpParser:HttpParser) {
