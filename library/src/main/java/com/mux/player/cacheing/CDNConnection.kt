@@ -1,6 +1,7 @@
 package com.mux.player.cacheing
 
 import android.util.Log
+import com.mux.player.internal.cache.consumeInto
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -23,8 +24,6 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent: ProxySer
   private var outputStream: OutputStream? = null
   private var socket: Socket? = null
   private var contextType = MediaContextType.UNKNOWN
-
-  //    private var outputWriter:PrintWriter? = null
   private var cdnUrl: URL? = null
 
 
@@ -43,24 +42,12 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent: ProxySer
     }
     inputStream = socket!!.getInputStream()
     outputStream = socket!!.getOutputStream()
-//        outputWriter = PrintWriter(
-//            OutputStreamWriter(
-//                outputStream!!, StandardCharsets.US_ASCII
-//            ), true
-//        )
   }
 
   fun send(httpParser: HttpParser) {
     Log.i(TAG, "SENDING_TO_CDN>>\n" + httpParser.getRequestString())
     httpParser.serializeRequest(outputStream!!)
   }
-
-//    fun send(chunk:String) {
-//        if (chunk.length > 0) {
-//            outputWriter!!.write(chunk)
-//            outputWriter!!.flush()
-//        }
-//    }
 
   fun processResponse() {
     val httpParser = HttpParser(socket!!.getInputStream())
@@ -69,11 +56,6 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent: ProxySer
 
     Log.i(TAG, "RESPONSE_FROM_CDN>>\n" + httpParser.getResponseeString())
 
-    val writeHandle = CacheController.downloadStarted(
-      requestUrl = cdnUrl!!.toString(),
-      responseHeaders = httpParser.headers.mapValues { listOf(it.value) },
-      playerOutputStream = playerConnection.getStreamToPlayer(),
-    )
 
     if (httpParser.statusCode in 300..399) {
       // This is a redirect, find location header
@@ -84,23 +66,15 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent: ProxySer
                   " is missing location header"
         )
       }
-      // TODO: rewrite the location url and send to player
-      //copyToPlayer(httpParser)
-      consumeIntoHandle(httpParser.input, writeHandle)
+      httpParser.input.consumeInto(playerConnection.getStreamToPlayer())
     } else if (httpParser.statusCode < 200 || httpParser.statusCode >= 400) {
-      //copyToPlayer(httpParser)
-      consumeIntoHandle(httpParser.input, writeHandle)
+      httpParser.input.consumeInto(playerConnection.getStreamToPlayer())
     } else {
-//            if (contextType == MediaContextType.MANIFEST) {
-//                val rewrittenManifest = rewriteManifest(httpParser)
-//                httpParser.body = rewrittenManifest.toByteArray(Charsets.ISO_8859_1)
-//                httpParser.setHeader("Content-Length", httpParser.body!!.size.toString())
-//                copyToPlayer(httpParser)
-//            }
-//            else {
-//                 This is segment
-//                copyToPlayer(httpParser)
-//            }
+      val writeHandle = CacheController.downloadStarted(
+        requestUrl = cdnUrl!!.toString(),
+        responseHeaders = httpParser.headers.mapValues { listOf(it.value) },
+        playerOutputStream = playerConnection.getStreamToPlayer(),
+      )
       consumeIntoHandle(httpParser.input, writeHandle)
     }
   }

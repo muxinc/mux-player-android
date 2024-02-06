@@ -2,9 +2,11 @@ package com.mux.player.internal.cache
 
 import android.content.ContentValues
 import android.database.Cursor
+import com.mux.player.cacheing.CacheController
 import com.mux.player.cacheing.IndexSchema
-import java.io.File
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 
 data class FileRecord(
   val url: String,
@@ -68,5 +70,19 @@ fun Cursor.getLongOrThrow(name: String): Long {
     getLong(idx)
   } else {
     throw IOException("Could not find expected column: $name")
+  }
+}
+
+@Throws(IOException::class)
+fun InputStream.consumeInto(outputStream: OutputStream, readSize: Int = 32 * 1024) {
+  val buf = ByteArray(CacheController.ReadHandle.READ_SIZE)
+  while (true) {
+    val readBytes = read(buf)
+    if (readBytes == -1) {
+      // done
+      break
+    } else {
+      outputStream.write(buf, 0, readBytes)
+    }
   }
 }
