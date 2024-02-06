@@ -24,7 +24,7 @@ class MuxPlayer private constructor(
   private val exoPlayer: ExoPlayer,
   private val muxDataKey: String?,
   private val logger: Logger,
-  private val muxCacheEnabled: Boolean = false,
+  private val muxCacheEnabled: Boolean = true,
   context: Context,
   initialCustomerData: CustomerData,
   network: INetworkRequest? = null,

@@ -41,6 +41,8 @@ internal object CacheController {
   // Only start it if you incremented from 0, only stop if you decrement from 0
   private var proxyServer: ProxyServer? = null
 
+  const val TAG = "CacheController"
+
   val RX_NO_STORE = Regex("""no-store""")
   val RX_NO_CACHE = Regex("""no-cache""")
   val RX_MAX_AGE = Regex("""max-age=([0-9].*)""")
@@ -68,7 +70,9 @@ internal object CacheController {
    */
   @JvmSynthetic
   internal fun onPlayerCreated() {
+    Log.d(TAG, "onPlayerCreated: called")
     val totalPlayersBefore = playersWithCache.getAndIncrement()
+    Log.d(TAG, "onPlayerCreated: had $totalPlayersBefore players")
     if (totalPlayersBefore == 0) {
       ioScope.launch { datastore.open() }
       proxyServer = ProxyServer()
@@ -92,6 +96,7 @@ internal object CacheController {
   @TargetApi(Build.VERSION_CODES.N)
   private fun closeDatastoreApiN() {
     val totalPlayersNow = playersWithCache.updateAndGet { if (it > 0) it - 1 else it }
+    Log.d(TAG, "closeDatastoreApiN: now have $totalPlayersNow players")
     if (totalPlayersNow == 0) {
       ioScope.launch { datastore.close() }
     }
@@ -99,6 +104,7 @@ internal object CacheController {
 
   private fun closeDatastoreLegacy() {
     val totalPlayersNow = playersWithCache.decrementAndGet()
+    Log.d(TAG, "closeDatastoreLegacy: now have $totalPlayersNow players")
     if (totalPlayersNow == 0) {
       ioScope.launch { datastore.close() }
     }

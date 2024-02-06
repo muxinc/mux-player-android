@@ -8,7 +8,7 @@ import java.net.URI
 import java.net.URL
 import java.util.concurrent.LinkedBlockingDeque
 
-class ProxyServer (val port:Int = 5000): Thread() {
+class ProxyServer (val port:Int = CacheConstants.PROXY_PORT): Thread() {
 
     private val TAG = "ProxyServer"
 
@@ -76,6 +76,7 @@ class ProxyServer (val port:Int = 5000): Thread() {
         }
         var cdnPath = url.path.split(hostDetails + "/")[1]
         var resultStr = cdnProtocol + hostSegments[1] + cdnPort + "/" + cdnPath + cdnQuery
+      Log.d(TAG, "Decoded URL for CDN: $resultStr")
         return URL(resultStr)
     }
 
