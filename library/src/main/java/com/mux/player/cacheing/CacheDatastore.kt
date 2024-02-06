@@ -32,10 +32,10 @@ internal class CacheDatastore(val context: Context) : Closeable {
 
   companion object {
     private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
+    val RX_CHUNK_URL =
+      Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
   }
 
-  private val RX_CHUNK_URL =
-    Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
 
   private val dbHelper: DbHelper get() = awaitDbHelper()
 

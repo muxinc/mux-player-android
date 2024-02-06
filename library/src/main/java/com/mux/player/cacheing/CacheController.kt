@@ -115,13 +115,15 @@ internal object CacheController {
     responseHeaders: Map<String, List<String>>
   ): Boolean {
     val cacheControlLine = responseHeaders.getCacheControl()
-
     if (cacheControlLine == null) {
       return false
     }
     if (cacheControlLine.contains(RX_NO_STORE)) {
       return false
     }
+
+    // todo - Need to specifically only cache segments. Check content-type first then url
+    
     // todo - additional logic here:
     //  * check disk space against Content-Length?
     //  * check for headers like Age?
