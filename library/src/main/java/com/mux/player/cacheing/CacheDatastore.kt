@@ -124,17 +124,17 @@ internal class CacheDatastore(val context: Context) : Closeable {
   }
 
   fun readRecord(url: String): FileRecord? {
-    val cursor = dbHelper.writableDatabase.query(
+    return dbHelper.writableDatabase.query(
       IndexSchema.FilesTable.name, null,
       "${IndexSchema.FilesTable.Columns.lookupKey} is ?",
       arrayOf(safeCacheKey(URL(url))),
       null, null, null
-    )
-
-    return if (cursor.count > 0 && cursor.moveToFirst()) {
-      cursor.toFileRecord()
-    } else {
-      null
+    ).use { cursor ->
+      if (cursor.count > 0 && cursor.moveToFirst()) {
+        cursor.toFileRecord()
+      } else {
+        null
+      }
     }
   }
 
@@ -216,9 +216,9 @@ internal class CacheDatastore(val context: Context) : Closeable {
     }
   }
 
-  private fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
-  private fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
-  private fun indexDbDir(): File = File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
+  fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
+  fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
+  fun indexDbDir(): File = File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
 
   /**
    * Creates a new temp file for downloading-into. Temp files go in a special dir that gets cleared

@@ -4,9 +4,11 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import com.mux.player.internal.cache.FileRecord
+import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
@@ -66,7 +68,9 @@ internal object CacheController {
       ReadHandle(
         url = requestUrl,
         file = fileRecord,
-        fileInput = ByteArrayInputStream(ByteArray(5))
+        fileInput = BufferedInputStream(
+          FileInputStream(File(datastore.fileCacheDir(), fileRecord.relativePath))
+        )
       )
     }
   }
@@ -182,7 +186,7 @@ internal object CacheController {
       playerOutputStream.write(data, offset, len)
       fileOutputStream?.write(data, offset, len)
     }
-
+    
     /**
      * Writes the given String's bytes to both the player socket and the file
      */
@@ -190,8 +194,6 @@ internal object CacheController {
       playerOutputStream.write(data.toByteArray(Charsets.US_ASCII))
       fileOutputStream?.write(data.toByteArray(Charsets.US_ASCII))
     }
-
-    // todo - method to call if the proxy encounters an error, closes & deletes temp file
 
     /**
      * Call when you've reached the end of the body input. This closes the streams to the player
