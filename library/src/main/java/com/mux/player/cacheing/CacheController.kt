@@ -37,6 +37,9 @@ internal object CacheController {
 
   private val playersWithCache = AtomicInteger(0)
   private val ioScope = CoroutineScope(Dispatchers.IO)
+  // access gated via playersWithCache.
+  // Only start it if you incremented from 0, only stop if you decrement from 0
+  private var proxyServer: ProxyServer? = null
 
   val RX_NO_STORE = Regex("""no-store""")
   val RX_NO_CACHE = Regex("""no-cache""")
@@ -68,6 +71,7 @@ internal object CacheController {
     val totalPlayersBefore = playersWithCache.getAndIncrement()
     if (totalPlayersBefore == 0) {
       ioScope.launch { datastore.open() }
+      proxyServer = ProxyServer()
     }
   }
 

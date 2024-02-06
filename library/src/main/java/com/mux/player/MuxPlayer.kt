@@ -37,6 +37,7 @@ class MuxPlayer private constructor(
   override fun release() {
     // good to release muxStats first, so it doesn't call to the player after release
     muxStats?.release()
+    muxStats = null
     // exoPlayer can handle multiple calls itself, not our deal
     exoPlayer.release()
 

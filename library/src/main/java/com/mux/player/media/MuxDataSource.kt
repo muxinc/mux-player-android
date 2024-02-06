@@ -1,6 +1,7 @@
 package com.mux.player.media
 
 import android.net.Uri
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
@@ -25,6 +26,10 @@ class MuxDataSource private constructor(
     override fun createDataSource(): DataSource {
       return MuxDataSource(upstream.createDataSource())
     }
+  }
+
+  companion object {
+    const val TAG = "MuxDataSource"
   }
 
   private var originalUri: Uri? = null
@@ -56,7 +61,9 @@ class MuxDataSource private constructor(
         .build()
     }
 
-    this.originalUri = uri
+    this.originalUri = dataSpec.uri
+    Log.d(TAG, "Modified URL\n\tFrom: ${dataSpec.uri}\n\tTo: $proxyUri")
+
     return upstreamSrc.open(dataSpec.withUri(proxyUri))
   }
 
