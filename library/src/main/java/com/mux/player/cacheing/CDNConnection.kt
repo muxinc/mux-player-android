@@ -26,7 +26,7 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
     private var outputStream: OutputStream? = null
     private var socket: Socket? = null
     private var contextType = MediaContextType.UNKNOWN
-    private var outputWriter:PrintWriter? = null
+//    private var outputWriter:PrintWriter? = null
     private var cdnUrl:URL? = null
 
 
@@ -45,11 +45,11 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
         }
         inputStream = socket!!.getInputStream()
         outputStream = socket!!.getOutputStream()
-        outputWriter = PrintWriter(
-            OutputStreamWriter(
-                outputStream!!, StandardCharsets.US_ASCII
-            ), true
-        )
+//        outputWriter = PrintWriter(
+//            OutputStreamWriter(
+//                outputStream!!, StandardCharsets.US_ASCII
+//            ), true
+//        )
     }
 
     fun send(httpParser:HttpParser) {
@@ -57,12 +57,12 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
         httpParser.serializeRequest(outputStream!!)
     }
 
-    fun send(chunk:String) {
-        if (chunk.length > 0) {
-            outputWriter!!.write(chunk)
-            outputWriter!!.flush()
-        }
-    }
+//    fun send(chunk:String) {
+//        if (chunk.length > 0) {
+//            outputWriter!!.write(chunk)
+//            outputWriter!!.flush()
+//        }
+//    }
 
     fun processResponse() {
         val httpParser = HttpParser(socket!!.getInputStream())
@@ -73,8 +73,8 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent:ProxyServ
 
       val writeHandle = CacheController.downloadStarted(
         requestUrl = cdnUrl!!.toString(),
-        responseHeaders = httpParser.headers.mapValues{ listOf(it.value) },
-        playerOutputStream = playerConnection.getStreamToPlayer()
+        responseHeaders = httpParser.headers.mapValues { listOf(it.value) },
+        playerOutputStream = playerConnection.getStreamToPlayer(),
       )
 
         if (httpParser.statusCode in 300..399) {
