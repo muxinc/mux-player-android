@@ -10,6 +10,7 @@ import android.util.Base64
 import android.util.Log
 import com.mux.player.internal.cache.FileRecord
 import com.mux.player.internal.cache.toContentValues
+import com.mux.player.internal.cache.toFileRecord
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
@@ -123,8 +124,18 @@ internal class CacheDatastore(val context: Context) : Closeable {
   }
 
   fun readRecord(url: String): FileRecord? {
-    // todo - try to read a record for the given URL, returning it if there's a hit
-    return null
+    val cursor = dbHelper.writableDatabase.query(
+      IndexSchema.FilesTable.name, null,
+      "${IndexSchema.FilesTable.Columns.lookupKey} is ?",
+      arrayOf(safeCacheKey(URL(url))),
+      null, null, null
+    )
+
+    return if (cursor.count > 0 && cursor.moveToFirst()) {
+      cursor.toFileRecord()
+    } else {
+      null
+    }
   }
 
   /**

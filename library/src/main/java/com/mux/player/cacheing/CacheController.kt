@@ -123,7 +123,7 @@ internal object CacheController {
     }
 
     // todo - Need to specifically only cache segments. Check content-type first then url
-    
+
     // todo - additional logic here:
     //  * check disk space against Content-Length?
     //  * check for headers like Age?
