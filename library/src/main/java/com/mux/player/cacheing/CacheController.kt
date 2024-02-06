@@ -118,11 +118,19 @@ internal object CacheController {
     requestUrl: String,
     responseHeaders: Map<String, List<String>>
   ): Boolean {
-    val cacheControlLine = responseHeaders.getCacheControl()
-    if (cacheControlLine == null) {
+    // basic conditions
+    val eTag = responseHeaders.getETag()
+    if (eTag.isNullOrEmpty()) {
       return false
     }
-    if (cacheControlLine.contains(RX_NO_STORE)) {
+    val cacheControlLine = responseHeaders.getCacheControl()
+    if (cacheControlLine == null || cacheControlLine.contains(RX_NO_STORE)) {
+      return false
+    }
+
+    val contentType = responseHeaders.getContentType()
+    // for now, only segments
+    if (!isContentTypeSegment(contentType)) {
       return false
     }
 
@@ -142,6 +150,8 @@ internal object CacheController {
     mapKeys { it.key.lowercase() }["etag"]?.last()
   private fun Map<String, List<String>>.getAge(): String? =
     mapKeys { it.key.lowercase() }["age"]?.last()
+  private fun Map<String, List<String>>.getContentType(): String? =
+    mapKeys { it.key.lowercase() }["content-type"]?.last()
 
   private fun parseSMaxAge(cacheControl: String): Long? {
     val matchResult = RX_S_MAX_AGE.matchEntire(cacheControl)

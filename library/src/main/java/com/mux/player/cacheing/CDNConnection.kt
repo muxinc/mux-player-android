@@ -169,15 +169,27 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent: ProxySer
     val contentTypeHeader = httpParser.getHeader("Content-Type")
     if (contentTypeHeader.isEmpty()) {
       // TODO read first line of body and see if it is #EXTM3U
-    } else if (contentTypeHeader.equals("application/vnd.apple.mpegurl", true)
-      || contentTypeHeader.equals("audio/mpegurl", true)
-      || contentTypeHeader.equals("application/mpegurl", true)
-      || contentTypeHeader.equals("application/x-mpegurl", true)
-      || contentTypeHeader.equals("audio/x-mpegurl", true)
-    ) {
+    } else if (isContentTypePlaylist(contentTypeHeader)) {
       contextType = MediaContextType.MANIFEST
     } else {
       contextType = MediaContextType.SEGMENT
     }
   }
+}
+
+@JvmSynthetic
+internal fun isContentTypeSegment(contentTypeHeader: String?): Boolean {
+ return contentTypeHeader.equals(CacheConstants.MIME_TS, true)
+         || contentTypeHeader.equals(CacheConstants.MIME_M4S, true)
+         || contentTypeHeader.equals(CacheConstants.MIME_M4S_ALT, true)
+}
+
+@JvmSynthetic
+internal fun isContentTypePlaylist(contentTypeHeader: String?): Boolean {
+ return (contentTypeHeader.equals("application/vnd.apple.mpegurl", true)
+         || contentTypeHeader.equals("audio/mpegurl", true)
+         || contentTypeHeader.equals("application/mpegurl", true)
+         || contentTypeHeader.equals("application/x-mpegurl", true)
+         || contentTypeHeader.equals("audio/x-mpegurl", true)
+         )
 }

@@ -59,9 +59,8 @@ class PlayerConnection(val socket: Socket, val parent: ProxyServer) {
 
       // todo - read from cache here
       val readHandle = CacheController.tryRead(cdnUrl.toString())
-
       if (readHandle == null) {
-        var cdnConnection = CDNConnection(this, parent)
+        val cdnConnection = CDNConnection(this, parent)
         cdnConnection.openConnection(cdnUrl)
 
         var hostHeaderValue = cdnUrl.host
@@ -74,7 +73,7 @@ class PlayerConnection(val socket: Socket, val parent: ProxyServer) {
         cdnConnection.send(httpParser!!)
         cdnConnection.processResponse()
       } else {
-        // todo use ReadHandle. Read to getStreamToPlayer
+        readHandle.use { it.readAllInto(getStreamToPlayer()) }
       }
     } catch (ex: Exception) {
       Log.e(TAG, "What happend !!!", ex);
