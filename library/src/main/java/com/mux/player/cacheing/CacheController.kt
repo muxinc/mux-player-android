@@ -64,7 +64,7 @@ internal object CacheController {
    * Call internally when a new MuxPlayer is created, if caching was enabled.
    */
   @JvmSynthetic
-  internal fun maybeOpen() {
+  internal fun onPlayerCreated() {
     val totalPlayersBefore = playersWithCache.getAndIncrement()
     if (totalPlayersBefore == 0) {
       ioScope.launch { datastore.open() }
@@ -77,7 +77,7 @@ internal object CacheController {
    * Try to call only once per player, even if caller calls release() multiple times
    */
   @JvmSynthetic
-  internal fun maybeClose() {
+  internal fun onPlayerReleased() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
       closeDatastoreApiN()
     } else {
