@@ -54,12 +54,13 @@ internal object CacheController {
    * resource, like its original URL, response headers, and cache-control directives
    */
   fun tryRead(
-    requestUrl: String
+    requestUrl: String,
   ): ReadHandle? {
     // todo - check for initialization and throw Something
 
     val fileRecord = datastore.readRecord(requestUrl)
-    return if (fileRecord == null || !fileRecord.file.exists()) {
+    // todo readRecord checks for the file?
+    return if (fileRecord == null) {
       null
     } else {
       ReadHandle(
@@ -214,7 +215,8 @@ internal object CacheController {
           val record = FileRecord(
             url = url,
             etag = etag,
-            file = cacheFile,
+            relativePath = cacheFile.path,
+            lastAccessUtcSecs = nowUtc,
             lookupKey = datastore.safeCacheKey(URL(url)),
             downloadedAtUtcSecs = nowUtc,
             cacheMaxAge = maxAge ?: TimeUnit.SECONDS.convert(7, TimeUnit.DAYS),

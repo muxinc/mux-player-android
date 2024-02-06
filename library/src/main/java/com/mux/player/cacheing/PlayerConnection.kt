@@ -3,35 +3,34 @@ package com.mux.player.cacheing
 import android.util.Log
 import java.io.OutputStream
 import java.net.Socket
-import java.net.SocketException
 import java.net.URL
 import java.util.concurrent.BlockingDeque
 import java.util.concurrent.LinkedBlockingDeque
 
-class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
+class PlayerConnection(val socket: Socket, val parent: ProxyServer) {
 
-    val TAG:String = "||ProxyPlayerConnection"
+  val TAG: String = "||ProxyPlayerConnection"
 
-    private var httpParser: HttpParser? = null
-    private var running:Boolean = true
-    private var cdnInputQueue: BlockingDeque<ByteArray> = LinkedBlockingDeque()
+  private var httpParser: HttpParser? = null
+  private var running: Boolean = true
+  private var cdnInputQueue: BlockingDeque<ByteArray> = LinkedBlockingDeque()
 
-    private val readThread:Thread = Thread {
-        read()
+  private val readThread: Thread = Thread {
+    read()
+  }
+  private val writeThread: Thread = Thread {
+    write()
+  }
+
+  init {
+    try {
+      httpParser = HttpParser(socket.getInputStream())
+      readThread.start()
+      //writeThread.start()
+    } catch (ex: Exception) {
+      ex.printStackTrace()
     }
-    private val writeThread:Thread = Thread {
-        write()
-    }
-
-    init{
-        try {
-            httpParser = HttpParser(socket.getInputStream())
-            readThread.start()
-            //writeThread.start()
-        } catch (ex:Exception) {
-            ex.printStackTrace()
-        }
-    }
+  }
 
   fun getStreamToPlayer(): OutputStream = socket.getOutputStream()
 
@@ -39,47 +38,52 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
 //        cdnInputQueue.put(chunk)
 //    }
 
-    fun kill() {
-        // TODO: kill all threads
-        running = false
-    }
+  fun kill() {
+    // TODO: kill all threads
+    running = false
+  }
 
-    /**
-     * Read single HTTP request.
-     */
-    private fun read() {
-        try {
-            httpParser!!.parseRequest()
-            Log.i(TAG, "FROM_PLAYER>>\n" + httpParser!!.getRequestString())
-            var cdnHostHeaderValue = httpParser!!.getHeader("host")
-            if (cdnHostHeaderValue.isEmpty()) {
-                throw HttpFormatException("Missing Host header in player request")
-            }
-            val localUrl = "http://" + cdnHostHeaderValue + httpParser!!.path
-            var cdnUrl = parent.decodeUrl(URL(localUrl))
+  /**
+   * Read single HTTP request.
+   */
+  private fun read() {
+    try {
+      httpParser!!.parseRequest()
+      Log.i(TAG, "FROM_PLAYER>>\n" + httpParser!!.getRequestString())
+      var cdnHostHeaderValue = httpParser!!.getHeader("host")
+      if (cdnHostHeaderValue.isEmpty()) {
+        throw HttpFormatException("Missing Host header in player request")
+      }
+      val localUrl = "http://" + cdnHostHeaderValue + httpParser!!.path
+      var cdnUrl = parent.decodeUrl(URL(localUrl))
 
-          // todo - read from cache here
+      // todo - read from cache here
+      val readHandle = CacheController.tryRead(cdnUrl.toString())
 
-            var cdnConnection = CDNConnection(this, parent)
-            cdnConnection.openConnection(cdnUrl)
+      if (readHandle == null) {
+        var cdnConnection = CDNConnection(this, parent)
+        cdnConnection.openConnection(cdnUrl)
 
-            var hostHeaderValue = cdnUrl.host
-            if (cdnUrl.port != -1) {
-                hostHeaderValue = cdnUrl.host + ":" + cdnUrl.port
-            }
-            httpParser!!.setHeader("Host", hostHeaderValue)
-            httpParser!!.setHeader("Connection", "close")
-            httpParser!!.path = cdnUrl.path
-            cdnConnection.send(httpParser!!)
-            cdnConnection.processResponse()
-        } catch(ex:Exception) {
-            Log.e(TAG, "What happend !!!");
-            ex.printStackTrace()
+        var hostHeaderValue = cdnUrl.host
+        if (cdnUrl.port != -1) {
+          hostHeaderValue = cdnUrl.host + ":" + cdnUrl.port
         }
+        httpParser!!.setHeader("Host", hostHeaderValue)
+        httpParser!!.setHeader("Connection", "close")
+        httpParser!!.path = cdnUrl.path
+        cdnConnection.send(httpParser!!)
+        cdnConnection.processResponse()
+      } else {
+        // todo use ReadHandle. Read to getStreamToPlayer
+      }
+    } catch (ex: Exception) {
+      Log.e(TAG, "What happend !!!", ex);
     }
+  }
 
-    private fun write() {
-      // todo - write thread not necessary, we are writing from the CDNConnection using the stream
+
+  private fun write() {
+    // todo - write thread not necessary, we are writing from the CDNConnection using the stream
 //        val writeHandle = CacheController.downloadStarted(
 //            requestUrl = "How to get this",
 //            responseHeaders = mapOf(), // todo - real headers
@@ -98,5 +102,5 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
 //        } catch(ex:SocketException) {
 //            Log.i(TAG, "Player closed the connection")
 //        }
-    }
+  }
 }

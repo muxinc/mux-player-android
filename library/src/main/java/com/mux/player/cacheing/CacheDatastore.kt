@@ -9,6 +9,7 @@ import android.os.Build
 import android.util.Base64
 import android.util.Log
 import com.mux.player.internal.cache.FileRecord
+import com.mux.player.internal.cache.toContentValues
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
@@ -275,24 +276,6 @@ internal class CacheDatastore(val context: Context) : Closeable {
   }
 }
 
-@JvmSynthetic
-internal fun FileRecord.toContentValues(): ContentValues {
-  val values = ContentValues()
-
-  values.apply {
-    put(IndexSchema.FilesTable.Columns.lookupKey, lookupKey)
-    put(IndexSchema.FilesTable.Columns.etag, etag)
-    put(IndexSchema.FilesTable.Columns.filePath, file.path)
-    put(IndexSchema.FilesTable.Columns.remoteUrl, url)
-    put(IndexSchema.FilesTable.Columns.downloadedAtUnixTime, downloadedAtUtcSecs)
-    put(IndexSchema.FilesTable.Columns.maxAgeUnixTime, cacheMaxAge)
-    put(IndexSchema.FilesTable.Columns.resourceAgeUnixTime, resourceAge)
-    put(IndexSchema.FilesTable.Columns.cacheControl, cacheControl)
-  }
-
-  return values
-}
-
 private class DbHelper(
   appContext: Context,
   directory: File,
@@ -321,8 +304,9 @@ private class DbHelper(
     db?.execSQL(
       """
         create table if not exists ${IndexSchema.FilesTable.name} (
-            ${IndexSchema.FilesTable.Columns.lookupKey} text not null primary key,
+            ${IndexSchema.FilesTable.Columns.lookupKey} text not null unique primary key,
             ${IndexSchema.FilesTable.Columns.remoteUrl} text not null,
+            ${IndexSchema.FilesTable.Columns.lastAccessUnixTime} integer not null,
             ${IndexSchema.FilesTable.Columns.etag} text not null,
             ${IndexSchema.FilesTable.Columns.filePath} text not null,
             ${IndexSchema.FilesTable.Columns.downloadedAtUnixTime} integer not null,
@@ -394,6 +378,11 @@ internal object IndexSchema {
        * Age of the resource as described by the `Age` header
        */
       const val resourceAgeUnixTime = "resource_age"
+
+      /**
+       * Last access date
+       */
+      const val lastAccessUnixTime = "last_access"
 
       /**
        * The `max-age` of the cache entry, as required by cache control.
