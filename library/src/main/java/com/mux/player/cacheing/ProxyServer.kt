@@ -19,6 +19,7 @@ class ProxyServer (val port:Int = 5000): Thread() {
     private val activeConnections: LinkedBlockingDeque<PlayerConnection> = LinkedBlockingDeque<PlayerConnection>()
 
     init {
+      Log.d(TAG, "Starting server on port $port")
         try {
             socketServer = ServerSocket(port)
         } catch (ex:IOException) {
