@@ -58,6 +58,8 @@ class PlayerConnection(val socket: Socket, val parent:ProxyServer) {
             val localUrl = "http://" + cdnHostHeaderValue + httpParser!!.path
             var cdnUrl = parent.decodeUrl(URL(localUrl))
 
+          // todo - read from cache here
+
             var cdnConnection = CDNConnection(this, parent)
             cdnConnection.openConnection(cdnUrl)
 
