@@ -14,6 +14,7 @@ import com.mux.player.internal.cache.getCacheControl
 import com.mux.player.internal.cache.getContentType
 import com.mux.player.internal.cache.getETag
 import com.mux.player.internal.cache.isContentTypeSegment
+import com.mux.player.internal.cache.nowUtc
 import com.mux.player.internal.cache.parseMaxAge
 import com.mux.player.internal.cache.parseSMaxAge
 import kotlinx.coroutines.CoroutineScope
@@ -307,10 +308,7 @@ internal class WriteHandle internal constructor(
         val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
         Log.d(CacheController.TAG, "move to cache file with path ${cacheFile.path}")
 
-        val nowUtc = System.currentTimeMillis().let { timeMs ->
-          val timezone = TimeZone.getDefault()
-          (timeMs + timezone.getOffset(timeMs)) / 1000
-        }
+        val nowUtc = nowUtc()
         val recordAge = responseHeaders.getAge()?.toLongOrNull()
         val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(
           cacheControl

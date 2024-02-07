@@ -6,6 +6,7 @@ import com.mux.player.cacheing.CacheController
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.TimeZone
 
 @JvmSynthetic
 @Throws(IOException::class)
@@ -76,6 +77,12 @@ internal fun Map<String, List<String>>.getAge(): String? =
 // todo - make a Headers model
 internal fun Map<String, List<String>>.getContentType(): String? =
   mapKeys { it.key.lowercase() }["content-type"]?.last()
+
+@JvmSynthetic
+internal fun nowUtc() = System.currentTimeMillis().let { timeMs ->
+  val timezone = TimeZone.getDefault()
+  (timeMs + timezone.getOffset(timeMs)) / 1000
+}
 
 @JvmSynthetic
 internal fun parseSMaxAge(cacheControl: String): Long? {
