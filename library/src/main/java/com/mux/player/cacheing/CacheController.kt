@@ -76,51 +76,6 @@ internal object CacheController {
   }
 
   /**
-   * Call internally when a new MuxPlayer is created, if caching was enabled.
-   */
-  @JvmSynthetic
-  internal fun onPlayerCreated() {
-    Log.d(TAG, "onPlayerCreated: called")
-    val totalPlayersBefore = playersWithCache.getAndIncrement()
-    Log.d(TAG, "onPlayerCreated: had $totalPlayersBefore players")
-    if (totalPlayersBefore == 0) {
-      ioScope.launch { datastore.open() }
-//      proxyServer = ProxyServer()
-    }
-  }
-
-  /**
-   * Call internally when a MuxPlayer is released if caching was enabled.
-   *
-   * Try to call only once per player, even if caller calls release() multiple times
-   */
-  @JvmSynthetic
-  internal fun onPlayerReleased() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-      closeDatastoreApiN()
-    } else {
-      closeDatastoreLegacy()
-    }
-  }
-
-  @TargetApi(Build.VERSION_CODES.N)
-  private fun closeDatastoreApiN() {
-    val totalPlayersNow = playersWithCache.updateAndGet { if (it > 0) it - 1 else it }
-    Log.d(TAG, "closeDatastoreApiN: now have $totalPlayersNow players")
-    if (totalPlayersNow == 0) {
-      ioScope.launch { datastore.close() }
-    }
-  }
-
-  private fun closeDatastoreLegacy() {
-    val totalPlayersNow = playersWithCache.decrementAndGet()
-    Log.d(TAG, "closeDatastoreLegacy: now have $totalPlayersNow players")
-    if (totalPlayersNow == 0) {
-      ioScope.launch { datastore.close() }
-    }
-  }
-
-  /**
    * Tries to read from the cache. If there's a hit, this method will return a [ReadHandle] for
    * reading the file. The [ReadHandle] has methods for reading, and also info about the original
    * resource, like its original URL, response headers, and cache-control directives
@@ -181,6 +136,52 @@ internal object CacheController {
   }
 
   /**
+   * Call internally when a new MuxPlayer is created, if caching was enabled.
+   */
+  @JvmSynthetic
+  internal fun onPlayerCreated() {
+    Log.d(TAG, "onPlayerCreated: called")
+    val totalPlayersBefore = playersWithCache.getAndIncrement()
+    Log.d(TAG, "onPlayerCreated: had $totalPlayersBefore players")
+    if (totalPlayersBefore == 0) {
+      ioScope.launch { datastore.open() }
+//      proxyServer = ProxyServer()
+    }
+  }
+
+  /**
+   * Call internally when a MuxPlayer is released if caching was enabled.
+   *
+   * Try to call only once per player, even if caller calls release() multiple times
+   */
+  @JvmSynthetic
+  internal fun onPlayerReleased() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+      closeDatastoreApiN()
+    } else {
+      closeDatastoreLegacy()
+    }
+  }
+
+  @TargetApi(Build.VERSION_CODES.N)
+  private fun closeDatastoreApiN() {
+    val totalPlayersNow = playersWithCache.updateAndGet { if (it > 0) it - 1 else it }
+    Log.d(TAG, "closeDatastoreApiN: now have $totalPlayersNow players")
+    if (totalPlayersNow == 0) {
+      ioScope.launch { datastore.close() }
+    }
+  }
+
+  private fun closeDatastoreLegacy() {
+    val totalPlayersNow = playersWithCache.decrementAndGet()
+    Log.d(TAG, "closeDatastoreLegacy: now have $totalPlayersNow players")
+    if (totalPlayersNow == 0) {
+      ioScope.launch { datastore.close() }
+    }
+  }
+
+
+  /**
    * Returns true if the request should be cached, based on its URL and the headers of the response
    */
   @JvmSynthetic
@@ -213,12 +214,6 @@ internal object CacheController {
 
     return true
   }
-
-
-
-
-
-
 }
 
 /**
@@ -288,37 +283,24 @@ internal class WriteHandle internal constructor(
   private val controller: CacheController,
   private val datastore: CacheDatastore,
   private val tempFile: File?,
-//    private val playerOutputStream: OutputStream,
 ): Closeable {
 
   private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
-//    private val fileOutputStream = tempFile?.let { FileOutputStream(it) }
 
   /**
    * Writes the given bytes to both the player socket and the file
    */
   fun write(data: ByteArray, offset: Int, len: Int) {
-//      playerOutputStream.write(data, offset, len)
     Log.i(CacheController.TAG, "Writing $len bytes unless $fileOutputStream is null")
     fileOutputStream?.write(data, offset, len)
     fileOutputStream?.flush()
   }
 
   /**
-   * Writes the given String's bytes to both the player socket and the file
-   */
-//    fun write(data: String) {
-//      playerOutputStream.write(data.toByteArray(Charsets.US_ASCII))
-//      fileOutputStream?.write(data.toByteArray(Charsets.US_ASCII))
-//    }
-
-  /**
    * Call when you've reached the end of the body input. This closes the streams to the player
    * socket and file (if any)
    */
   fun finishedWriting() {
-//      playerOutputStream.close()
-
     // If there's a temp file, we are caching it so move it from the temp file and write to index
     Log.i(CacheController.TAG, "flushing $fileOutputStream")
     fileOutputStream?.flush()
