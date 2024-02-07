@@ -286,7 +286,7 @@ internal object CacheController {
       fileOutputStream?.close()
       Log.i(TAG , "temp file is $tempFile")
       Log.i(TAG , "temp file has ${tempFile?.length()}")
-      if (tempFile != null && false) {
+      if (tempFile != null) {
         val cacheControl = responseHeaders.getCacheControl()
         val etag = responseHeaders.getETag()
         if (cacheControl != null && etag != null) {
