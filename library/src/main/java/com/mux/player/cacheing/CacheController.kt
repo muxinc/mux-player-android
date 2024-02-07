@@ -106,7 +106,6 @@ internal object CacheController {
     requestUrl: String,
     responseHeaders: Map<String, List<String>>,
   ): WriteHandle {
-
     return if (shouldCacheResponse(requestUrl, responseHeaders)) {
       val tempFile = datastore.createTempDownloadFile(URL(requestUrl))
 

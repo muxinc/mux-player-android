@@ -4,8 +4,8 @@ import android.content.Context
 import com.mux.player.cacheing.CacheController
 import com.mux.player.cacheing.CacheDatastore
 import com.mux.player.cacheing.IndexSchema
-import com.mux.player.cacheing.toContentValues
 import com.mux.player.internal.cache.FileRecord
+import com.mux.player.internal.cache.toContentValues
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert
@@ -72,15 +72,20 @@ class CacheDatastoreTests: AbsRobolectricTest() {
     val record = FileRecord(
       url = "url",
       etag = "etag",
-      file = File("cacheFile"),
+      relativePath = "cacheFile",
       lookupKey = "lookupKey",
       downloadedAtUtcSecs = 1L,
       cacheMaxAge = 2L,
       resourceAge = 3L,
-      cacheControl = "cacheControl"
+      cacheControl = "cacheControl",
+      lastAccessUtcSecs = 4L
     )
 
     val contentValues = record.toContentValues()
+    Assert.assertEquals(
+      "last-access should be saved",
+      4L, contentValues.getAsLong(IndexSchema.FilesTable.Columns.lastAccessUnixTime)
+    )
     Assert.assertEquals(
       "url should be saved",
       "url", contentValues.getAsString(IndexSchema.FilesTable.Columns.remoteUrl)

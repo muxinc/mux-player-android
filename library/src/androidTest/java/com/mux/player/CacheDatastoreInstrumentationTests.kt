@@ -177,6 +177,24 @@ class CacheDatastoreInstrumentationTests {
     }
   }
 
+  @Test
+  fun testReadRecord() {
+    CacheDatastore(appContext).use { datastore ->
+      val originalRecord = FileRecord(
+        url = "url",
+        etag = "etag1",
+        relativePath = "cacheFile",
+        lookupKey = "lookupKey",
+        downloadedAtUtcSecs = 1L,
+        cacheMaxAge = 2L,
+        resourceAge = 3L,
+        cacheControl = "cacheControl",
+        lastAccessUtcSecs = 4L,
+      )
+      datastore.writeRecord(originalRecord)
+    }
+  }
+
   private fun expectedFileTempDir(context: Context): File =
     File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
 
