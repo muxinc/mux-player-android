@@ -86,6 +86,7 @@ class MuxDataSource private constructor(
       )
       available
     } else {
+      // cache hit
       respondingFromCache = true
       this.cacheReader = readHandle
       Log.d(TAG, "open(): Opening from cache. Advertising ${readHandle.fileSize} bytes")
