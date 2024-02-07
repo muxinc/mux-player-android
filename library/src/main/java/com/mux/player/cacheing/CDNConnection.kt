@@ -84,7 +84,7 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent: ProxySer
 
   private fun consumeIntoHandle(
     externalInput: InputStream,
-    writeHandle: CacheController.WriteHandle
+    writeHandle: WriteHandle
   ) {
     val readBuf = ByteArray(READ_SIZE)
 

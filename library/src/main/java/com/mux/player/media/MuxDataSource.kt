@@ -13,6 +13,8 @@ import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
 import com.mux.player.cacheing.CacheConstants
 import com.mux.player.cacheing.CacheController
+import com.mux.player.cacheing.ReadHandle
+import com.mux.player.cacheing.WriteHandle
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 
@@ -42,8 +44,8 @@ class MuxDataSource private constructor(
 
   private var respondingFromCache: Boolean = false
   private var upstream: HttpDataSource? = null // only present if we need to request something
-  private var cacheReader: CacheController.ReadHandle? = null
-  private var cacheWriter: CacheController.WriteHandle? = null
+  private var cacheReader: ReadHandle? = null
+  private var cacheWriter: WriteHandle? = null
 
   override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
     return if (respondingFromCache) {

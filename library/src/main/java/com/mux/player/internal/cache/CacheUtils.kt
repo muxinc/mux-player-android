@@ -60,3 +60,41 @@ internal fun isContentTypePlaylist(contentTypeHeader: String?): Boolean {
           || contentTypeHeader.equals("audio/x-mpegurl", true)
           )
 }
+
+// todo - make a Headers model
+internal fun Map<String, List<String>>.getCacheControl(): String? =
+  mapKeys { it.key.lowercase() }["cache-control"]?.last()
+
+// todo - make a Headers model
+internal fun Map<String, List<String>>.getETag(): String? =
+  mapKeys { it.key.lowercase() }["etag"]?.last()
+
+// todo - make a Headers model
+internal fun Map<String, List<String>>.getAge(): String? =
+  mapKeys { it.key.lowercase() }["age"]?.last()
+
+// todo - make a Headers model
+internal fun Map<String, List<String>>.getContentType(): String? =
+  mapKeys { it.key.lowercase() }["content-type"]?.last()
+
+@JvmSynthetic
+internal fun parseSMaxAge(cacheControl: String): Long? {
+  val matchResult = CacheController.RX_S_MAX_AGE.matchEntire(cacheControl)
+  return if (matchResult == null) {
+    null
+  } else {
+    val maxAgeSecs = matchResult.groupValues[1]
+    maxAgeSecs.toLongOrNull()
+  }
+}
+
+@JvmSynthetic
+internal fun parseMaxAge(cacheControl: String): Long? {
+  val matchResult = CacheController.RX_MAX_AGE.matchEntire(cacheControl)
+  return if (matchResult == null) {
+    null
+  } else {
+    val maxAgeSecs = matchResult.groupValues[1]
+    maxAgeSecs.toLongOrNull()
+  }
+}
