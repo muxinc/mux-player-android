@@ -14,6 +14,7 @@ import androidx.media3.datasource.TransferListener
 import com.mux.player.cacheing.CacheConstants
 import com.mux.player.cacheing.CacheController
 import java.io.File
+import java.util.concurrent.atomic.AtomicReference
 
 @OptIn(UnstableApi::class)
 class MuxDataSource private constructor(
@@ -52,14 +53,7 @@ class MuxDataSource private constructor(
 
       readBytes
     } else {
-      val writer = if (cacheWriter != null) {
-        cacheWriter!!
-      } else {
-        CacheController.downloadStarted(
-          uri.toString(),
-          upstream!!.responseHeaders, // !! safe by contract
-        )
-      }
+      val writer = cacheWriter!!
       val upstreamSrc = this.upstream!!
       val bytesFromUpstream = upstreamSrc.read(buffer, offset, length)
       Log.d(TAG, "Got $bytesFromUpstream from upstream")
@@ -85,7 +79,12 @@ class MuxDataSource private constructor(
       respondingFromCache = false
       val upstream = upstreamSrcFac.createDataSource()
       this.upstream = upstream
-      upstream.open(dataSpec)
+      val available = upstream.open(dataSpec)
+      cacheWriter = CacheController.downloadStarted(
+        dataSpec.uri.toString(),
+        upstream.responseHeaders,
+      )
+      available
     } else {
       respondingFromCache = true
       this.cacheReader = readHandle

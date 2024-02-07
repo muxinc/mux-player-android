@@ -252,6 +252,7 @@ internal object CacheController {
   ): Closeable {
 
     private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
+//    private val fileOutputStream = tempFile?.let { FileOutputStream(it) }
 
     /**
      * Writes the given bytes to both the player socket and the file
@@ -283,7 +284,9 @@ internal object CacheController {
       fileOutputStream?.flush()
       Log.i(TAG , "closing $fileOutputStream")
       fileOutputStream?.close()
-      if (tempFile != null) {
+      Log.i(TAG , "temp file is $tempFile")
+      Log.i(TAG , "temp file has ${tempFile?.length()}")
+      if (tempFile != null && false) {
         val cacheControl = responseHeaders.getCacheControl()
         val etag = responseHeaders.getETag()
         if (cacheControl != null && etag != null) {

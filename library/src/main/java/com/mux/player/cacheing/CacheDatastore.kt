@@ -15,6 +15,7 @@ import java.io.Closeable
 import java.io.File
 import java.io.IOException
 import java.net.URL
+import java.nio.file.FileSystem
 import java.util.concurrent.CancellationException
 import java.util.concurrent.FutureTask
 import java.util.concurrent.atomic.AtomicReference
@@ -104,7 +105,8 @@ internal class CacheDatastore(val context: Context) : Closeable {
    */
   fun moveFromTempFile(tempFile: File, remoteUrl: URL): File {
     val cacheFile = createCacheFile(remoteUrl)
-    tempFile.renameTo(cacheFile)
+//    tempFile.renameTo(cacheFile)
+    tempFile.copyTo(cacheFile, overwrite = true)
     return cacheFile
   }
 
