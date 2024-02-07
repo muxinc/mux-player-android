@@ -125,7 +125,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
     }
   }
 
-  fun readRecord(url: String): FileRecord? {
+  fun readRecordByUrl(url: String): FileRecord? {
     return dbHelper.writableDatabase.use {
       it.query(
         IndexSchema.FilesTable.name, null,

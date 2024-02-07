@@ -72,7 +72,7 @@ internal object CacheController {
   ): ReadHandle? {
     // todo - check for initialization and throw Something
 
-    val fileRecord = datastore.readRecord(requestUrl)
+    val fileRecord = datastore.readRecordByUrl(requestUrl)
     Log.d(TAG, "Read file record: $fileRecord")
     // todo readRecord checks for the file?
     return if (fileRecord == null) {
