@@ -14,6 +14,7 @@ import com.mux.player.internal.cache.getCacheControl
 import com.mux.player.internal.cache.getContentType
 import com.mux.player.internal.cache.getETag
 import com.mux.player.internal.cache.isContentTypeSegment
+import com.mux.player.internal.cache.nowUtc
 import com.mux.player.internal.cache.parseMaxAge
 import com.mux.player.internal.cache.parseSMaxAge
 import kotlinx.coroutines.CoroutineScope
@@ -47,9 +48,6 @@ internal object CacheController {
 
   private val playersWithCache = AtomicInteger(0)
   private val ioScope = CoroutineScope(Dispatchers.IO)
-  // access gated via playersWithCache.
-  // Only start it if you incremented from 0, only stop if you decrement from 0
-//  private var proxyServer: ProxyServer? = null
 
   const val TAG = "CacheController"
 
@@ -72,51 +70,6 @@ internal object CacheController {
     }
     if (!this::datastore.isInitialized) {
       datastore = cacheDatastore ?: CacheDatastore(appContext)
-    }
-  }
-
-  /**
-   * Call internally when a new MuxPlayer is created, if caching was enabled.
-   */
-  @JvmSynthetic
-  internal fun onPlayerCreated() {
-    Log.d(TAG, "onPlayerCreated: called")
-    val totalPlayersBefore = playersWithCache.getAndIncrement()
-    Log.d(TAG, "onPlayerCreated: had $totalPlayersBefore players")
-    if (totalPlayersBefore == 0) {
-      ioScope.launch { datastore.open() }
-//      proxyServer = ProxyServer()
-    }
-  }
-
-  /**
-   * Call internally when a MuxPlayer is released if caching was enabled.
-   *
-   * Try to call only once per player, even if caller calls release() multiple times
-   */
-  @JvmSynthetic
-  internal fun onPlayerReleased() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-      closeDatastoreApiN()
-    } else {
-      closeDatastoreLegacy()
-    }
-  }
-
-  @TargetApi(Build.VERSION_CODES.N)
-  private fun closeDatastoreApiN() {
-    val totalPlayersNow = playersWithCache.updateAndGet { if (it > 0) it - 1 else it }
-    Log.d(TAG, "closeDatastoreApiN: now have $totalPlayersNow players")
-    if (totalPlayersNow == 0) {
-      ioScope.launch { datastore.close() }
-    }
-  }
-
-  private fun closeDatastoreLegacy() {
-    val totalPlayersNow = playersWithCache.decrementAndGet()
-    Log.d(TAG, "closeDatastoreLegacy: now have $totalPlayersNow players")
-    if (totalPlayersNow == 0) {
-      ioScope.launch { datastore.close() }
     }
   }
 
@@ -152,9 +105,7 @@ internal object CacheController {
   fun downloadStarted(
     requestUrl: String,
     responseHeaders: Map<String, List<String>>,
-//    playerOutputStream: OutputStream,
   ): WriteHandle {
-    // todo - check for initialization and throw or something
 
     return if (shouldCacheResponse(requestUrl, responseHeaders)) {
       val tempFile = datastore.createTempDownloadFile(URL(requestUrl))
@@ -162,7 +113,6 @@ internal object CacheController {
       WriteHandle(
         controller = this,
         tempFile = tempFile,
-//        playerOutputStream = playerOutputStream,
         responseHeaders = responseHeaders,
         datastore = datastore,
         url = requestUrl,
@@ -172,13 +122,57 @@ internal object CacheController {
       WriteHandle(
         controller = this,
         tempFile = null,
-//        playerOutputStream = playerOutputStream,
         url = requestUrl,
         datastore = datastore,
         responseHeaders = responseHeaders,
       )
     }
   }
+
+  /**
+   * Call internally when a new MuxPlayer is created, if caching was enabled.
+   */
+  @JvmSynthetic
+  internal fun onPlayerCreated() {
+    Log.d(TAG, "onPlayerCreated: called")
+    val totalPlayersBefore = playersWithCache.getAndIncrement()
+    Log.d(TAG, "onPlayerCreated: had $totalPlayersBefore players")
+    if (totalPlayersBefore == 0) {
+      ioScope.launch { datastore.open() }
+    }
+  }
+
+  /**
+   * Call internally when a MuxPlayer is released if caching was enabled.
+   *
+   * Try to call only once per player, even if caller calls release() multiple times
+   */
+  @JvmSynthetic
+  internal fun onPlayerReleased() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+      closeDatastoreApiN()
+    } else {
+      closeDatastoreLegacy()
+    }
+  }
+
+  @TargetApi(Build.VERSION_CODES.N)
+  private fun closeDatastoreApiN() {
+    val totalPlayersNow = playersWithCache.updateAndGet { if (it > 0) it - 1 else it }
+    Log.d(TAG, "closeDatastoreApiN: now have $totalPlayersNow players")
+    if (totalPlayersNow == 0) {
+      ioScope.launch { datastore.close() }
+    }
+  }
+
+  private fun closeDatastoreLegacy() {
+    val totalPlayersNow = playersWithCache.decrementAndGet()
+    Log.d(TAG, "closeDatastoreLegacy: now have $totalPlayersNow players")
+    if (totalPlayersNow == 0) {
+      ioScope.launch { datastore.close() }
+    }
+  }
+
 
   /**
    * Returns true if the request should be cached, based on its URL and the headers of the response
@@ -213,12 +207,6 @@ internal object CacheController {
 
     return true
   }
-
-
-
-
-
-
 }
 
 /**
@@ -288,37 +276,24 @@ internal class WriteHandle internal constructor(
   private val controller: CacheController,
   private val datastore: CacheDatastore,
   private val tempFile: File?,
-//    private val playerOutputStream: OutputStream,
 ): Closeable {
 
   private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
-//    private val fileOutputStream = tempFile?.let { FileOutputStream(it) }
 
   /**
    * Writes the given bytes to both the player socket and the file
    */
   fun write(data: ByteArray, offset: Int, len: Int) {
-//      playerOutputStream.write(data, offset, len)
     Log.i(CacheController.TAG, "Writing $len bytes unless $fileOutputStream is null")
     fileOutputStream?.write(data, offset, len)
     fileOutputStream?.flush()
   }
 
   /**
-   * Writes the given String's bytes to both the player socket and the file
-   */
-//    fun write(data: String) {
-//      playerOutputStream.write(data.toByteArray(Charsets.US_ASCII))
-//      fileOutputStream?.write(data.toByteArray(Charsets.US_ASCII))
-//    }
-
-  /**
    * Call when you've reached the end of the body input. This closes the streams to the player
    * socket and file (if any)
    */
   fun finishedWriting() {
-//      playerOutputStream.close()
-
     // If there's a temp file, we are caching it so move it from the temp file and write to index
     Log.i(CacheController.TAG, "flushing $fileOutputStream")
     fileOutputStream?.flush()
@@ -333,10 +308,7 @@ internal class WriteHandle internal constructor(
         val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
         Log.d(CacheController.TAG, "move to cache file with path ${cacheFile.path}")
 
-        val nowUtc = System.currentTimeMillis().let { timeMs ->
-          val timezone = TimeZone.getDefault()
-          (timeMs + timezone.getOffset(timeMs)) / 1000
-        }
+        val nowUtc = nowUtc()
         val recordAge = responseHeaders.getAge()?.toLongOrNull()
         val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(
           cacheControl

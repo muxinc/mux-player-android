@@ -142,22 +142,24 @@ class CacheDatastoreInstrumentationTests {
       val originalRecord = FileRecord(
         url = "url",
         etag = "etag1",
-        file = File("cacheFile"),
+        relativePath = "cacheFile",
         lookupKey = "lookupKey",
         downloadedAtUtcSecs = 1L,
         cacheMaxAge = 2L,
         resourceAge = 3L,
-        cacheControl = "cacheControl"
+        cacheControl = "cacheControl",
+        lastAccessUtcSecs = 4L,
       )
       val secondRecord = FileRecord(
         url = "url2",
         etag = "etag2",
-        file = File("cacheFile"),
+        relativePath = "cacheFile",
         lookupKey = "lookupKey",
         downloadedAtUtcSecs = 1L,
         cacheMaxAge = 2L,
         resourceAge = 3L,
-        cacheControl = "cacheControl"
+        cacheControl = "cacheControl",
+        lastAccessUtcSecs = 4L
       )
 
       val writeResult1 = datastore.writeRecord(originalRecord)
