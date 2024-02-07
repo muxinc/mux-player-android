@@ -1,21 +1,15 @@
-package com.mux.player.cacheing
+package com.mux.player.internal.cache
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import android.os.Build
 import android.util.Base64
 import android.util.Log
-import com.mux.player.internal.cache.FileRecord
-import com.mux.player.internal.cache.toContentValues
-import com.mux.player.internal.cache.toFileRecord
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
 import java.io.IOException
 import java.net.URL
-import java.nio.file.FileSystem
 import java.util.concurrent.CancellationException
 import java.util.concurrent.FutureTask
 import java.util.concurrent.atomic.AtomicReference
@@ -29,10 +23,15 @@ import java.util.concurrent.atomic.AtomicReference
  * CacheController is immediately responsible for deciding this (though in this in-dev iteration it
  * simply keeps one and doesn't close it, which we should change before 1.0)
  */
-internal class CacheDatastore(val context: Context) : Closeable {
+internal class CacheDatastore(
+  val context: Context,
+  val maxDiskSize: Long = 256 * 1024 * 1024,
+) : Closeable {
 
   companion object {
+    private const val TAG = "CacheDatastore"
     private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
+
     val RX_CHUNK_URL =
       Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
   }
@@ -96,8 +95,11 @@ internal class CacheDatastore(val context: Context) : Closeable {
    * automatically whenever the JVM shuts down gracefully
    */
   fun createTempDownloadFile(remoteUrl: URL): File {
-    return createTempMediaFile(remoteUrl.path.split("/").last())
-      .also { it.deleteOnExit() }
+    return File.createTempFile(
+      "mux-download-${remoteUrl.path.split("/").last()}",
+      ".part",
+      fileTempDir()
+    ).also { it.deleteOnExit() }
   }
 
   /**
@@ -106,18 +108,19 @@ internal class CacheDatastore(val context: Context) : Closeable {
   fun moveFromTempFile(tempFile: File, remoteUrl: URL): File {
     val cacheFile = createCacheFile(remoteUrl)
     tempFile.renameTo(cacheFile)
-//    tempFile.copyTo(cacheFile, overwrite = true)
     return cacheFile
   }
 
-  fun writeRecord(fileRecord: FileRecord): Result<Unit> {
+  fun writeFileRecord(fileRecord: FileRecord): Result<Unit> {
     val rowId = dbHelper.writableDatabase.use {
       it.insertWithOnConflict(
-        IndexSchema.FilesTable.name, null,
+        IndexSql.Files.name, null,
         fileRecord.toContentValues(),
         SQLiteDatabase.CONFLICT_REPLACE
       )
     }
+
+    Log.v(TAG, "Wrote to row $rowId")
 
     return if (rowId >= 0) {
       Result.success(Unit)
@@ -126,11 +129,28 @@ internal class CacheDatastore(val context: Context) : Closeable {
     }
   }
 
-  fun readRecord(url: String): FileRecord? {
+  fun readRecordByLookupKey(key: String): FileRecord? {
     return dbHelper.writableDatabase.use {
       it.query(
-        IndexSchema.FilesTable.name, null,
-        "${IndexSchema.FilesTable.Columns.lookupKey} is ?",
+        IndexSql.Files.name, null,
+        "${IndexSql.Files.Columns.lookupKey} is ?",
+        arrayOf(key),
+        null, null, null
+      ).use { cursor ->
+        if (cursor.count > 0 && cursor.moveToFirst()) {
+          cursor.toFileRecord()
+        } else {
+          null
+        }
+      }
+    }
+  }
+
+  fun readRecordByUrl(url: String): FileRecord? {
+    return dbHelper.writableDatabase.use {
+      it.query(
+        IndexSql.Files.name, null,
+        "${IndexSql.Files.Columns.lookupKey} is ?",
         arrayOf(safeCacheKey(URL(url))),
         null, null, null
       ).use { cursor ->
@@ -161,6 +181,34 @@ internal class CacheDatastore(val context: Context) : Closeable {
    * A subdirectory within an app's no-backup files dir that contains the cache's index
    */
   fun indexDbDir(): File = File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
+
+  /**
+   * Generates a URL-safe cache key for a given URL. Delegates to [generateCacheKey] but encodes it
+   * into something else
+   */
+  fun safeCacheKey(url: URL): String = Base64.encodeToString(
+    generateCacheKey(url).toByteArray(Charsets.UTF_8),
+    Base64.NO_WRAP or Base64.URL_SAFE or Base64.NO_PADDING
+  )
+
+  /**
+   * Evicts files from the cache if we are above the maximum size, preferring the least
+   * recently-used items
+   */
+  fun evictByLru(): Result<Int> {
+    return dbHelper.writableDatabase.use { doEvictByLru(it) }
+
+  }
+
+  /**
+   * Reads a list of the least-used records, whose cumulative sizes are above the [maxDiskSize]
+   */
+  @JvmSynthetic
+  internal fun readLeastRecentFiles(): List<FileRecord> {
+    // This function is only visible for testing. doReadLeastRecentFiles() is called internally in
+    //  a transaction with an already-open db
+    return dbHelper.writableDatabase.use { doReadLeastRecentFiles(it) }
+  }
 
   /**
    * Mux Video segments have special cache keys because their URLs follow a known format even
@@ -198,15 +246,73 @@ internal class CacheDatastore(val context: Context) : Closeable {
     return key
   }
 
-  /**
-   * Generates a URL-safe cache key for a given URL. Delegates to [generateCacheKey] but encodes it
-   * into something else
-   */
-  @JvmSynthetic
-  internal fun safeCacheKey(url: URL): String = Base64.encodeToString(
-    generateCacheKey(url).toByteArray(Charsets.UTF_8),
-    Base64.NO_WRAP or Base64.URL_SAFE
-  )
+  private fun doDeleteRecords(db: SQLiteDatabase, records: List<FileRecord>): Result<Int> {
+    return runCatching {
+      var written = 0
+      records.map { it.lookupKey }.forEach {
+        written += db.delete(
+          /* table = */ IndexSql.Files.name,
+          /* whereClause = */ "${IndexSql.Files.Columns.lookupKey}=?",
+          /* whereArgs = */ arrayOf(it)
+        )
+      }
+      written
+    }
+  }
+
+  private fun doEvictByLru(db: SQLiteDatabase): Result<Int> {
+    try {
+      // We evict in a transaction so we can delete files without other cache operations adding
+      //  or reading. Even if the delay results in a miss that would have possibly hit, missing
+      //  consistently is more reliable than hitting and deleting the file while in-use
+      db.beginTransaction()
+
+      // todo - remember to skip files that CacheController knows are already being read
+      val candidates = doReadLeastRecentFiles(db)
+      Log.i(TAG, "About to evict ${candidates.map { it.relativePath }}")
+      candidates.forEach { candidate ->
+        File(fileCacheDir(), candidate.relativePath).delete()
+      }
+      // remove last so we don't leave orphans
+      val deleteResult = doDeleteRecords(db, candidates)
+      Log.v(TAG, "deleted $deleteResult records")
+
+      if (deleteResult.isSuccess) {
+        db.setTransactionSuccessful()
+      }
+      return deleteResult
+    } finally {
+      db.endTransaction()
+    }
+  }
+
+  private fun doReadLeastRecentFiles(db: SQLiteDatabase): List<FileRecord> {
+    // rawQuery because none of the nicer query functions let you do sub-queries
+    db.rawQuery(
+      """
+         select * from (
+           select *,
+             sum(${IndexSql.Files.Columns.diskSize}) over 
+               (order by ${IndexSql.Files.Columns.lastAccessUnixTime} desc) 
+               as ${IndexSql.Files.Derived.aggDiskSize}
+           from ${IndexSql.Files.name}
+         ) 
+         where ${IndexSql.Files.Derived.aggDiskSize} > $maxDiskSize 
+        """.trimIndent(),
+      null,
+    ).use { cursor ->
+      if (cursor.count > 0) {
+        val result = mutableListOf<FileRecord>()
+        cursor.moveToFirst()
+        do {
+          result += cursor.toFileRecord()
+        } while (cursor.moveToNext())
+        return result
+      } else {
+        return listOf()
+      }
+    }
+  }
 
   private fun ensureDirs() {
     fileTempDir().mkdirs()
@@ -238,14 +344,6 @@ internal class CacheDatastore(val context: Context) : Closeable {
       fileTempDir.delete()
       fileTempDir.mkdirs()
     }
-  }
-
-  /**
-   * Creates a new temp file for downloading-into. Temp files go in a special dir that gets cleared
-   * out when the datastore is opened
-   */
-  private fun createTempMediaFile(fileBasename: String): File {
-    return File.createTempFile("mux-download-$fileBasename", ".part", fileTempDir())
   }
 
   /**
@@ -283,9 +381,12 @@ internal class CacheDatastore(val context: Context) : Closeable {
 
       val helper = DbHelper(context, indexDbDir())
       closeIfInterrupted(helper)
-      val db = helper.writableDatabase
-      db.close()
-      // todo- eviction pass with that db
+
+      // Do some db maintenance when we start up, in case shutdown wasn't clean
+      helper.writableDatabase.use { db ->
+        doEvictByLru(db)
+      }
+
       closeIfInterrupted(helper)
       return helper;
     }
@@ -316,7 +417,7 @@ private class DbHelper(
   /* context = */ appContext,
   /* name = */ File(directory, DB_FILE).path,
   null,
-  IndexSchema.version
+  IndexSql.version
 ) {
 
   companion object {
@@ -336,48 +437,41 @@ private class DbHelper(
   override fun onCreate(db: SQLiteDatabase?) {
     db?.execSQL(
       """
-        create table if not exists ${IndexSchema.FilesTable.name} (
-            ${IndexSchema.FilesTable.Columns.lookupKey} text not null unique primary key,
-            ${IndexSchema.FilesTable.Columns.remoteUrl} text not null,
-            ${IndexSchema.FilesTable.Columns.lastAccessUnixTime} integer not null,
-            ${IndexSchema.FilesTable.Columns.etag} text not null,
-            ${IndexSchema.FilesTable.Columns.filePath} text not null,
-            ${IndexSchema.FilesTable.Columns.downloadedAtUnixTime} integer not null,
-            ${IndexSchema.FilesTable.Columns.maxAgeUnixTime} integer not null,
-            ${IndexSchema.FilesTable.Columns.resourceAgeUnixTime} integer not null default 0,
-            ${IndexSchema.FilesTable.Columns.cacheControl} text not null
+        create table if not exists ${IndexSql.Files.name} (
+            ${IndexSql.Files.Columns.lookupKey} text not null unique primary key,
+            ${IndexSql.Files.Columns.remoteUrl} text not null,
+            ${IndexSql.Files.Columns.diskSize} integer not null,
+            ${IndexSql.Files.Columns.lastAccessUnixTime} integer not null,
+            ${IndexSql.Files.Columns.etag} text not null,
+            ${IndexSql.Files.Columns.filePath} text not null,
+            ${IndexSql.Files.Columns.downloadedAtUnixTime} integer not null,
+            ${IndexSql.Files.Columns.maxAgeUnixTime} integer not null,
+            ${IndexSql.Files.Columns.resourceAgeUnixTime} integer not null default 0,
+            ${IndexSql.Files.Columns.cacheControl} text not null
         )
       """.trimIndent()
     )
   }
 
   override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-    // in the future, if we need to update the sql schema, we'd increment Schema.version and do the
+    // in the future, if we need to update the sql schema, we'd increment IndexSql.version and do the
     //  migration here by adding or altering tables or whatever.
   }
 }
 
 /**
- * Returns this app's no-backup internal files dir, or the regular files dir on older api levels
+ * IndexSql for the cache index
  */
-internal val Context.filesDirNoBackupCompat: File
-  @SuppressLint("ObsoleteSdkInt") get() {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      noBackupFilesDir
-    } else {
-      filesDir
-    }
-  }
-
-/**
- * Schema for the cache index
- */
-internal object IndexSchema {
+internal object IndexSql {
 
   const val version = 1
 
-  object FilesTable {
+  object Files {
     const val name = "files"
+
+    object Derived {
+      const val aggDiskSize = "agg_disk_sz"
+    }
 
     object Columns {
       /**
@@ -406,6 +500,11 @@ internal object IndexSchema {
        * The path of the cached copy of the file. This path is relative to the app's cache dir
        */
       const val filePath = "file_path"
+
+      /**
+       * The total size of the resource in bytes
+       */
+      const val diskSize = "disk_size"
 
       /**
        * Age of the resource as described by the `Age` header

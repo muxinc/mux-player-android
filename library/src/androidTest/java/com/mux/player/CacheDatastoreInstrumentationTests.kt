@@ -1,12 +1,13 @@
 package com.mux.player
 
 import android.content.Context
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.mux.player.cacheing.CacheConstants
-import com.mux.player.cacheing.CacheDatastore
-import com.mux.player.cacheing.filesDirNoBackupCompat
+import com.mux.player.internal.cache.CacheConstants
+import com.mux.player.internal.cache.CacheDatastore
 import com.mux.player.internal.cache.FileRecord
+import com.mux.player.internal.cache.filesDirNoBackupCompat
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -17,6 +18,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.URL
+import kotlin.math.min
 
 /**
  * Instrumentation tests for just CacheDatastore. Tests in here are for things that require a real
@@ -28,6 +30,10 @@ import java.net.URL
  */
 @RunWith(AndroidJUnit4::class)
 class CacheDatastoreInstrumentationTests {
+
+  companion object {
+    const val TAG = "CacheDatastoreInstrumentationTests"
+  }
 
   private val appContext get() = InstrumentationRegistry.getInstrumentation().targetContext
 
@@ -142,37 +148,211 @@ class CacheDatastoreInstrumentationTests {
       val originalRecord = FileRecord(
         url = "url",
         etag = "etag1",
-        file = File("cacheFile"),
+        relativePath = "cacheFile",
         lookupKey = "lookupKey",
         downloadedAtUtcSecs = 1L,
         cacheMaxAge = 2L,
         resourceAge = 3L,
-        cacheControl = "cacheControl"
+        cacheControl = "cacheControl",
+        lastAccessUtcSecs = 4L,
+        sizeOnDisk = 1L
       )
       val secondRecord = FileRecord(
         url = "url2",
         etag = "etag2",
-        file = File("cacheFile"),
+        relativePath = "cacheFile",
         lookupKey = "lookupKey",
         downloadedAtUtcSecs = 1L,
         cacheMaxAge = 2L,
         resourceAge = 3L,
-        cacheControl = "cacheControl"
+        cacheControl = "cacheControl",
+        lastAccessUtcSecs = 4L,
+        sizeOnDisk = 1L
       )
 
-      val writeResult1 = datastore.writeRecord(originalRecord)
+      val writeResult1 = datastore.writeFileRecord(originalRecord)
       Assert.assertTrue(
         "First write of record with key ${originalRecord.lookupKey} should succeed",
         writeResult1.isSuccess
       )
-      val writeResult2 = datastore.writeRecord(secondRecord)
+      val writeResult2 = datastore.writeFileRecord(secondRecord)
       Assert.assertTrue(
         "next write of record with key ${secondRecord.lookupKey} should succeed",
         writeResult2.isSuccess
       )
 
-      // todo - read-out the record and ensure it is equal to the second record
+      val readRecord = datastore.readRecordByLookupKey("lookupKey")
+      Assert.assertEquals(
+        "The record read-out should match the last record written with that lookup key",
+        secondRecord, readRecord
+      )
     }
+  }
+
+  @Test
+  fun testReadRecord() {
+    fun testTheCase(url: String) {
+      CacheDatastore(appContext).use { datastore ->
+        val originalRecord = FileRecord(
+          url = url,
+          etag = "etag1",
+          relativePath = "cacheFile",
+          lookupKey = datastore.safeCacheKey(URL(url)),
+          downloadedAtUtcSecs = 1L,
+          cacheMaxAge = 2L,
+          resourceAge = 3L,
+          cacheControl = "cacheControl",
+          lastAccessUtcSecs = 4L,
+          sizeOnDisk = 1L
+        )
+        val result = datastore.writeFileRecord(originalRecord)
+        result.getOrThrow() // not part of test, writing is covered elsewhere
+
+        val readRecord = datastore.readRecordByUrl(url)
+        Assert.assertEquals(
+          "The record should be the same after writing and reading",
+          originalRecord, readRecord
+        )
+      }
+    }
+
+    testTheCase("https://www.mux.com/any/path")
+    testTheCase("https://fake.cdn-host.com/v1/chunk/vSIm02ye02gC7NasaSqE5zGP4lN3UJ01Iw01gOd01PapjUbeWza9NSOI02cpcAa02f5Kfh78vqhiWwVCk01bpcumXT4jQbfDJGBzQ02ygzY02QIMiTQuw/10.ts?skid=default&signature=NjVjZDQ1ZjBfNDYyNWYwODAxZmIzZTQ4YzU2YmQyYTZmZDhkNmYyYWQ2YjkxYmVkZmJkNThkOTBkOWRkYmU3NmRhNDVhYWY5OQ==&zone=0&vsid=z3MOq02sdo99wTURNGGxQJgKEk4qHbLSY4C8HfvZTbRPNGT0029u56MOSv8xlmJSior66tll9YK98")
+  }
+
+  @Test
+  fun testReadLeastRecentFiles() {
+    val maxCacheSize = 5L
+    CacheDatastore(appContext, maxDiskSize = maxCacheSize).use { datastore ->
+      datastore.open()
+      // For this test, size "units" are like one digit.
+      //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
+
+      var fakeLastAccess = 200L // increment by some amount when you need to
+      fun fakeNow(since: Long = 10) = (fakeLastAccess + since).also { fakeLastAccess = it }
+
+      val recordsWritten = mutableListOf<FileRecord>()
+      for (x in 0..10) {
+        val url = "https://fake.mux.com/test/url/of/index/$x.ts"
+        val now = fakeNow()
+        datastore.writeFileRecord(
+          FileRecord(
+            url = url,
+            lookupKey = datastore.safeCacheKey(URL(url)),
+            relativePath = "dummy/path/$x",
+            etag = "etag-unique-$x",
+            lastAccessUtcSecs = now,
+            downloadedAtUtcSecs = 0L,
+            cacheMaxAge = 400,
+            resourceAge = 0,
+            cacheControl = "dummy-directive",
+            sizeOnDisk = 1
+          ).also { recordsWritten += it }
+        )
+      } // for(x in ...
+
+      val candidates = datastore.readLeastRecentFiles()
+      Log.w(
+        TAG, "Just checking in here's the eviction candidates:" +
+                " ${candidates.joinToString("\n")}"
+      )
+      val candidateFiles = candidates.map { it.relativePath }
+      val recordsToBeKept = mutableListOf<FileRecord>().also { copiedList ->
+        copiedList.addAll(recordsWritten)
+        copiedList.removeAll { candidateFiles.contains(it.relativePath) }
+      }
+
+      // We can equate 'disk size' and 'array size' here because all the elements in the test have
+      //  a fake disk size of 1
+      Assert.assertEquals(
+        "Cache size would be $maxCacheSize after deleting",
+        maxCacheSize, recordsToBeKept.size.toLong()
+      )
+
+      // every lastAccess in the rtbk should be greater than all the ones (eg, greatest one of) in the candidates
+      val mostRecentCandidate = candidates.maxBy { it.lastAccessUtcSecs }
+      val onlyMostRecentKept =
+        recordsToBeKept.all { it.lastAccessUtcSecs >= mostRecentCandidate.lastAccessUtcSecs }
+      Assert.assertTrue(
+        "Only the most-recent records should be kept",
+        onlyMostRecentKept
+      )
+
+    } // CacheDatastore().use
+  }
+
+  @Test
+  fun testEvictByLru() {
+    val maxCacheSize = 5500L
+    val dummyFileSize = 1000L
+
+    CacheDatastore(appContext, maxDiskSize = maxCacheSize).use { datastore ->
+      datastore.open()
+      //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
+      var fakeLastAccess = 200L // increment by some amount when you need to
+      fun fakeNow(since: Long = 10) = (fakeLastAccess + since).also { fakeLastAccess = it }
+      fun createCacheFile(url: String) = createDummyTempFile(datastore, url)
+        .also { writeDummyTempFile(it, dummyFileSize) }
+        .let { datastore.moveFromTempFile(it, URL(url)) }
+
+      val recordsWritten = mutableListOf<FileRecord>()
+      for (x in 0..10) {
+        val url = "https://fake.mux.com/test/url/of/index/$x.ts"
+        val now = fakeNow()
+        val cacheFile = createCacheFile(url)
+
+        @Suppress("SameParameterValue")
+        datastore.writeFileRecord(
+          FileRecord(
+            url = url,
+            lookupKey = datastore.safeCacheKey(URL(url)),
+            relativePath = cacheFile.toRelativeString(datastore.fileCacheDir()),
+            etag = "etag-unique-$x",
+            lastAccessUtcSecs = now,
+            downloadedAtUtcSecs = 0L,
+            cacheMaxAge = 400,
+            resourceAge = 0,
+            cacheControl = "dummy-directive",
+            sizeOnDisk = dummyFileSize,
+          ).also { recordsWritten += it }
+        )
+      } // for(x in ...
+
+      // here we're testing file management. The index operations for eviction are tested elsewhere
+      //   I think this is still in-spec (but I'm also not worried about it)
+      val filesBeforeEviction = datastore.fileCacheDir().listFiles()!!.filter { !it.isDirectory }
+      // this shouldn't fail in the happy path
+      datastore.evictByLru().getOrThrow()
+      val filesAfterEviction = datastore.fileCacheDir().listFiles()!!.filter { !it.isDirectory }
+      val totalDiskUsageAfterEvict = filesAfterEviction.sumOf { it.length() }
+      Assert.assertTrue(
+        "After eviction, cache is under max size",
+        totalDiskUsageAfterEvict <= maxCacheSize
+      )
+    } // CacheDatastore().use
+  }
+
+  private fun writeDummyTempFile(
+    file: File,
+    size: Long,
+  ) {
+    val zeroes = ByteArray(4 * 1024)
+
+    BufferedOutputStream(FileOutputStream(file)).use { outStream ->
+      var written = 0
+      do {
+        val writeSize = min(zeroes.size, size.toInt() - written)
+        outStream.write(zeroes, 0, writeSize)
+        written += writeSize
+      } while (written < size)
+    }
+  }
+
+  private fun createDummyTempFile(
+    datastore: CacheDatastore,
+    url: String,
+  ): File {
+    return datastore.createTempDownloadFile(URL(url))
   }
 
   private fun expectedFileTempDir(context: Context): File =
