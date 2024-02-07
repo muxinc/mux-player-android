@@ -105,8 +105,8 @@ internal class CacheDatastore(val context: Context) : Closeable {
    */
   fun moveFromTempFile(tempFile: File, remoteUrl: URL): File {
     val cacheFile = createCacheFile(remoteUrl)
-//    tempFile.renameTo(cacheFile)
-    tempFile.copyTo(cacheFile, overwrite = true)
+    tempFile.renameTo(cacheFile)
+//    tempFile.copyTo(cacheFile, overwrite = true)
     return cacheFile
   }
 
