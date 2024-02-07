@@ -32,7 +32,7 @@ internal fun Cursor.getLongOrThrow(name: String): Long {
 @JvmSynthetic
 @Throws(IOException::class)
 internal fun InputStream.consumeInto(outputStream: OutputStream, readSize: Int = 32 * 1024) {
-  val buf = ByteArray(CacheController.ReadHandle.READ_SIZE)
+  val buf = ByteArray(readSize)
   while (true) {
     val readBytes = read(buf)
     if (readBytes == -1) {

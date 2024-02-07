@@ -144,6 +144,25 @@ internal class CacheDatastore(val context: Context) : Closeable {
   }
 
   /**
+   * A subdirectory within the app's cache dir where we keep temporary files that are being
+   * downloaded. Temp files are deleted on JVM exit. Every temp file is unique, preventing
+   * collisions between multiple potential writers to the same file
+   */
+  fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
+
+  /**
+   * A subdirectory within the app's cache dir where we keep cached media files that have been
+   * committed to the cache with `WriteHandle.finishedWriting`. Temp files are guaranteed not to be
+   * open for writing or appending, and their content can be relied upon assuming the file exists
+   */
+  fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
+
+  /**
+   * A subdirectory within an app's no-backup files dir that contains the cache's index
+   */
+  fun indexDbDir(): File = File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
+
+  /**
    * Mux Video segments have special cache keys because their URLs follow a known format even
    * across CDNs.
    *
@@ -220,10 +239,6 @@ internal class CacheDatastore(val context: Context) : Closeable {
       fileTempDir.mkdirs()
     }
   }
-
-  fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
-  fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
-  fun indexDbDir(): File = File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
 
   /**
    * Creates a new temp file for downloading-into. Temp files go in a special dir that gets cleared
