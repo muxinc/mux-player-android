@@ -92,25 +92,6 @@ class MuxDataSource private constructor(
       Log.d(TAG, "open(): Opening from cache. Advertising ${readHandle.fileSize} bytes")
       readHandle.fileSize
     }
-
-    // OLD IMPL BELOW
-    // todo - hey, do we need the app to enable plaintext http for the proxy to work?
-    //  maybe some companies already would for ads or something, but some people won't want to
-//    val proxyUri = dataSpec.uri.run {
-//      val replaceScheme = if (scheme.equals("https")) "1~" else "0~"
-//      val replacePath = "$replaceScheme${host}${path}"
-//
-//      buildUpon()
-//        .encodedAuthority("localhost:${CacheConstants.PROXY_PORT}")
-//        .scheme("http")
-//        .path(replacePath)
-//        .build()
-//    }
-//
-//    this.originalUri = dataSpec.uri
-//    Log.d(TAG, "Modified URL\n\tFrom: ${dataSpec.uri}\n\tTo: $proxyUri")
-//
-//    return upstreamSrc.open(dataSpec.withUri(proxyUri))
   }
 
   override fun getUri(): Uri? = dataSpec?.uri
