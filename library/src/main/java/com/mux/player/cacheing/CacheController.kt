@@ -49,7 +49,7 @@ internal object CacheController {
   private val ioScope = CoroutineScope(Dispatchers.IO)
   // access gated via playersWithCache.
   // Only start it if you incremented from 0, only stop if you decrement from 0
-  private var proxyServer: ProxyServer? = null
+//  private var proxyServer: ProxyServer? = null
 
   const val TAG = "CacheController"
 
@@ -227,7 +227,7 @@ internal object CacheController {
  *
  * Use [readAllInto] to read the entire file into an OutputStream.
  */
-class ReadHandle internal constructor(
+internal class ReadHandle internal constructor(
   val url: String,
   val file: FileRecord,
   datastore: CacheDatastore,
@@ -282,7 +282,7 @@ class ReadHandle internal constructor(
  * for any given web response. Writes to this handle will go to the player and also to the cache
  * if required
  */
-class WriteHandle internal constructor(
+internal class WriteHandle internal constructor(
   val url: String,
   val responseHeaders: Map<String, List<String>>,
   private val controller: CacheController,
