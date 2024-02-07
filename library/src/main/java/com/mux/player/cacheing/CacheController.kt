@@ -5,6 +5,7 @@ import android.annotation.TargetApi
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import com.mux.player.cacheing.CacheController.datastore
 import com.mux.player.cacheing.CacheController.setup
 import com.mux.player.internal.cache.FileRecord
 import kotlinx.coroutines.CoroutineScope
@@ -17,6 +18,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.io.OutputStream
 import java.net.URL
 import java.util.TimeZone
@@ -75,7 +77,7 @@ internal object CacheController {
     Log.d(TAG, "onPlayerCreated: had $totalPlayersBefore players")
     if (totalPlayersBefore == 0) {
       ioScope.launch { datastore.open() }
-      proxyServer = ProxyServer()
+//      proxyServer = ProxyServer()
     }
   }
 
@@ -121,6 +123,7 @@ internal object CacheController {
     // todo - check for initialization and throw Something
 
     val fileRecord = datastore.readRecord(requestUrl)
+    Log.d(TAG, "Read file record: $fileRecord")
     // todo readRecord checks for the file?
     return if (fileRecord == null) {
       null
@@ -280,17 +283,22 @@ internal object CacheController {
         val etag = responseHeaders.getETag()
         if (cacheControl != null && etag != null) {
           val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
+          Log.d(TAG, "move to cache file with path ${cacheFile.path}")
+
           val nowUtc = System.currentTimeMillis().let { timeMs ->
             val timezone = TimeZone.getDefault()
             (timeMs + timezone.getOffset(timeMs)) / 1000
           }
           val recordAge = responseHeaders.getAge()?.toLongOrNull()
           val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(cacheControl)
+          val relativePath = cacheFile.toRelativeString(datastore.fileCacheDir())
+
+          Log.i(TAG, "Saving to cache file $relativePath")
 
           val record = FileRecord(
             url = url,
             etag = etag,
-            relativePath = cacheFile.path,
+            relativePath = relativePath,
             lastAccessUtcSecs = nowUtc,
             lookupKey = datastore.safeCacheKey(URL(url)),
             downloadedAtUtcSecs = nowUtc,
@@ -333,7 +341,17 @@ internal object CacheController {
       const val READ_SIZE = 32 * 1024
     }
 
-    private val fileInput = BufferedInputStream(FileInputStream(File(directory, file.relativePath)))
+    private val fileInput: InputStream
+
+    init {
+      Log.d(TAG, "Reading from cache file at ${file.relativePath}")
+      val cacheFile = File(datastore.fileCacheDir(), file.relativePath)
+      //fileInput = BufferedInputStream(FileInputStream(File(directory, file.relativePath)))
+      // todo - oh no were saving absolute paths by mistake
+      Log.d(TAG, "Actual file we're reading is $cacheFile")
+      fileInput = BufferedInputStream(FileInputStream(cacheFile))
+    }
+
 
     // todo - needs to be in schema for efficient eviction
     val fileSize: Long = File(directory, file.relativePath).length()

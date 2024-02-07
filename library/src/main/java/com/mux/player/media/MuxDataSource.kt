@@ -110,5 +110,7 @@ class MuxDataSource private constructor(
 
   override fun close() {
     cacheReader?.close()
+    cacheWriter?.close()
+    upstream?.close()
   }
 }

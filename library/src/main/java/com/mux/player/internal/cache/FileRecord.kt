@@ -33,6 +33,7 @@ internal fun FileRecord.toContentValues(): ContentValues {
     put(IndexSchema.FilesTable.Columns.maxAgeUnixTime, cacheMaxAge)
     put(IndexSchema.FilesTable.Columns.resourceAgeUnixTime, resourceAge)
     put(IndexSchema.FilesTable.Columns.cacheControl, cacheControl)
+    put(IndexSchema.FilesTable.Columns.lastAccessUnixTime, lastAccessUtcSecs)
   }
 
   return values
