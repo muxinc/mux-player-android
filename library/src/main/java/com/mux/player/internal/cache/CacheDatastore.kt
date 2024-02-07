@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.os.Build
 import android.util.Base64
 import android.util.Log
+import com.mux.player.internal.cache.CacheController.TAG
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
@@ -114,6 +115,8 @@ internal class CacheDatastore(val context: Context) : Closeable {
         SQLiteDatabase.CONFLICT_REPLACE
       )
     }
+
+    Log.v(TAG, "Wrote to row $rowId")
 
     return if (rowId >= 0) {
       Result.success(Unit)

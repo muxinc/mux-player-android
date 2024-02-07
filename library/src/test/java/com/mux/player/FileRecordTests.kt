@@ -7,6 +7,7 @@ import org.junit.Assert
 import org.junit.Test
 
 class FileRecordTests : AbsRobolectricTest() {
+
   @Test
   fun `FileRecord-toContentValues generates correct content values for its fields`() {
     val record = FileRecord(

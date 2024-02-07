@@ -180,8 +180,9 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testReadRecord() {
     CacheDatastore(appContext).use { datastore ->
+      val url = "https://www.mux.com/any/path"
       val originalRecord = FileRecord(
-        url = "url",
+        url = url,
         etag = "etag1",
         relativePath = "cacheFile",
         lookupKey = "lookupKey",
@@ -191,7 +192,14 @@ class CacheDatastoreInstrumentationTests {
         cacheControl = "cacheControl",
         lastAccessUtcSecs = 4L,
       )
-      datastore.writeRecord(originalRecord)
+      val result = datastore.writeRecord(originalRecord)
+      result.getOrThrow() // not part of test, writing is covered elsewhere
+
+      val readRecord = datastore.readRecord(url)
+      Assert.assertEquals(
+        "The record should be the same after writing and reading",
+        originalRecord, readRecord
+      )
     }
   }
 
