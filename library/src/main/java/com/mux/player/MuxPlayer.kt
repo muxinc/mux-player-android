@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player.Listener
 import androidx.media3.exoplayer.ExoPlayer
-import com.mux.player.cacheing.CacheController
+import com.mux.player.internal.cache.CacheController
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.player.internal.createLogcatLogger

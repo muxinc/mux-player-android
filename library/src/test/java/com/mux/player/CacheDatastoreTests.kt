@@ -1,9 +1,8 @@
 package com.mux.player
 
 import android.content.Context
-import com.mux.player.cacheing.CacheController
-import com.mux.player.cacheing.CacheDatastore
-import com.mux.player.cacheing.IndexSchema
+import com.mux.player.internal.cache.CacheDatastore
+import com.mux.player.internal.cache.IndexSchema
 import com.mux.player.internal.cache.FileRecord
 import com.mux.player.internal.cache.toContentValues
 import io.mockk.every
@@ -11,9 +10,7 @@ import io.mockk.mockk
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import java.io.File
 import java.net.URL
-import java.util.concurrent.TimeUnit
 
 class CacheDatastoreTests: AbsRobolectricTest() {
 

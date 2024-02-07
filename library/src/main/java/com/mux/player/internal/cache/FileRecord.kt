@@ -2,11 +2,6 @@ package com.mux.player.internal.cache
 
 import android.content.ContentValues
 import android.database.Cursor
-import com.mux.player.cacheing.CacheController
-import com.mux.player.cacheing.IndexSchema
-import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
 
 data class FileRecord(
   val url: String,

@@ -1,8 +1,6 @@
 package com.mux.player.internal.cache
 
 import android.database.Cursor
-import com.mux.player.cacheing.CacheConstants
-import com.mux.player.cacheing.CacheController
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream

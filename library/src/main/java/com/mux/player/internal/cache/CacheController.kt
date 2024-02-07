@@ -1,22 +1,12 @@
-package com.mux.player.cacheing
+package com.mux.player.internal.cache
 
 import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import com.mux.player.cacheing.CacheController.datastore
-import com.mux.player.cacheing.CacheController.downloadStarted
-import com.mux.player.cacheing.CacheController.setup
-import com.mux.player.internal.cache.FileRecord
-import com.mux.player.internal.cache.getAge
-import com.mux.player.internal.cache.getCacheControl
-import com.mux.player.internal.cache.getContentType
-import com.mux.player.internal.cache.getETag
-import com.mux.player.internal.cache.isContentTypeSegment
-import com.mux.player.internal.cache.nowUtc
-import com.mux.player.internal.cache.parseMaxAge
-import com.mux.player.internal.cache.parseSMaxAge
+import com.mux.player.internal.cache.CacheController.downloadStarted
+import com.mux.player.internal.cache.CacheController.setup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -30,7 +20,6 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.URL
-import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -66,7 +55,7 @@ internal object CacheController {
   @JvmSynthetic
   internal fun setup(context: Context, cacheDatastore: CacheDatastore?) {
     if (!this::appContext.isInitialized) {
-      this.appContext = context.applicationContext
+      appContext = context.applicationContext
     }
     if (!this::datastore.isInitialized) {
       datastore = cacheDatastore ?: CacheDatastore(appContext)

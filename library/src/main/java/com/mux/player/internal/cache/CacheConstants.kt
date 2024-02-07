@@ -1,4 +1,4 @@
-package com.mux.player.cacheing
+package com.mux.player.internal.cache
 
 internal object CacheConstants {
   const val MIME_TS = "video/MP2T"

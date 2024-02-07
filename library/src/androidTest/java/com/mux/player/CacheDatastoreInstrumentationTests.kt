@@ -3,9 +3,9 @@ package com.mux.player
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.mux.player.cacheing.CacheConstants
-import com.mux.player.cacheing.CacheDatastore
-import com.mux.player.cacheing.filesDirNoBackupCompat
+import com.mux.player.internal.cache.CacheConstants
+import com.mux.player.internal.cache.CacheDatastore
+import com.mux.player.internal.cache.filesDirNoBackupCompat
 import com.mux.player.internal.cache.FileRecord
 import org.junit.Assert
 import org.junit.Before
