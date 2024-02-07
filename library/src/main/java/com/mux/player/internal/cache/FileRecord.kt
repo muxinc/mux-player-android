@@ -53,37 +53,3 @@ internal fun Cursor.toFileRecord(): FileRecord {
     cacheControl = getStringOrThrow(IndexSchema.FilesTable.Columns.cacheControl)
   )
 }
-
-@Throws(IOException::class)
-fun Cursor.getStringOrThrow(name: String): String {
-  val idx = getColumnIndex(name)
-  return if (idx >= 0) {
-    getString(idx)
-  } else {
-    throw IOException("Could not find expected column: $name")
-  }
-}
-
-@Throws(IOException::class)
-fun Cursor.getLongOrThrow(name: String): Long {
-  val idx = getColumnIndex(name)
-  return if (idx >= 0) {
-    getLong(idx)
-  } else {
-    throw IOException("Could not find expected column: $name")
-  }
-}
-
-@Throws(IOException::class)
-fun InputStream.consumeInto(outputStream: OutputStream, readSize: Int = 32 * 1024) {
-  val buf = ByteArray(CacheController.ReadHandle.READ_SIZE)
-  while (true) {
-    val readBytes = read(buf)
-    if (readBytes == -1) {
-      // done
-      break
-    } else {
-      outputStream.write(buf, 0, readBytes)
-    }
-  }
-}

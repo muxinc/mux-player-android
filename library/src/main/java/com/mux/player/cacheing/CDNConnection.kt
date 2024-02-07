@@ -2,6 +2,7 @@ package com.mux.player.cacheing
 
 import android.util.Log
 import com.mux.player.internal.cache.consumeInto
+import com.mux.player.internal.cache.isContentTypePlaylist
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -177,19 +178,3 @@ class CDNConnection(val playerConnection: PlayerConnection, val parent: ProxySer
   }
 }
 
-@JvmSynthetic
-internal fun isContentTypeSegment(contentTypeHeader: String?): Boolean {
- return contentTypeHeader.equals(CacheConstants.MIME_TS, true)
-         || contentTypeHeader.equals(CacheConstants.MIME_M4S, true)
-         || contentTypeHeader.equals(CacheConstants.MIME_M4S_ALT, true)
-}
-
-@JvmSynthetic
-internal fun isContentTypePlaylist(contentTypeHeader: String?): Boolean {
- return (contentTypeHeader.equals("application/vnd.apple.mpegurl", true)
-         || contentTypeHeader.equals("audio/mpegurl", true)
-         || contentTypeHeader.equals("application/mpegurl", true)
-         || contentTypeHeader.equals("application/x-mpegurl", true)
-         || contentTypeHeader.equals("audio/x-mpegurl", true)
-         )
-}

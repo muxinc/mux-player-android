@@ -8,6 +8,7 @@ import android.util.Log
 import com.mux.player.cacheing.CacheController.datastore
 import com.mux.player.cacheing.CacheController.setup
 import com.mux.player.internal.cache.FileRecord
+import com.mux.player.internal.cache.isContentTypeSegment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
