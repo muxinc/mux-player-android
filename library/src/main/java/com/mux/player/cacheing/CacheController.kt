@@ -47,9 +47,6 @@ internal object CacheController {
 
   private val playersWithCache = AtomicInteger(0)
   private val ioScope = CoroutineScope(Dispatchers.IO)
-  // access gated via playersWithCache.
-  // Only start it if you incremented from 0, only stop if you decrement from 0
-//  private var proxyServer: ProxyServer? = null
 
   const val TAG = "CacheController"
 
@@ -107,9 +104,7 @@ internal object CacheController {
   fun downloadStarted(
     requestUrl: String,
     responseHeaders: Map<String, List<String>>,
-//    playerOutputStream: OutputStream,
   ): WriteHandle {
-    // todo - check for initialization and throw or something
 
     return if (shouldCacheResponse(requestUrl, responseHeaders)) {
       val tempFile = datastore.createTempDownloadFile(URL(requestUrl))
@@ -117,7 +112,6 @@ internal object CacheController {
       WriteHandle(
         controller = this,
         tempFile = tempFile,
-//        playerOutputStream = playerOutputStream,
         responseHeaders = responseHeaders,
         datastore = datastore,
         url = requestUrl,
@@ -127,7 +121,6 @@ internal object CacheController {
       WriteHandle(
         controller = this,
         tempFile = null,
-//        playerOutputStream = playerOutputStream,
         url = requestUrl,
         datastore = datastore,
         responseHeaders = responseHeaders,
@@ -145,7 +138,6 @@ internal object CacheController {
     Log.d(TAG, "onPlayerCreated: had $totalPlayersBefore players")
     if (totalPlayersBefore == 0) {
       ioScope.launch { datastore.open() }
-//      proxyServer = ProxyServer()
     }
   }
 
