@@ -24,6 +24,7 @@ class MuxPlayer private constructor(
   private val exoPlayer: ExoPlayer,
   private val muxDataKey: String?,
   private val logger: Logger,
+  private val muxCacheEnabled: Boolean = true,
   context: Context,
   initialCustomerData: CustomerData,
   network: INetworkRequest? = null,
@@ -31,14 +32,30 @@ class MuxPlayer private constructor(
 ) : ExoPlayer by exoPlayer {
 
   private var muxStats: MuxStatsSdkMedia3<ExoPlayer>? = null
+  private var released: Boolean = false
 
   override fun release() {
+    // good to release muxStats first, so it doesn't call to the player after release
     muxStats?.release()
+    muxStats = null
+    // exoPlayer can handle multiple calls itself, not our deal
     exoPlayer.release()
+
+    // our own cleanup should only happen once
+    if (!released) {
+      if (muxCacheEnabled) {
+        CacheController.onPlayerReleased()
+      }
+    }
+
+    released = true
   }
 
   init {
-    CacheController.setup(context, null)
+    if (muxCacheEnabled) {
+      CacheController.setup(context, null)
+      CacheController.onPlayerCreated()
+    }
 
     // listen internally before Mux Data gets events, in case we need to handle something before
     // the data SDK sees (like media metadata for new streams during a MediaItem transition, etc)

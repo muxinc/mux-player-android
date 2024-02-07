@@ -1,7 +1,6 @@
 package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
-import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
@@ -9,11 +8,14 @@ import android.os.Build
 import android.util.Base64
 import android.util.Log
 import com.mux.player.internal.cache.FileRecord
+import com.mux.player.internal.cache.toContentValues
+import com.mux.player.internal.cache.toFileRecord
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
 import java.io.IOException
 import java.net.URL
+import java.nio.file.FileSystem
 import java.util.concurrent.CancellationException
 import java.util.concurrent.FutureTask
 import java.util.concurrent.atomic.AtomicReference
@@ -31,10 +33,10 @@ internal class CacheDatastore(val context: Context) : Closeable {
 
   companion object {
     private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
+    val RX_CHUNK_URL =
+      Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
   }
 
-  private val RX_CHUNK_URL =
-    Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
 
   private val dbHelper: DbHelper get() = awaitDbHelper()
 
@@ -104,15 +106,18 @@ internal class CacheDatastore(val context: Context) : Closeable {
   fun moveFromTempFile(tempFile: File, remoteUrl: URL): File {
     val cacheFile = createCacheFile(remoteUrl)
     tempFile.renameTo(cacheFile)
+//    tempFile.copyTo(cacheFile, overwrite = true)
     return cacheFile
   }
 
   fun writeRecord(fileRecord: FileRecord): Result<Unit> {
-    val rowId = dbHelper.writableDatabase.insertWithOnConflict(
-      IndexSchema.FilesTable.name, null,
-      fileRecord.toContentValues(),
-      SQLiteDatabase.CONFLICT_REPLACE
-    )
+    val rowId = dbHelper.writableDatabase.use {
+      it.insertWithOnConflict(
+        IndexSchema.FilesTable.name, null,
+        fileRecord.toContentValues(),
+        SQLiteDatabase.CONFLICT_REPLACE
+      )
+    }
 
     return if (rowId >= 0) {
       Result.success(Unit)
@@ -122,9 +127,40 @@ internal class CacheDatastore(val context: Context) : Closeable {
   }
 
   fun readRecord(url: String): FileRecord? {
-    // todo - try to read a record for the given URL, returning it if there's a hit
-    return null
+    return dbHelper.writableDatabase.use {
+      it.query(
+        IndexSchema.FilesTable.name, null,
+        "${IndexSchema.FilesTable.Columns.lookupKey} is ?",
+        arrayOf(safeCacheKey(URL(url))),
+        null, null, null
+      ).use { cursor ->
+        if (cursor.count > 0 && cursor.moveToFirst()) {
+          cursor.toFileRecord()
+        } else {
+          null
+        }
+      }
+    }
   }
+
+  /**
+   * A subdirectory within the app's cache dir where we keep temporary files that are being
+   * downloaded. Temp files are deleted on JVM exit. Every temp file is unique, preventing
+   * collisions between multiple potential writers to the same file
+   */
+  fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
+
+  /**
+   * A subdirectory within the app's cache dir where we keep cached media files that have been
+   * committed to the cache with `WriteHandle.finishedWriting`. Temp files are guaranteed not to be
+   * open for writing or appending, and their content can be relied upon assuming the file exists
+   */
+  fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
+
+  /**
+   * A subdirectory within an app's no-backup files dir that contains the cache's index
+   */
+  fun indexDbDir(): File = File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
 
   /**
    * Mux Video segments have special cache keys because their URLs follow a known format even
@@ -169,7 +205,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
   @JvmSynthetic
   internal fun safeCacheKey(url: URL): String = Base64.encodeToString(
     generateCacheKey(url).toByteArray(Charsets.UTF_8),
-    Base64.URL_SAFE
+    Base64.NO_WRAP or Base64.URL_SAFE
   )
 
   private fun ensureDirs() {
@@ -204,10 +240,6 @@ internal class CacheDatastore(val context: Context) : Closeable {
     }
   }
 
-  private fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
-  private fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
-  private fun indexDbDir(): File = File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
-
   /**
    * Creates a new temp file for downloading-into. Temp files go in a special dir that gets cleared
    * out when the datastore is opened
@@ -240,6 +272,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
         throw CancellationException("open interrupted")
       }
     }
+
     fun doOpen(): DbHelper {
       // todo - we should also consider getting our cacheQuota here, that will take a long time
       //  so maybe do it async & only consider the cache quota once we have it(..?)
@@ -251,6 +284,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
       val helper = DbHelper(context, indexDbDir())
       closeIfInterrupted(helper)
       val db = helper.writableDatabase
+      db.close()
       // todo- eviction pass with that db
       closeIfInterrupted(helper)
       return helper;
@@ -273,24 +307,6 @@ internal class CacheDatastore(val context: Context) : Closeable {
       throw IOException(e)
     }
   }
-}
-
-@JvmSynthetic
-internal fun FileRecord.toContentValues(): ContentValues {
-  val values = ContentValues()
-
-  values.apply {
-    put(IndexSchema.FilesTable.Columns.lookupKey, lookupKey)
-    put(IndexSchema.FilesTable.Columns.etag, etag)
-    put(IndexSchema.FilesTable.Columns.filePath, file.path)
-    put(IndexSchema.FilesTable.Columns.remoteUrl, url)
-    put(IndexSchema.FilesTable.Columns.downloadedAtUnixTime, downloadedAtUtcSecs)
-    put(IndexSchema.FilesTable.Columns.maxAgeUnixTime, cacheMaxAge)
-    put(IndexSchema.FilesTable.Columns.resourceAgeUnixTime, resourceAge)
-    put(IndexSchema.FilesTable.Columns.cacheControl, cacheControl)
-  }
-
-  return values
 }
 
 private class DbHelper(
@@ -321,8 +337,9 @@ private class DbHelper(
     db?.execSQL(
       """
         create table if not exists ${IndexSchema.FilesTable.name} (
-            ${IndexSchema.FilesTable.Columns.lookupKey} text not null primary key,
+            ${IndexSchema.FilesTable.Columns.lookupKey} text not null unique primary key,
             ${IndexSchema.FilesTable.Columns.remoteUrl} text not null,
+            ${IndexSchema.FilesTable.Columns.lastAccessUnixTime} integer not null,
             ${IndexSchema.FilesTable.Columns.etag} text not null,
             ${IndexSchema.FilesTable.Columns.filePath} text not null,
             ${IndexSchema.FilesTable.Columns.downloadedAtUnixTime} integer not null,
@@ -394,6 +411,11 @@ internal object IndexSchema {
        * Age of the resource as described by the `Age` header
        */
       const val resourceAgeUnixTime = "resource_age"
+
+      /**
+       * Last access date
+       */
+      const val lastAccessUnixTime = "last_access"
 
       /**
        * The `max-age` of the cache entry, as required by cache control.

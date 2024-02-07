@@ -1,18 +1,37 @@
 package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
+import android.annotation.TargetApi
 import android.content.Context
+import android.os.Build
 import android.util.Log
+import com.mux.player.cacheing.CacheController.datastore
+import com.mux.player.cacheing.CacheController.downloadStarted
+import com.mux.player.cacheing.CacheController.setup
 import com.mux.player.internal.cache.FileRecord
+import com.mux.player.internal.cache.getAge
+import com.mux.player.internal.cache.getCacheControl
+import com.mux.player.internal.cache.getContentType
+import com.mux.player.internal.cache.getETag
+import com.mux.player.internal.cache.isContentTypeSegment
+import com.mux.player.internal.cache.parseMaxAge
+import com.mux.player.internal.cache.parseSMaxAge
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
-import java.io.ByteArrayInputStream
+import java.io.Closeable
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.URL
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Controls access to Mux Player's cache
@@ -25,6 +44,14 @@ internal object CacheController {
 
   private lateinit var appContext: Context
   private lateinit var datastore: CacheDatastore
+
+  private val playersWithCache = AtomicInteger(0)
+  private val ioScope = CoroutineScope(Dispatchers.IO)
+  // access gated via playersWithCache.
+  // Only start it if you incremented from 0, only stop if you decrement from 0
+//  private var proxyServer: ProxyServer? = null
+
+  const val TAG = "CacheController"
 
   val RX_NO_STORE = Regex("""no-store""")
   val RX_NO_CACHE = Regex("""no-cache""")
@@ -49,23 +76,71 @@ internal object CacheController {
   }
 
   /**
+   * Call internally when a new MuxPlayer is created, if caching was enabled.
+   */
+  @JvmSynthetic
+  internal fun onPlayerCreated() {
+    Log.d(TAG, "onPlayerCreated: called")
+    val totalPlayersBefore = playersWithCache.getAndIncrement()
+    Log.d(TAG, "onPlayerCreated: had $totalPlayersBefore players")
+    if (totalPlayersBefore == 0) {
+      ioScope.launch { datastore.open() }
+//      proxyServer = ProxyServer()
+    }
+  }
+
+  /**
+   * Call internally when a MuxPlayer is released if caching was enabled.
+   *
+   * Try to call only once per player, even if caller calls release() multiple times
+   */
+  @JvmSynthetic
+  internal fun onPlayerReleased() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+      closeDatastoreApiN()
+    } else {
+      closeDatastoreLegacy()
+    }
+  }
+
+  @TargetApi(Build.VERSION_CODES.N)
+  private fun closeDatastoreApiN() {
+    val totalPlayersNow = playersWithCache.updateAndGet { if (it > 0) it - 1 else it }
+    Log.d(TAG, "closeDatastoreApiN: now have $totalPlayersNow players")
+    if (totalPlayersNow == 0) {
+      ioScope.launch { datastore.close() }
+    }
+  }
+
+  private fun closeDatastoreLegacy() {
+    val totalPlayersNow = playersWithCache.decrementAndGet()
+    Log.d(TAG, "closeDatastoreLegacy: now have $totalPlayersNow players")
+    if (totalPlayersNow == 0) {
+      ioScope.launch { datastore.close() }
+    }
+  }
+
+  /**
    * Tries to read from the cache. If there's a hit, this method will return a [ReadHandle] for
    * reading the file. The [ReadHandle] has methods for reading, and also info about the original
    * resource, like its original URL, response headers, and cache-control directives
    */
   fun tryRead(
-    requestUrl: String
+    requestUrl: String,
   ): ReadHandle? {
     // todo - check for initialization and throw Something
 
     val fileRecord = datastore.readRecord(requestUrl)
-    return if (fileRecord == null || !fileRecord.file.exists()) {
+    Log.d(TAG, "Read file record: $fileRecord")
+    // todo readRecord checks for the file?
+    return if (fileRecord == null) {
       null
     } else {
       ReadHandle(
         url = requestUrl,
         file = fileRecord,
-        fileInput = ByteArrayInputStream(ByteArray(5))
+        datastore = datastore,
+        directory = datastore.fileCacheDir(),
       )
     }
   }
@@ -77,7 +152,7 @@ internal object CacheController {
   fun downloadStarted(
     requestUrl: String,
     responseHeaders: Map<String, List<String>>,
-    playerOutputStream: OutputStream,
+//    playerOutputStream: OutputStream,
   ): WriteHandle {
     // todo - check for initialization and throw or something
 
@@ -87,7 +162,7 @@ internal object CacheController {
       WriteHandle(
         controller = this,
         tempFile = tempFile,
-        playerOutputStream = playerOutputStream,
+//        playerOutputStream = playerOutputStream,
         responseHeaders = responseHeaders,
         datastore = datastore,
         url = requestUrl,
@@ -97,7 +172,7 @@ internal object CacheController {
       WriteHandle(
         controller = this,
         tempFile = null,
-        playerOutputStream = playerOutputStream,
+//        playerOutputStream = playerOutputStream,
         url = requestUrl,
         datastore = datastore,
         responseHeaders = responseHeaders,
@@ -113,14 +188,24 @@ internal object CacheController {
     requestUrl: String,
     responseHeaders: Map<String, List<String>>
   ): Boolean {
+    // basic conditions
+    val eTag = responseHeaders.getETag()
+    if (eTag.isNullOrEmpty()) {
+      return false
+    }
     val cacheControlLine = responseHeaders.getCacheControl()
+    if (cacheControlLine == null || cacheControlLine.contains(RX_NO_STORE)) {
+      return false
+    }
 
-    if (cacheControlLine == null) {
+    val contentType = responseHeaders.getContentType()
+    // for now, only segments
+    if (!isContentTypeSegment(contentType)) {
       return false
     }
-    if (cacheControlLine.contains(RX_NO_STORE)) {
-      return false
-    }
+
+    // todo - Need to specifically only cache segments. Check content-type first then url
+
     // todo - additional logic here:
     //  * check disk space against Content-Length?
     //  * check for headers like Age?
@@ -129,125 +214,165 @@ internal object CacheController {
     return true
   }
 
-  private fun Map<String, List<String>>.getCacheControl(): String? =
-    mapKeys { it.key.lowercase() }["cache-control"]?.last()
-  private fun Map<String, List<String>>.getETag(): String? =
-    mapKeys { it.key.lowercase() }["etag"]?.last()
-  private fun Map<String, List<String>>.getAge(): String? =
-    mapKeys { it.key.lowercase() }["age"]?.last()
 
-  private fun parseSMaxAge(cacheControl: String): Long? {
-    val matchResult = RX_S_MAX_AGE.matchEntire(cacheControl)
-    return if (matchResult == null) {
-      null
-    } else {
-      val maxAgeSecs = matchResult.groupValues[1]
-      maxAgeSecs.toLongOrNull()
-    }
+
+
+
+
+}
+
+/**
+ * Object for reading from the Cache. The methods on this object will read bytes from a cache copy
+ * of the remote resource.
+ *
+ * Use [readAllInto] to read the entire file into an OutputStream.
+ */
+internal class ReadHandle internal constructor(
+  val url: String,
+  val file: FileRecord,
+  datastore: CacheDatastore,
+  directory: File,
+) : Closeable {
+
+  companion object {
+    const val READ_SIZE = 32 * 1024
   }
 
-  private fun parseMaxAge(cacheControl: String): Long? {
-    val matchResult = RX_MAX_AGE.matchEntire(cacheControl)
-    return if (matchResult == null) {
-      null
-    } else {
-      val maxAgeSecs = matchResult.groupValues[1]
-      maxAgeSecs.toLongOrNull()
-    }
+  private val cacheFile: File
+  private val fileInput: InputStream
+
+  init {
+    Log.d(CacheController.TAG, "Reading from cache file at ${file.relativePath}")
+    cacheFile = File(datastore.fileCacheDir(), file.relativePath)
+    //fileInput = BufferedInputStream(FileInputStream(File(directory, file.relativePath)))
+    // todo - oh no were saving absolute paths by mistake
+    Log.d(CacheController.TAG, "Actual file we're reading is $cacheFile")
+    fileInput = BufferedInputStream(FileInputStream(cacheFile))
   }
 
-  /**
-   * Object for writing to both the player and the cache. Call [downloadStarted] to get one of these
-   * for any given web response. Writes to this handle will go to the player and also to the cache
-   * if required
-   */
-  class WriteHandle(
-    val url: String,
-    val responseHeaders: Map<String, List<String>>,
-    private val controller: CacheController,
-    private val datastore: CacheDatastore,
-    private val tempFile: File?,
-    private val playerOutputStream: OutputStream,
-  ) {
+  // todo - needs to be in schema for efficient eviction
+  val fileSize: Long get() = cacheFile.length()
 
-    private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
+  @Throws(IOException::class)
+  fun read(into: ByteArray, offset: Int, len: Int): Int {
+    return fileInput.read(into, offset, len)
+  }
 
-    /**
-     * Writes the given bytes to both the player socket and the file
-     */
-    fun write(data: ByteArray) {
-      playerOutputStream.write(data)
-      fileOutputStream?.write(data)
-    }
-
-    /**
-     * Writes the given String's bytes to both the player socket and the file
-     */
-    fun write(data: String) {
-      playerOutputStream.write(data.toByteArray(Charsets.US_ASCII))
-      fileOutputStream?.write(data.toByteArray(Charsets.US_ASCII))
-    }
-
-    // todo - method to call if the proxy encounters an error, closes & deletes temp file
-
-    /**
-     * Call when you've reached the end of the body input. This closes the streams to the player
-     * socket and file (if any)
-     */
-    fun finishedWriting() {
-      playerOutputStream.close()
-
-      // If there's a temp file, we are caching it so move it from the temp file and write to index
-      fileOutputStream?.close()
-      if (tempFile != null) {
-        val cacheControl = responseHeaders.getCacheControl()
-        val etag = responseHeaders.getETag()
-        if (cacheControl != null && etag != null) {
-          val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
-          val nowUtc = System.currentTimeMillis().let { timeMs ->
-            val timezone = TimeZone.getDefault()
-            (timeMs + timezone.getOffset(timeMs)) / 1000
-          }
-          val recordAge = responseHeaders.getAge()?.toLongOrNull()
-          val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(cacheControl)
-
-          val record = FileRecord(
-            url = url,
-            etag = etag,
-            file = cacheFile,
-            lookupKey = datastore.safeCacheKey(URL(url)),
-            downloadedAtUtcSecs = nowUtc,
-            cacheMaxAge = maxAge ?: TimeUnit.SECONDS.convert(7, TimeUnit.DAYS),
-            resourceAge = recordAge ?: 0L,
-            cacheControl = cacheControl,
-          )
-
-          val result = datastore.writeRecord(record)
-
-          // todo - return a fail or throw somerthing
-        } else {
-          // todo: need a logger
-          Log.w("CacheController", "Had temp file but not enough info to cache. " +
-                  "cache-control: [$cacheControl] etag $etag")
-        }
-
-        //datastore.writeRecord()
+  @Throws(IOException::class)
+  fun readAllInto(outputStream: OutputStream) {
+    val buf = ByteArray(READ_SIZE)
+    while (true) {
+      val readBytes = fileInput.read(buf)
+      if (readBytes == -1) {
+        // done
+        break
+      } else {
+        outputStream.write(buf, 0, readBytes)
       }
     }
   }
 
+  override fun close() {
+    runCatching { fileInput.close() }
+  }
+}
+
+/**
+ * Object for writing to both the player and the cache. Call [downloadStarted] to get one of these
+ * for any given web response. Writes to this handle will go to the player and also to the cache
+ * if required
+ */
+internal class WriteHandle internal constructor(
+  val url: String,
+  val responseHeaders: Map<String, List<String>>,
+  private val controller: CacheController,
+  private val datastore: CacheDatastore,
+  private val tempFile: File?,
+//    private val playerOutputStream: OutputStream,
+): Closeable {
+
+  private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
+//    private val fileOutputStream = tempFile?.let { FileOutputStream(it) }
+
   /**
-   * Object for reading from the Cache. The methods on this object will read bytes from a cache copy
-   * of the remote resource.
-   *
-   * Use [read] or [readAll] to read out of the cache
+   * Writes the given bytes to both the player socket and the file
    */
-  class ReadHandle(
-    val url: String,
-    val file: FileRecord,
-    // todo - figure out real fields
-//    val fileRecord: FileRecord,
-//    val cacheControlRecord: CacheControlRecord,
-    val fileInput: InputStream,
-  )
+  fun write(data: ByteArray, offset: Int, len: Int) {
+//      playerOutputStream.write(data, offset, len)
+    Log.i(CacheController.TAG, "Writing $len bytes unless $fileOutputStream is null")
+    fileOutputStream?.write(data, offset, len)
+    fileOutputStream?.flush()
+  }
+
+  /**
+   * Writes the given String's bytes to both the player socket and the file
+   */
+//    fun write(data: String) {
+//      playerOutputStream.write(data.toByteArray(Charsets.US_ASCII))
+//      fileOutputStream?.write(data.toByteArray(Charsets.US_ASCII))
+//    }
+
+  /**
+   * Call when you've reached the end of the body input. This closes the streams to the player
+   * socket and file (if any)
+   */
+  fun finishedWriting() {
+//      playerOutputStream.close()
+
+    // If there's a temp file, we are caching it so move it from the temp file and write to index
+    Log.i(CacheController.TAG, "flushing $fileOutputStream")
+    fileOutputStream?.flush()
+    Log.i(CacheController.TAG, "closing $fileOutputStream")
+    fileOutputStream?.close()
+    Log.i(CacheController.TAG, "temp file is $tempFile")
+    Log.i(CacheController.TAG, "temp file has ${tempFile?.length()}")
+    if (tempFile != null) {
+      val cacheControl = responseHeaders.getCacheControl()
+      val etag = responseHeaders.getETag()
+      if (cacheControl != null && etag != null) {
+        val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
+        Log.d(CacheController.TAG, "move to cache file with path ${cacheFile.path}")
+
+        val nowUtc = System.currentTimeMillis().let { timeMs ->
+          val timezone = TimeZone.getDefault()
+          (timeMs + timezone.getOffset(timeMs)) / 1000
+        }
+        val recordAge = responseHeaders.getAge()?.toLongOrNull()
+        val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(
+          cacheControl
+        )
+        val relativePath = cacheFile.toRelativeString(datastore.fileCacheDir())
+
+        Log.i(CacheController.TAG, "Saving to cache file $relativePath")
+        Log.i(CacheController.TAG, "We saved ${cacheFile.length()} bytes")
+        Log.i(CacheController.TAG, "but there's ${tempFile.length()} bytes in the temp file")
+
+        val record = FileRecord(
+          url = url,
+          etag = etag,
+          relativePath = relativePath,
+          lastAccessUtcSecs = nowUtc,
+          lookupKey = datastore.safeCacheKey(URL(url)),
+          downloadedAtUtcSecs = nowUtc,
+          cacheMaxAge = maxAge ?: TimeUnit.SECONDS.convert(7, TimeUnit.DAYS),
+          resourceAge = recordAge ?: 0L,
+          cacheControl = cacheControl,
+        )
+
+        val result = datastore.writeRecord(record)
+
+        // todo - return a fail or throw somerthing
+      } else {
+        // todo: need a logger
+        Log.w(
+          "CacheController", "Had temp file but not enough info to cache. " +
+                  "cache-control: [$cacheControl] etag $etag"
+        )
+      }
+    }
+  }
+
+  override fun close() {
+    fileOutputStream?.close()
+  }
 }
