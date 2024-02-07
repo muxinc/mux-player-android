@@ -258,7 +258,9 @@ internal object CacheController {
      */
     fun write(data: ByteArray, offset: Int, len: Int) {
 //      playerOutputStream.write(data, offset, len)
+      Log.i(TAG , "Writing $len bytes unless $fileOutputStream is null")
       fileOutputStream?.write(data, offset, len)
+      fileOutputStream?.flush()
     }
 
     /**
@@ -277,6 +279,9 @@ internal object CacheController {
 //      playerOutputStream.close()
 
       // If there's a temp file, we are caching it so move it from the temp file and write to index
+      Log.i(TAG , "flushing $fileOutputStream")
+      fileOutputStream?.flush()
+      Log.i(TAG , "closing $fileOutputStream")
       fileOutputStream?.close()
       if (tempFile != null) {
         val cacheControl = responseHeaders.getCacheControl()
@@ -294,6 +299,8 @@ internal object CacheController {
           val relativePath = cacheFile.toRelativeString(datastore.fileCacheDir())
 
           Log.i(TAG, "Saving to cache file $relativePath")
+          Log.i(TAG, "We saved ${cacheFile.length()} bytes")
+          Log.i(TAG, "but there's ${tempFile.length()} bytes in the temp file")
 
           val record = FileRecord(
             url = url,
@@ -341,20 +348,20 @@ internal object CacheController {
       const val READ_SIZE = 32 * 1024
     }
 
+    private val cacheFile: File
     private val fileInput: InputStream
 
     init {
       Log.d(TAG, "Reading from cache file at ${file.relativePath}")
-      val cacheFile = File(datastore.fileCacheDir(), file.relativePath)
+      cacheFile = File(datastore.fileCacheDir(), file.relativePath)
       //fileInput = BufferedInputStream(FileInputStream(File(directory, file.relativePath)))
       // todo - oh no were saving absolute paths by mistake
       Log.d(TAG, "Actual file we're reading is $cacheFile")
       fileInput = BufferedInputStream(FileInputStream(cacheFile))
     }
 
-
     // todo - needs to be in schema for efficient eviction
-    val fileSize: Long = File(directory, file.relativePath).length()
+    val fileSize: Long get() = cacheFile.length()
 
     @Throws(IOException::class)
     fun read(into: ByteArray, offset: Int, len: Int): Int {

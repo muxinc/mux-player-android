@@ -47,7 +47,10 @@ class MuxDataSource private constructor(
   override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
     return if (respondingFromCache) {
       // !! safe by contract
-      cacheReader!!.read(buffer, offset, length)
+      val readBytes = cacheReader!!.read(buffer, offset, length)
+      Log.d(TAG, "Read $readBytes from the cache")
+
+      readBytes
     } else {
       val writer = if (cacheWriter != null) {
         cacheWriter!!
@@ -59,6 +62,7 @@ class MuxDataSource private constructor(
       }
       val upstreamSrc = this.upstream!!
       val bytesFromUpstream = upstreamSrc.read(buffer, offset, length)
+      Log.d(TAG, "Got $bytesFromUpstream from upstream")
 
       if (bytesFromUpstream > 0) {
         writer.write(buffer, offset, bytesFromUpstream)
@@ -71,6 +75,8 @@ class MuxDataSource private constructor(
   }
 
   override fun open(dataSpec: DataSpec): Long {
+    Log.i(TAG, "open(): Opening URI ${dataSpec.uri}")
+    Log.i(TAG, "open(): with Request Headers ${dataSpec.httpRequestHeaders}")
     this.dataSpec = dataSpec
     val readHandle = CacheController.tryRead(dataSpec.uri.toString())
 
@@ -83,6 +89,7 @@ class MuxDataSource private constructor(
     } else {
       respondingFromCache = true
       this.cacheReader = readHandle
+      Log.d(TAG, "open(): Opening from cache. Advertising ${readHandle.fileSize} bytes")
       readHandle.fileSize
     }
 

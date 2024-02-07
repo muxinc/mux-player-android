@@ -1,7 +1,6 @@
 package com.mux.player.cacheing
 
 import android.annotation.SuppressLint
-import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
@@ -110,11 +109,13 @@ internal class CacheDatastore(val context: Context) : Closeable {
   }
 
   fun writeRecord(fileRecord: FileRecord): Result<Unit> {
-    val rowId = dbHelper.writableDatabase.insertWithOnConflict(
-      IndexSchema.FilesTable.name, null,
-      fileRecord.toContentValues(),
-      SQLiteDatabase.CONFLICT_REPLACE
-    )
+    val rowId = dbHelper.writableDatabase.use {
+      it.insertWithOnConflict(
+        IndexSchema.FilesTable.name, null,
+        fileRecord.toContentValues(),
+        SQLiteDatabase.CONFLICT_REPLACE
+      )
+    }
 
     return if (rowId >= 0) {
       Result.success(Unit)
@@ -124,16 +125,18 @@ internal class CacheDatastore(val context: Context) : Closeable {
   }
 
   fun readRecord(url: String): FileRecord? {
-    return dbHelper.writableDatabase.query(
-      IndexSchema.FilesTable.name, null,
-      "${IndexSchema.FilesTable.Columns.lookupKey} is ?",
-      arrayOf(safeCacheKey(URL(url))),
-      null, null, null
-    ).use { cursor ->
-      if (cursor.count > 0 && cursor.moveToFirst()) {
-        cursor.toFileRecord()
-      } else {
-        null
+    return dbHelper.writableDatabase.use {
+      it.query(
+        IndexSchema.FilesTable.name, null,
+        "${IndexSchema.FilesTable.Columns.lookupKey} is ?",
+        arrayOf(safeCacheKey(URL(url))),
+        null, null, null
+      ).use { cursor ->
+        if (cursor.count > 0 && cursor.moveToFirst()) {
+          cursor.toFileRecord()
+        } else {
+          null
+        }
       }
     }
   }
@@ -181,7 +184,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
   @JvmSynthetic
   internal fun safeCacheKey(url: URL): String = Base64.encodeToString(
     generateCacheKey(url).toByteArray(Charsets.UTF_8),
-    Base64.URL_SAFE
+    Base64.NO_WRAP or Base64.URL_SAFE
   )
 
   private fun ensureDirs() {
@@ -252,6 +255,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
         throw CancellationException("open interrupted")
       }
     }
+
     fun doOpen(): DbHelper {
       // todo - we should also consider getting our cacheQuota here, that will take a long time
       //  so maybe do it async & only consider the cache quota once we have it(..?)
@@ -263,6 +267,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
       val helper = DbHelper(context, indexDbDir())
       closeIfInterrupted(helper)
       val db = helper.writableDatabase
+      db.close()
       // todo- eviction pass with that db
       closeIfInterrupted(helper)
       return helper;
