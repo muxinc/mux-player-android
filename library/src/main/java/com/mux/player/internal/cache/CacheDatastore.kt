@@ -184,6 +184,10 @@ internal class CacheDatastore(
   /**
    * Reads a list of candidates for eviction based on recent-use order, preferring to evict staler
    * items over items that are less-stale or not stale
+   *
+   * todo - this needs to go inside an exclusive transaction, including deleting the files.
+   *   That way we won't accidentally delete something the cache is writing again
+   *   We need this because player's thread model may always
    */
   fun readEvictionCandidates(): List<FileRecord> {
     val now = nowUtc()
@@ -223,7 +227,8 @@ internal class CacheDatastore(
         Log.v(TAG, "Read Cursor rows")
         do {
           Log.v(TAG, "\t${DatabaseUtils.dumpCurrentRowToString(cursor)}")
-          result += cursor.toFileRecord()
+          // no no we don't need every column really just the filename
+          //result += cursor.toFileRecord()
         } while (cursor.moveToNext())
         return result
       } else {
