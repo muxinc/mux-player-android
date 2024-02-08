@@ -205,9 +205,19 @@ class CacheDatastoreInstrumentationTests {
           originalRecord, readRecord
         )
       }
-      testTheCase("https://www.mux.com/any/path")
-      testTheCase("https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/vSIm02ye02gC7NasaSqE5zGP4lN3UJ01Iw01gOd01PapjUbeWza9NSOI02cpcAa02f5Kfh78vqhiWwVCk01bpcumXT4jQbfDJGBzQ02ygzY02QIMiTQuw/10.ts?skid=default&signature=NjVjZDQ1ZjBfNDYyNWYwODAxZmIzZTQ4YzU2YmQyYTZmZDhkNmYyYWQ2YjkxYmVkZmJkNThkOTBkOWRkYmU3NmRhNDVhYWY5OQ==&zone=0&vsid=z3MOq02sdo99wTURNGGxQJgKEk4qHbLSY4C8HfvZTbRPNGT0029u56MOSv8xlmJSior66tll9YK98")
     }
+    testTheCase("https://www.mux.com/any/path")
+    testTheCase("https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/vSIm02ye02gC7NasaSqE5zGP4lN3UJ01Iw01gOd01PapjUbeWza9NSOI02cpcAa02f5Kfh78vqhiWwVCk01bpcumXT4jQbfDJGBzQ02ygzY02QIMiTQuw/10.ts?skid=default&signature=NjVjZDQ1ZjBfNDYyNWYwODAxZmIzZTQ4YzU2YmQyYTZmZDhkNmYyYWQ2YjkxYmVkZmJkNThkOTBkOWRkYmU3NmRhNDVhYWY5OQ==&zone=0&vsid=z3MOq02sdo99wTURNGGxQJgKEk4qHbLSY4C8HfvZTbRPNGT0029u56MOSv8xlmJSior66tll9YK98")
+  }
+
+  @Test
+  fun testEviction() {
+    val datastore = CacheDatastore(appContext, maxDiskSize = 256 * 1024)
+
+    // so how does this test work? I guess we would want to write some entries with different ages
+    //  and see what happens when we read them out
+    // What do we need to mock?
+    //  * when now is
   }
 
   private fun expectedFileTempDir(context: Context): File =

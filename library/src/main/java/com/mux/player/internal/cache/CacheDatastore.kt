@@ -189,11 +189,10 @@ internal class CacheDatastore(
    *   That way we won't accidentally delete something the cache is writing again
    *   We need this because player's thread model may always mean concurrent eviction and lookup/write
    */
-  fun readEvictionCandidates(): List<FileRecord> {
-    val now = nowUtc()
+  fun readEvictionCandidates(now: Long): List<Pair<String, String>> {
     // todo start a transaction here
     dbHelper.writableDatabase.use { db ->
-      // todo
+      // todo for testability this should be split out
       db.query(
         /* table = */ IndexSql.Files.name,
         /* columns = */ arrayOf(
@@ -212,26 +211,36 @@ internal class CacheDatastore(
           ) as ${IndexSql.Files.Derived.staleness}
           """.trimIndent(),
           // For LRU
-          IndexSql.Files.Columns.lastAccessUnixTime
+          IndexSql.Files.Columns.lastAccessUnixTime,
+          IndexSql.Files.Columns.diskSize,
+          """(
+          sum(${IndexSql.Files.Columns.diskSize}) over ( 
+            order by ${IndexSql.Files.Derived.staleness} 
+          ) ${IndexSql.Files.Derived.aggDiskSize}
+          """.trimMargin()
         ),
-        /* selection = */ null,
-        /* selectionArgs = */ arrayOf(),
+        /* selection = */ """where ${IndexSql.Files.Derived.aggDiskSize} > ?""",
+        /* selectionArgs = */ arrayOf("$maxDiskSize"),
         /* groupBy = */ null,
-        /* having = */ "sum(${IndexSql.Files.Columns.totalDiskSize}) > $maxDiskSize",
+        /* having = */ null,
+//        /* having = */ "sum(${IndexSql.Files.Columns.diskSize}) > $maxDiskSize",
         /* orderBy = */ """"
-                        ${IndexSql.Files.Derived.staleness} asc, 
                         ${IndexSql.Files.Columns.lastAccessUnixTime} desc
                         """.trimIndent()
       )
     }.use { cursor ->
       if (cursor.count > 0) {
-        val result = mutableListOf<FileRecord>()
+        val result = mutableListOf<Pair<String,String>>()
         cursor.moveToFirst()
         Log.v(TAG, "Read Cursor rows")
         do {
           Log.v(TAG, "\t${DatabaseUtils.dumpCurrentRowToString(cursor)}")
           // no no we don't need every column really just the filename
           //result += cursor.toFileRecord()
+          result += Pair(
+            cursor.getStringOrThrow(IndexSql.Files.Columns.filePath),
+            cursor.getStringOrThrow(IndexSql.Files.Columns.remoteUrl)
+          )
 
           // todo - here we should delete the files & then delete the rows & then set successful
 
@@ -449,6 +458,7 @@ internal object IndexSql {
 
     object Derived {
       const val staleness = "staleness"
+      const val aggDiskSize = "agg_disk_sz"
     }
 
     object Columns {
@@ -482,7 +492,7 @@ internal object IndexSql {
       /**
        * The total size of the resource in bytes
        */
-      const val totalDiskSize = "total_size"
+      const val diskSize = "disk_size"
 
       /**
        * Age of the resource as described by the `Age` header
