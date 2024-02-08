@@ -1,10 +1,9 @@
 package com.mux.player.internal.cache
 
-import android.annotation.SuppressLint
 import android.content.Context
+import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import android.os.Build
 import android.util.Base64
 import android.util.Log
 import com.mux.player.oneOf
@@ -25,7 +24,10 @@ import java.util.concurrent.atomic.AtomicReference
  * CacheController is immediately responsible for deciding this (though in this in-dev iteration it
  * simply keeps one and doesn't close it, which we should change before 1.0)
  */
-internal class CacheDatastore(val context: Context) : Closeable {
+internal class CacheDatastore(
+  val context: Context,
+  val maxDiskSize: Long = 256 * 1024 * 1024
+) : Closeable {
 
   companion object {
     private const val TAG = "CacheDatastore"
@@ -111,7 +113,7 @@ internal class CacheDatastore(val context: Context) : Closeable {
   fun writeRecord(fileRecord: FileRecord): Result<Unit> {
     val rowId = dbHelper.writableDatabase.use {
       it.insertWithOnConflict(
-        IndexSchema.FilesTable.name, null,
+        IndexSql.Files.name, null,
         fileRecord.toContentValues(),
         SQLiteDatabase.CONFLICT_REPLACE
       )
@@ -129,8 +131,8 @@ internal class CacheDatastore(val context: Context) : Closeable {
   fun readRecordByLookupKey(key: String): FileRecord? {
     return dbHelper.writableDatabase.use {
       it.query(
-        IndexSchema.FilesTable.name, null,
-        "${IndexSchema.FilesTable.Columns.lookupKey} is ?",
+        IndexSql.Files.name, null,
+        "${IndexSql.Files.Columns.lookupKey} is ?",
         arrayOf(key),
         null, null, null
       ).use { cursor ->
@@ -146,8 +148,8 @@ internal class CacheDatastore(val context: Context) : Closeable {
   fun readRecordByUrl(url: String): FileRecord? {
     return dbHelper.writableDatabase.use {
       it.query(
-        IndexSchema.FilesTable.name, null,
-        "${IndexSchema.FilesTable.Columns.lookupKey} is ?",
+        IndexSql.Files.name, null,
+        "${IndexSql.Files.Columns.lookupKey} is ?",
         arrayOf(safeCacheKey(URL(url))),
         null, null, null
       ).use { cursor ->
@@ -178,6 +180,64 @@ internal class CacheDatastore(val context: Context) : Closeable {
    * A subdirectory within an app's no-backup files dir that contains the cache's index
    */
   fun indexDbDir(): File = File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
+
+  /**
+   * Reads a list of candidates for eviction based on recent-use order, preferring to evict staler
+   * items over items that are less-stale or not stale
+   */
+  fun readEvictionCandidates(): List<FileRecord> {
+    val now = nowUtc()
+    val itemsCursor = dbHelper.writableDatabase.use { db ->
+      db.query(
+        /* table = */ IndexSql.Files.name,
+        /* columns = */ arrayOf(
+          // For deleting
+          IndexSql.Files.Columns.filePath,
+          IndexSql.Files.Columns.lookupKey,
+          // For calculating staleness
+          IndexSql.Files.Columns.downloadedAtUnixTime,
+          IndexSql.Files.Columns.resourceAgeUnixTime,
+          IndexSql.Files.Columns.maxAgeUnixTime,
+          // staleness
+          """(
+              $now 
+            - ${IndexSql.Files.Columns.downloadedAtUnixTime} 
+            - ${IndexSql.Files.Columns.resourceAgeUnixTime}
+            - ${IndexSql.Files.Columns.maxAgeUnixTime}
+            ) as ${IndexSql.Files.Derived.freshness}""".trimIndent(),
+          // For LRU
+          IndexSql.Files.Columns.lastAccessUnixTime
+        ),
+        /* selection = */ null,
+        /* selectionArgs = */ arrayOf(),
+        /* groupBy = */ null,
+        /* having = */ "sum(${IndexSql.Files.Columns.totalDiskSize}) > $maxDiskSize",
+        /* orderBy = */ """"
+          ${IndexSql.Files.Derived.freshness} asc, 
+          ${IndexSql.Files.Columns.lastAccessUnixTime} desc
+          """.trimIndent()
+      )
+    }.use { cursor ->
+      if (cursor.count > 0) {
+        val result = listOf<FileRecord>()
+        cursor.moveToFirst()
+        do {
+          Log.v(TAG, "Read Cursor row:\n${DatabaseUtils.dumpCurrentRowToString(cursor)}\n")
+        } while (cursor.moveToNext())
+      } else {
+        return listOf()
+      }
+    }
+  }
+
+  /**
+   * Generates a URL-safe cache key for a given URL. Delegates to [generateCacheKey] but encodes it
+   * into something else
+   */
+  fun safeCacheKey(url: URL): String = Base64.encodeToString(
+    generateCacheKey(url).toByteArray(Charsets.UTF_8),
+    Base64.NO_WRAP or Base64.URL_SAFE
+  )
 
   /**
    * Mux Video segments have special cache keys because their URLs follow a known format even
@@ -214,16 +274,6 @@ internal class CacheDatastore(val context: Context) : Closeable {
 
     return key
   }
-
-  /**
-   * Generates a URL-safe cache key for a given URL. Delegates to [generateCacheKey] but encodes it
-   * into something else
-   */
-  @JvmSynthetic
-  internal fun safeCacheKey(url: URL): String = Base64.encodeToString(
-    generateCacheKey(url).toByteArray(Charsets.UTF_8),
-    Base64.NO_WRAP or Base64.URL_SAFE
-  )
 
   private fun ensureDirs() {
     fileTempDir().mkdirs()
@@ -333,7 +383,7 @@ private class DbHelper(
   /* context = */ appContext,
   /* name = */ File(directory, DB_FILE).path,
   null,
-  IndexSchema.version
+  IndexSql.version
 ) {
 
   companion object {
@@ -353,36 +403,40 @@ private class DbHelper(
   override fun onCreate(db: SQLiteDatabase?) {
     db?.execSQL(
       """
-        create table if not exists ${IndexSchema.FilesTable.name} (
-            ${IndexSchema.FilesTable.Columns.lookupKey} text not null unique primary key,
-            ${IndexSchema.FilesTable.Columns.remoteUrl} text not null,
-            ${IndexSchema.FilesTable.Columns.lastAccessUnixTime} integer not null,
-            ${IndexSchema.FilesTable.Columns.etag} text not null,
-            ${IndexSchema.FilesTable.Columns.filePath} text not null,
-            ${IndexSchema.FilesTable.Columns.downloadedAtUnixTime} integer not null,
-            ${IndexSchema.FilesTable.Columns.maxAgeUnixTime} integer not null,
-            ${IndexSchema.FilesTable.Columns.resourceAgeUnixTime} integer not null default 0,
-            ${IndexSchema.FilesTable.Columns.cacheControl} text not null
+        create table if not exists ${IndexSql.Files.name} (
+            ${IndexSql.Files.Columns.lookupKey} text not null unique primary key,
+            ${IndexSql.Files.Columns.remoteUrl} text not null,
+            ${IndexSql.Files.Columns.lastAccessUnixTime} integer not null,
+            ${IndexSql.Files.Columns.etag} text not null,
+            ${IndexSql.Files.Columns.filePath} text not null,
+            ${IndexSql.Files.Columns.downloadedAtUnixTime} integer not null,
+            ${IndexSql.Files.Columns.maxAgeUnixTime} integer not null,
+            ${IndexSql.Files.Columns.resourceAgeUnixTime} integer not null default 0,
+            ${IndexSql.Files.Columns.cacheControl} text not null
         )
       """.trimIndent()
     )
   }
 
   override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-    // in the future, if we need to update the sql schema, we'd increment Schema.version and do the
+    // in the future, if we need to update the sql schema, we'd increment IndexSql.version and do the
     //  migration here by adding or altering tables or whatever.
   }
 }
 
 /**
- * Schema for the cache index
+ * IndexSql for the cache index
  */
-internal object IndexSchema {
+internal object IndexSql {
 
   const val version = 1
 
-  object FilesTable {
+  object Files {
     const val name = "files"
+
+    object Derived {
+      const val freshness = "staleness"
+    }
 
     object Columns {
       /**
@@ -411,6 +465,11 @@ internal object IndexSchema {
        * The path of the cached copy of the file. This path is relative to the app's cache dir
        */
       const val filePath = "file_path"
+
+      /**
+       * The total size of the resource in bytes
+       */
+      const val totalDiskSize = "total_size"
 
       /**
        * Age of the resource as described by the `Age` header
