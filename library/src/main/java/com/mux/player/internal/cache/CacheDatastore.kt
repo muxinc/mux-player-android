@@ -125,6 +125,23 @@ internal class CacheDatastore(val context: Context) : Closeable {
     }
   }
 
+  fun readRecordByLookupKey(key: String): FileRecord? {
+    return dbHelper.writableDatabase.use {
+      it.query(
+        IndexSchema.FilesTable.name, null,
+        "${IndexSchema.FilesTable.Columns.lookupKey} is ?",
+        arrayOf(key),
+        null, null, null
+      ).use { cursor ->
+        if (cursor.count > 0 && cursor.moveToFirst()) {
+          cursor.toFileRecord()
+        } else {
+          null
+        }
+      }
+    }
+  }
+
   fun readRecordByUrl(url: String): FileRecord? {
     return dbHelper.writableDatabase.use {
       it.query(

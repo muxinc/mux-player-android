@@ -173,7 +173,11 @@ class CacheDatastoreInstrumentationTests {
         writeResult2.isSuccess
       )
 
-      // todo - read-out the record and ensure it is equal to the second record
+      val readRecord = datastore.readRecordByLookupKey("lookupKey")
+      Assert.assertEquals(
+        "The record read-out should match the last record written with that lookup key",
+        secondRecord, readRecord
+      )
     }
   }
 
