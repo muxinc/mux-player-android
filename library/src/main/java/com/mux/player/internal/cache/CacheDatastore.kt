@@ -209,7 +209,8 @@ internal class CacheDatastore(
           ($now - ${IndexSql.Files.Columns.downloadedAtUnixTime}
              + ${IndexSql.Files.Columns.resourceAgeUnixTime})
           - ${IndexSql.Files.Columns.maxAgeUnixTime}
-          ) as ${IndexSql.Files.Derived.staleness}""".trimIndent(),
+          ) as ${IndexSql.Files.Derived.staleness}
+          """.trimIndent(),
           // For LRU
           IndexSql.Files.Columns.lastAccessUnixTime
         ),
@@ -233,7 +234,7 @@ internal class CacheDatastore(
           //result += cursor.toFileRecord()
 
           // todo - here we should delete the files & then delete the rows & then set successful
-          
+
         } while (cursor.moveToNext())
         return result
       } else {
