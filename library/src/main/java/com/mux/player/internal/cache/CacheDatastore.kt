@@ -187,11 +187,13 @@ internal class CacheDatastore(
    *
    * todo - this needs to go inside an exclusive transaction, including deleting the files.
    *   That way we won't accidentally delete something the cache is writing again
-   *   We need this because player's thread model may always
+   *   We need this because player's thread model may always mean concurrent eviction and lookup/write
    */
   fun readEvictionCandidates(): List<FileRecord> {
     val now = nowUtc()
+    // todo start a transaction here
     dbHelper.writableDatabase.use { db ->
+      // todo
       db.query(
         /* table = */ IndexSql.Files.name,
         /* columns = */ arrayOf(
@@ -204,10 +206,10 @@ internal class CacheDatastore(
           IndexSql.Files.Columns.maxAgeUnixTime,
           // staleness
           """(
-             ($now - ${IndexSql.Files.Columns.downloadedAtUnixTime}
-                + ${IndexSql.Files.Columns.resourceAgeUnixTime})
-             - ${IndexSql.Files.Columns.maxAgeUnixTime}
-             ) as ${IndexSql.Files.Derived.staleness}""".trimIndent(),
+          ($now - ${IndexSql.Files.Columns.downloadedAtUnixTime}
+             + ${IndexSql.Files.Columns.resourceAgeUnixTime})
+          - ${IndexSql.Files.Columns.maxAgeUnixTime}
+          ) as ${IndexSql.Files.Derived.staleness}""".trimIndent(),
           // For LRU
           IndexSql.Files.Columns.lastAccessUnixTime
         ),
@@ -216,9 +218,9 @@ internal class CacheDatastore(
         /* groupBy = */ null,
         /* having = */ "sum(${IndexSql.Files.Columns.totalDiskSize}) > $maxDiskSize",
         /* orderBy = */ """"
-          ${IndexSql.Files.Derived.staleness} asc, 
-          ${IndexSql.Files.Columns.lastAccessUnixTime} desc
-          """.trimIndent()
+                        ${IndexSql.Files.Derived.staleness} asc, 
+                        ${IndexSql.Files.Columns.lastAccessUnixTime} desc
+                        """.trimIndent()
       )
     }.use { cursor ->
       if (cursor.count > 0) {
@@ -229,6 +231,9 @@ internal class CacheDatastore(
           Log.v(TAG, "\t${DatabaseUtils.dumpCurrentRowToString(cursor)}")
           // no no we don't need every column really just the filename
           //result += cursor.toFileRecord()
+
+          // todo - here we should delete the files & then delete the rows & then set successful
+          
         } while (cursor.moveToNext())
         return result
       } else {

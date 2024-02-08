@@ -5,8 +5,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mux.player.internal.cache.CacheConstants
 import com.mux.player.internal.cache.CacheDatastore
-import com.mux.player.internal.cache.filesDirNoBackupCompat
 import com.mux.player.internal.cache.FileRecord
+import com.mux.player.internal.cache.filesDirNoBackupCompat
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -184,26 +184,26 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testReadRecord() {
     fun testTheCase(url: String) {
-    CacheDatastore(appContext).use { datastore ->
-      val originalRecord = FileRecord(
-        url = url,
-        etag = "etag1",
-        relativePath = "cacheFile",
-        lookupKey = datastore.safeCacheKey(URL(url)),
-        downloadedAtUtcSecs = 1L,
-        cacheMaxAge = 2L,
-        resourceAge = 3L,
-        cacheControl = "cacheControl",
-        lastAccessUtcSecs = 4L,
-      )
-      val result = datastore.writeRecord(originalRecord)
-      result.getOrThrow() // not part of test, writing is covered elsewhere
+      CacheDatastore(appContext).use { datastore ->
+        val originalRecord = FileRecord(
+          url = url,
+          etag = "etag1",
+          relativePath = "cacheFile",
+          lookupKey = datastore.safeCacheKey(URL(url)),
+          downloadedAtUtcSecs = 1L,
+          cacheMaxAge = 2L,
+          resourceAge = 3L,
+          cacheControl = "cacheControl",
+          lastAccessUtcSecs = 4L,
+        )
+        val result = datastore.writeRecord(originalRecord)
+        result.getOrThrow() // not part of test, writing is covered elsewhere
 
-      val readRecord = datastore.readRecordByUrl(url)
-      Assert.assertEquals(
-        "The record should be the same after writing and reading",
-        originalRecord, readRecord
-      )
+        val readRecord = datastore.readRecordByUrl(url)
+        Assert.assertEquals(
+          "The record should be the same after writing and reading",
+          originalRecord, readRecord
+        )
       }
       testTheCase("https://www.mux.com/any/path")
       testTheCase("https://chunk-gcp-us-east4-vop1.cfcdn.mux.com/v1/chunk/vSIm02ye02gC7NasaSqE5zGP4lN3UJ01Iw01gOd01PapjUbeWza9NSOI02cpcAa02f5Kfh78vqhiWwVCk01bpcumXT4jQbfDJGBzQ02ygzY02QIMiTQuw/10.ts?skid=default&signature=NjVjZDQ1ZjBfNDYyNWYwODAxZmIzZTQ4YzU2YmQyYTZmZDhkNmYyYWQ2YjkxYmVkZmJkNThkOTBkOWRkYmU3NmRhNDVhYWY5OQ==&zone=0&vsid=z3MOq02sdo99wTURNGGxQJgKEk4qHbLSY4C8HfvZTbRPNGT0029u56MOSv8xlmJSior66tll9YK98")
