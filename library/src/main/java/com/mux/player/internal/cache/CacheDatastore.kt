@@ -187,7 +187,7 @@ internal class CacheDatastore(
    */
   fun readEvictionCandidates(): List<FileRecord> {
     val now = nowUtc()
-    val itemsCursor = dbHelper.writableDatabase.use { db ->
+    dbHelper.writableDatabase.use { db ->
       db.query(
         /* table = */ IndexSql.Files.name,
         /* columns = */ arrayOf(
@@ -200,11 +200,10 @@ internal class CacheDatastore(
           IndexSql.Files.Columns.maxAgeUnixTime,
           // staleness
           """(
-              $now 
-            - ${IndexSql.Files.Columns.downloadedAtUnixTime} 
-            - ${IndexSql.Files.Columns.resourceAgeUnixTime}
-            - ${IndexSql.Files.Columns.maxAgeUnixTime}
-            ) as ${IndexSql.Files.Derived.freshness}""".trimIndent(),
+             ($now - ${IndexSql.Files.Columns.downloadedAtUnixTime}
+                + ${IndexSql.Files.Columns.resourceAgeUnixTime})
+             - ${IndexSql.Files.Columns.maxAgeUnixTime}
+             ) as ${IndexSql.Files.Derived.staleness}""".trimIndent(),
           // For LRU
           IndexSql.Files.Columns.lastAccessUnixTime
         ),
@@ -213,17 +212,20 @@ internal class CacheDatastore(
         /* groupBy = */ null,
         /* having = */ "sum(${IndexSql.Files.Columns.totalDiskSize}) > $maxDiskSize",
         /* orderBy = */ """"
-          ${IndexSql.Files.Derived.freshness} asc, 
+          ${IndexSql.Files.Derived.staleness} asc, 
           ${IndexSql.Files.Columns.lastAccessUnixTime} desc
           """.trimIndent()
       )
     }.use { cursor ->
       if (cursor.count > 0) {
-        val result = listOf<FileRecord>()
+        val result = mutableListOf<FileRecord>()
         cursor.moveToFirst()
+        Log.v(TAG, "Read Cursor rows")
         do {
-          Log.v(TAG, "Read Cursor row:\n${DatabaseUtils.dumpCurrentRowToString(cursor)}\n")
+          Log.v(TAG, "\t${DatabaseUtils.dumpCurrentRowToString(cursor)}")
+          result += cursor.toFileRecord()
         } while (cursor.moveToNext())
+        return result
       } else {
         return listOf()
       }
@@ -435,7 +437,7 @@ internal object IndexSql {
     const val name = "files"
 
     object Derived {
-      const val freshness = "staleness"
+      const val staleness = "staleness"
     }
 
     object Columns {
