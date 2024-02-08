@@ -7,7 +7,6 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.os.Build
 import android.util.Base64
 import android.util.Log
-import com.mux.player.internal.cache.CacheController.TAG
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
@@ -29,7 +28,9 @@ import java.util.concurrent.atomic.AtomicReference
 internal class CacheDatastore(val context: Context) : Closeable {
 
   companion object {
+    private const val TAG = "CacheDatastore"
     private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
+
     val RX_CHUNK_URL =
       Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
   }

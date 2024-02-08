@@ -32,13 +32,12 @@ import java.util.concurrent.atomic.AtomicInteger
 @SuppressLint("StaticFieldLeak")
 internal object CacheController {
 
+  private const val TAG = "CacheController"
   private lateinit var appContext: Context
   private lateinit var datastore: CacheDatastore
 
   private val playersWithCache = AtomicInteger(0)
   private val ioScope = CoroutineScope(Dispatchers.IO)
-
-  const val TAG = "CacheController"
 
   val RX_NO_STORE = Regex("""no-store""")
   val RX_NO_CACHE = Regex("""no-cache""")
@@ -212,17 +211,18 @@ internal class ReadHandle internal constructor(
 
   companion object {
     const val READ_SIZE = 32 * 1024
+    private const val TAG = "ReadHandle"
   }
 
   private val cacheFile: File
   private val fileInput: InputStream
 
   init {
-    Log.d(CacheController.TAG, "Reading from cache file at ${file.relativePath}")
+    Log.d(TAG, "Reading from cache file at ${file.relativePath}")
     cacheFile = File(datastore.fileCacheDir(), file.relativePath)
     //fileInput = BufferedInputStream(FileInputStream(File(directory, file.relativePath)))
     // todo - oh no were saving absolute paths by mistake
-    Log.d(CacheController.TAG, "Actual file we're reading is $cacheFile")
+    Log.d(TAG, "Actual file we're reading is $cacheFile")
     fileInput = BufferedInputStream(FileInputStream(cacheFile))
   }
 
@@ -266,13 +266,16 @@ internal class WriteHandle internal constructor(
   private val tempFile: File?,
 ): Closeable {
 
-  private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
+  companion object {
+    private const val TAG = "WriteHandle"
+  }
 
+  private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
   /**
    * Writes the given bytes to both the player socket and the file
    */
   fun write(data: ByteArray, offset: Int, len: Int) {
-    Log.i(CacheController.TAG, "Writing $len bytes unless $fileOutputStream is null")
+    Log.i(TAG, "Writing $len bytes unless $fileOutputStream is null")
     fileOutputStream?.write(data, offset, len)
     fileOutputStream?.flush()
   }
@@ -283,33 +286,29 @@ internal class WriteHandle internal constructor(
    */
   fun finishedWriting() {
     // If there's a temp file, we are caching it so move it from the temp file and write to index
-    Log.i(CacheController.TAG, "flushing $fileOutputStream")
+    Log.i(TAG, "flushing $fileOutputStream")
     fileOutputStream?.flush()
-    Log.i(CacheController.TAG, "closing $fileOutputStream")
+    Log.i(TAG, "closing $fileOutputStream")
     fileOutputStream?.close()
-    Log.i(CacheController.TAG, "temp file is $tempFile")
-    Log.i(CacheController.TAG, "temp file has ${tempFile?.length()}")
+    Log.i(TAG, "temp file is $tempFile")
+    Log.i(TAG, "temp file has ${tempFile?.length()}")
     if (tempFile != null) {
       val cacheControl = responseHeaders.getCacheControl()
-      val etag = responseHeaders.getETag()
-      if (cacheControl != null && etag != null) {
+      val eTag = responseHeaders.getETag()
+      if (cacheControl != null && eTag != null) {
         val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
-        Log.d(CacheController.TAG, "move to cache file with path ${cacheFile.path}")
+        Log.d(TAG, "move to cache file with path ${cacheFile.path}")
 
         val nowUtc = nowUtc()
         val recordAge = responseHeaders.getAge()?.toLongOrNull()
-        val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(
-          cacheControl
-        )
+        val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(cacheControl)
         val relativePath = cacheFile.toRelativeString(datastore.fileCacheDir())
 
-        Log.i(CacheController.TAG, "Saving to cache file $relativePath")
-        Log.i(CacheController.TAG, "We saved ${cacheFile.length()} bytes")
-        Log.i(CacheController.TAG, "but there's ${tempFile.length()} bytes in the temp file")
+        Log.i(TAG, "Saving ${cacheFile.length()} to cache as: $relativePath")
 
         val record = FileRecord(
           url = url,
-          etag = etag,
+          etag = eTag,
           relativePath = relativePath,
           lastAccessUtcSecs = nowUtc,
           lookupKey = datastore.safeCacheKey(URL(url)),
@@ -324,10 +323,6 @@ internal class WriteHandle internal constructor(
         // todo - return a fail or throw somerthing
       } else {
         // todo: need a logger
-        Log.w(
-          "CacheController", "Had temp file but not enough info to cache. " +
-                  "cache-control: [$cacheControl] etag $etag"
-        )
       }
     }
   }
