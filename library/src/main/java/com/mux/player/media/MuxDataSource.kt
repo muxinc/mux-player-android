@@ -62,7 +62,7 @@ class MuxDataSource private constructor(
         writer.finishedWriting()
       }
 
-      return bytesFromUpstream
+      bytesFromUpstream
     }
   }
 

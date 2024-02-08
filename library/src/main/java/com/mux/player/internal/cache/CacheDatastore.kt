@@ -374,18 +374,6 @@ private class DbHelper(
 }
 
 /**
- * Returns this app's no-backup internal files dir, or the regular files dir on older api levels
- */
-internal val Context.filesDirNoBackupCompat: File
-  @SuppressLint("ObsoleteSdkInt") get() {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      noBackupFilesDir
-    } else {
-      filesDir
-    }
-  }
-
-/**
  * Schema for the cache index
  */
 internal object IndexSchema {
