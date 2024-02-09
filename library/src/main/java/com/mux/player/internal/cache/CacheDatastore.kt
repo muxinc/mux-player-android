@@ -199,34 +199,18 @@ internal class CacheDatastore(
           // For deleting
           IndexSql.Files.Columns.filePath,
           IndexSql.Files.Columns.lookupKey,
-          // For calculating staleness
-          IndexSql.Files.Columns.downloadedAtUnixTime,
-          IndexSql.Files.Columns.resourceAgeUnixTime,
-          IndexSql.Files.Columns.maxAgeUnixTime,
-          // staleness
-          """(
-          ($now - ${IndexSql.Files.Columns.downloadedAtUnixTime}
-             + ${IndexSql.Files.Columns.resourceAgeUnixTime})
-          - ${IndexSql.Files.Columns.maxAgeUnixTime}
-          ) as ${IndexSql.Files.Derived.staleness}
-          """.trimIndent(),
           // For LRU
           IndexSql.Files.Columns.lastAccessUnixTime,
           IndexSql.Files.Columns.diskSize,
-          """(
-          sum(${IndexSql.Files.Columns.diskSize}) over ( 
-            order by ${IndexSql.Files.Derived.staleness} 
-          ) ${IndexSql.Files.Derived.aggDiskSize}
-          """.trimMargin()
+          "sum(${IndexSql.Files.Columns.diskSize}) over "
+                  + "(order by ${IndexSql.Files.Columns.lastAccessUnixTime} desc) "
+                  + IndexSql.Files.Derived.aggDiskSize
         ),
-        /* selection = */ """where ${IndexSql.Files.Derived.aggDiskSize} > ?""",
-        /* selectionArgs = */ arrayOf("$maxDiskSize"),
+        /* selection = */null,
+        /* selectionArgs = */ arrayOf(),
         /* groupBy = */ null,
         /* having = */ null,
-//        /* having = */ "sum(${IndexSql.Files.Columns.diskSize}) > $maxDiskSize",
-        /* orderBy = */ """"
-                        ${IndexSql.Files.Columns.lastAccessUnixTime} desc
-                        """.trimIndent()
+        /* orderBy = */ null
       )
     }.use { cursor ->
       if (cursor.count > 0) {
@@ -457,7 +441,6 @@ internal object IndexSql {
     const val name = "files"
 
     object Derived {
-      const val staleness = "staleness"
       const val aggDiskSize = "agg_disk_sz"
     }
 
