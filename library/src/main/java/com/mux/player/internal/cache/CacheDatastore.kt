@@ -1,7 +1,6 @@
 package com.mux.player.internal.cache
 
 import android.content.Context
-import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Base64
@@ -190,40 +189,28 @@ internal class CacheDatastore(
    *   We need this because player's thread model may always mean concurrent eviction and lookup/write
    */
   @JvmSynthetic
-  internal fun readEvictionCandidates(): List<Pair<String, String>> {
-    // todo start a transaction here
+  internal fun readLeastRecentFiles(): List<FileRecord> {
     dbHelper.writableDatabase.use { db ->
-      // rawQuery because none of the nicer query functions let you do subqueries
-        db.rawQuery("""
+      // rawQuery because none of the nicer query functions let you do sub-queries
+      db.rawQuery(
+        """
          select * from (
-           select 
-             ${IndexSql.Files.Columns.filePath},
-             ${IndexSql.Files.Columns.lookupKey},
-             ${IndexSql.Files.Columns.remoteUrl},
-             ${IndexSql.Files.Columns.lastAccessUnixTime},
-             ${IndexSql.Files.Columns.diskSize},
+           select *,
              sum(${IndexSql.Files.Columns.diskSize}) over 
                (order by ${IndexSql.Files.Columns.lastAccessUnixTime} desc) 
                as ${IndexSql.Files.Derived.aggDiskSize}
            from ${IndexSql.Files.name}
          ) 
-         where ${IndexSql.Files.Derived.aggDiskSize} > ${maxDiskSize} 
+         where ${IndexSql.Files.Derived.aggDiskSize} > $maxDiskSize 
         """.trimIndent(),
-          null,
-        ).use { cursor ->
-          Log.d(TAG,"readEvictionCandidates: Read cursor with ${cursor.count} rows")
+        null,
+      ).use { cursor ->
+        Log.d(TAG, "readEvictionCandidates: Read cursor with ${cursor.count} rows")
         if (cursor.count > 0) {
-          val result = mutableListOf<Pair<String, String>>()
+          val result = mutableListOf<FileRecord>()
           cursor.moveToFirst()
-          Log.v(TAG, "Read Cursor rows")
           do {
-            Log.v(TAG, "\t${DatabaseUtils.dumpCurrentRowToString(cursor)}")
-            // no no we don't need every column really just the filename
-            //result += cursor.toFileRecord()
-            result += Pair(
-              cursor.getStringOrThrow(IndexSql.Files.Columns.filePath),
-              cursor.getStringOrThrow(IndexSql.Files.Columns.remoteUrl)
-            )
+            result += cursor.toFileRecord()
           } while (cursor.moveToNext())
           return result
         } else {

@@ -219,9 +219,9 @@ class CacheDatastoreInstrumentationTests {
   }
 
   @Test
-  fun testReadEvictionCandidates() {
-    val maxSize = 5L
-    CacheDatastore(appContext, maxDiskSize = maxSize).use { datastore ->
+  fun testReadLeastRecentFiles() {
+    val maxCacheSize = 5L
+    CacheDatastore(appContext, maxDiskSize = maxCacheSize).use { datastore ->
       datastore.open()
       // For this test, size "units" are like one digit.
       //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
@@ -229,6 +229,7 @@ class CacheDatastoreInstrumentationTests {
       var fakeLastAccess = 200L // increment by some amount when you need to
       fun fakeNow(since: Long = 10) = (fakeLastAccess + since).also { fakeLastAccess = it }
 
+      val recordsWritten = mutableListOf<FileRecord>()
       for (x in 0..10) {
         val url = "https://fake.mux.com/test/url/of/index/$x.ts"
         val now = fakeNow()
@@ -239,23 +240,43 @@ class CacheDatastoreInstrumentationTests {
             relativePath = "dummy/path/$x",
             etag = "etag-unique-$x",
             lastAccessUtcSecs = now,
-            downloadedAtUtcSecs = now,
+            downloadedAtUtcSecs = 0L,
             cacheMaxAge = 400,
             resourceAge = 0,
             cacheControl = "dummy-directive",
             sizeOnDisk = 1
-          )
+          ).also { recordsWritten += it }
         )
-      } // for(x in
+      } // for(x in ...
 
-      val canWeCallItPruning = datastore.readEvictionCandidates().joinToString("\n")
-      Log.w(TAG, "Just checking in here's the eviction candidates:$canWeCallItPruning")
-    }
+      val candidates = datastore.readLeastRecentFiles()
+      Log.w(
+        TAG, "Just checking in here's the eviction candidates:" +
+                " ${candidates.joinToString("\n")}"
+      )
+      val candidateFiles = candidates.map { it.relativePath }
+      val recordsToBeKept = mutableListOf<FileRecord>().also { copiedList ->
+        copiedList.addAll(recordsWritten)
+        copiedList.removeAll { candidateFiles.contains(it.relativePath) }
+      }
 
-    // so how does this test work? I guess we would want to write some entries with different ages
-    //  and see what happens when we read them out
-    // What do we need to mock?
-    //  * when now is
+      // We can equate 'disk size' and 'array size' here because all the elements in the test have
+      //  a fake disk size of 1
+      Assert.assertEquals(
+        "Cache size would be $maxCacheSize after deleting",
+        maxCacheSize, recordsToBeKept.size.toLong()
+      )
+
+      // every lastAccess in the rtbk should be greater than all the ones (eg, greatest one of) in the candidates
+      val mostRecentCandidate = candidates.maxBy { it.lastAccessUtcSecs }
+      val onlyMostRecentKept =
+        recordsToBeKept.all { it.lastAccessUtcSecs >= mostRecentCandidate.lastAccessUtcSecs }
+      Assert.assertTrue(
+        "Only the most-recent records should be kept",
+        onlyMostRecentKept
+      )
+
+    } // CacheDatastore().use
   }
 
   private fun expectedFileTempDir(context: Context): File =
