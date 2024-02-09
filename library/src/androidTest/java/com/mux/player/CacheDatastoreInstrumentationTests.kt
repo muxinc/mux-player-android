@@ -219,8 +219,9 @@ class CacheDatastoreInstrumentationTests {
   }
 
   @Test
-  fun testEviction() {
-    CacheDatastore(appContext, maxDiskSize = 5).use { datastore ->
+  fun testReadEvictionCandidates() {
+    val maxSize = 5L
+    CacheDatastore(appContext, maxDiskSize = maxSize).use { datastore ->
       datastore.open()
       // For this test, size "units" are like one digit.
       //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()

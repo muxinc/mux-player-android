@@ -210,7 +210,6 @@ internal class CacheDatastore(
          where ${IndexSql.Files.Derived.aggDiskSize} > ${maxDiskSize} 
         """.trimIndent(),
           null,
-//          arrayOf(maxDiskSize.toString()),
         ).use { cursor ->
           Log.d(TAG,"readEvictionCandidates: Read cursor with ${cursor.count} rows")
         if (cursor.count > 0) {
