@@ -220,7 +220,7 @@ class CacheDatastoreInstrumentationTests {
 
   @Test
   fun testEviction() {
-    CacheDatastore(appContext, maxDiskSize = 2).use { datastore ->
+    CacheDatastore(appContext, maxDiskSize = 5).use { datastore ->
       datastore.open()
       // For this test, size "units" are like one digit.
       //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
@@ -235,7 +235,7 @@ class CacheDatastoreInstrumentationTests {
           FileRecord(
             url = url,
             lookupKey = datastore.safeCacheKey(URL(url)),
-            relativePath = "dummy/path",
+            relativePath = "dummy/path/$x",
             etag = "etag-unique-$x",
             lastAccessUtcSecs = now,
             downloadedAtUtcSecs = now,
@@ -245,10 +245,10 @@ class CacheDatastoreInstrumentationTests {
             sizeOnDisk = 1
           )
         )
+      } // for(x in
 
-        val canWeCallItPruning = datastore.readEvictionCandidates().joinToString("\n")
-        Log.w(TAG, "Just checking in here's the eviction candidates:$canWeCallItPruning")
-      }
+      val canWeCallItPruning = datastore.readEvictionCandidates().joinToString("\n")
+      Log.w(TAG, "Just checking in here's the eviction candidates:$canWeCallItPruning")
     }
 
     // so how does this test work? I guess we would want to write some entries with different ages

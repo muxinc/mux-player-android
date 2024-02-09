@@ -193,27 +193,26 @@ internal class CacheDatastore(
   internal fun readEvictionCandidates(): List<Pair<String, String>> {
     // todo start a transaction here
     dbHelper.writableDatabase.use { db ->
-      // todo for testability this should be split out
-      db.query(
-        /* table = */ IndexSql.Files.name,
-        /* columns = */ arrayOf(
-          // For deleting
-          IndexSql.Files.Columns.filePath,
-          IndexSql.Files.Columns.lookupKey,
-          IndexSql.Files.Columns.remoteUrl,
-          // For LRU
-          IndexSql.Files.Columns.lastAccessUnixTime,
-          IndexSql.Files.Columns.diskSize,
-          "sum(${IndexSql.Files.Columns.diskSize}) over "
-                  + "(order by ${IndexSql.Files.Columns.lastAccessUnixTime} desc) "
-                  + IndexSql.Files.Derived.aggDiskSize
-        ),
-        /* selection = */null,
-        /* selectionArgs = */ arrayOf(),
-        /* groupBy = */ null,
-        /* having = */ null,
-        /* orderBy = */ null
-      ).use { cursor ->
+      // rawQuery because none of the nicer query functions let you do subqueries
+        db.rawQuery("""
+         select * from (
+           select 
+             ${IndexSql.Files.Columns.filePath},
+             ${IndexSql.Files.Columns.lookupKey},
+             ${IndexSql.Files.Columns.remoteUrl},
+             ${IndexSql.Files.Columns.lastAccessUnixTime},
+             ${IndexSql.Files.Columns.diskSize},
+             sum(${IndexSql.Files.Columns.diskSize}) over 
+               (order by ${IndexSql.Files.Columns.lastAccessUnixTime} desc) 
+               as ${IndexSql.Files.Derived.aggDiskSize}
+           from ${IndexSql.Files.name}
+         ) 
+         where ${IndexSql.Files.Derived.aggDiskSize} > ${maxDiskSize} 
+        """.trimIndent(),
+          null,
+//          arrayOf(maxDiskSize.toString()),
+        ).use { cursor ->
+          Log.d(TAG,"readEvictionCandidates: Read cursor with ${cursor.count} rows")
         if (cursor.count > 0) {
           val result = mutableListOf<Pair<String, String>>()
           cursor.moveToFirst()
