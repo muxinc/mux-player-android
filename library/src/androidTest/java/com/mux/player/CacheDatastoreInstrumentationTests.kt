@@ -220,32 +220,35 @@ class CacheDatastoreInstrumentationTests {
 
   @Test
   fun testEviction() {
-    val datastore = CacheDatastore(appContext, maxDiskSize = 1)
+    CacheDatastore(appContext, maxDiskSize = 2).use { datastore ->
+      datastore.open()
+      // For this test, size "units" are like one digit.
+      //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
 
-    // For this test, size "units" are like one digit.
-    //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
+      var fakeLastAccess = 200L // increment by some amount when you need to
+      fun fakeNow(since: Long = 10) = (fakeLastAccess + since).also { fakeLastAccess = it }
 
-    var fakeLastAccess = 200L // increment by some amount when you need to
-    fun fakeNow(since: Long = 10) = (fakeLastAccess + since).also { fakeLastAccess = it }
+      for (x in 0..10) {
+        val url = "https://fake.mux.com/test/url/of/index/$x.ts"
+        val now = fakeNow()
+        datastore.writeRecord(
+          FileRecord(
+            url = url,
+            lookupKey = datastore.safeCacheKey(URL(url)),
+            relativePath = "dummy/path",
+            etag = "etag-unique-$x",
+            lastAccessUtcSecs = now,
+            downloadedAtUtcSecs = now,
+            cacheMaxAge = 400,
+            resourceAge = 0,
+            cacheControl = "dummy-directive",
+            sizeOnDisk = 1
+          )
+        )
 
-    for (x in 0..10) {
-      val url = "https://fake.mux.com/test/url/of/index/$x.ts"
-      val now = fakeNow()
-      datastore.writeRecord(FileRecord(
-        url = url,
-        lookupKey =  datastore.safeCacheKey(URL(url)),
-        relativePath = "dummy/path",
-        etag = "etag-unique-$x",
-        lastAccessUtcSecs = now,
-        downloadedAtUtcSecs = now,
-        cacheMaxAge = 400,
-        resourceAge = 0,
-        cacheControl = "dummy-directive",
-        sizeOnDisk = 1
-      ))
-
-      val canWeCallItPruning = datastore.readEvictionCandidates()
-      Log.w(TAG, "Just checking in here's the eviction candidates:$canWeCallItPruning")
+        val canWeCallItPruning = datastore.readEvictionCandidates().joinToString("\n")
+        Log.w(TAG, "Just checking in here's the eviction candidates:$canWeCallItPruning")
+      }
     }
 
     // so how does this test work? I guess we would want to write some entries with different ages

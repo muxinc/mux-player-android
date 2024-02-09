@@ -200,6 +200,7 @@ internal class CacheDatastore(
           // For deleting
           IndexSql.Files.Columns.filePath,
           IndexSql.Files.Columns.lookupKey,
+          IndexSql.Files.Columns.remoteUrl,
           // For LRU
           IndexSql.Files.Columns.lastAccessUnixTime,
           IndexSql.Files.Columns.diskSize,
@@ -212,24 +213,24 @@ internal class CacheDatastore(
         /* groupBy = */ null,
         /* having = */ null,
         /* orderBy = */ null
-      )
-    }.use { cursor ->
-      if (cursor.count > 0) {
-        val result = mutableListOf<Pair<String,String>>()
-        cursor.moveToFirst()
-        Log.v(TAG, "Read Cursor rows")
-        do {
-          Log.v(TAG, "\t${DatabaseUtils.dumpCurrentRowToString(cursor)}")
-          // no no we don't need every column really just the filename
-          //result += cursor.toFileRecord()
-          result += Pair(
-            cursor.getStringOrThrow(IndexSql.Files.Columns.filePath),
-            cursor.getStringOrThrow(IndexSql.Files.Columns.remoteUrl)
-          )
-        } while (cursor.moveToNext())
-        return result
-      } else {
-        return listOf()
+      ).use { cursor ->
+        if (cursor.count > 0) {
+          val result = mutableListOf<Pair<String, String>>()
+          cursor.moveToFirst()
+          Log.v(TAG, "Read Cursor rows")
+          do {
+            Log.v(TAG, "\t${DatabaseUtils.dumpCurrentRowToString(cursor)}")
+            // no no we don't need every column really just the filename
+            //result += cursor.toFileRecord()
+            result += Pair(
+              cursor.getStringOrThrow(IndexSql.Files.Columns.filePath),
+              cursor.getStringOrThrow(IndexSql.Files.Columns.remoteUrl)
+            )
+          } while (cursor.moveToNext())
+          return result
+        } else {
+          return listOf()
+        }
       }
     }
   }
