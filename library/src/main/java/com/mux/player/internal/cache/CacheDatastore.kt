@@ -181,46 +181,6 @@ internal class CacheDatastore(
   fun indexDbDir(): File = File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
 
   /**
-   * Reads a list of candidates for eviction based on recent-use order, preferring to evict staler
-   * items over items that are less-stale or not stale
-   *
-   * todo - this needs to go inside an exclusive transaction, including deleting the files.
-   *   That way we won't accidentally delete something the cache is writing again
-   *   We need this because player's thread model may always mean concurrent eviction and lookup/write
-   */
-  @JvmSynthetic
-  internal fun readLeastRecentFiles(): List<FileRecord> {
-    dbHelper.writableDatabase.use { db ->
-      // rawQuery because none of the nicer query functions let you do sub-queries
-      db.rawQuery(
-        """
-         select * from (
-           select *,
-             sum(${IndexSql.Files.Columns.diskSize}) over 
-               (order by ${IndexSql.Files.Columns.lastAccessUnixTime} desc) 
-               as ${IndexSql.Files.Derived.aggDiskSize}
-           from ${IndexSql.Files.name}
-         ) 
-         where ${IndexSql.Files.Derived.aggDiskSize} > $maxDiskSize 
-        """.trimIndent(),
-        null,
-      ).use { cursor ->
-        Log.d(TAG, "readEvictionCandidates: Read cursor with ${cursor.count} rows")
-        if (cursor.count > 0) {
-          val result = mutableListOf<FileRecord>()
-          cursor.moveToFirst()
-          do {
-            result += cursor.toFileRecord()
-          } while (cursor.moveToNext())
-          return result
-        } else {
-          return listOf()
-        }
-      }
-    }
-  }
-
-  /**
    * Generates a URL-safe cache key for a given URL. Delegates to [generateCacheKey] but encodes it
    * into something else
    */
@@ -228,6 +188,16 @@ internal class CacheDatastore(
     generateCacheKey(url).toByteArray(Charsets.UTF_8),
     Base64.NO_WRAP or Base64.URL_SAFE
   )
+
+  /**
+   * Reads a list of the least-used records, whose cumulative sizes are above the [maxDiskSize]
+   */
+  @JvmSynthetic
+  internal fun readLeastRecentFiles(): List<FileRecord> {
+    // This function is only visible for testing. doReadLeastRecentFiles() is called internally in
+    //  a transaction with an already-open db
+    return dbHelper.writableDatabase.use { doReadLeastRecentFiles(it) }
+  }
 
   /**
    * Mux Video segments have special cache keys because their URLs follow a known format even
@@ -263,6 +233,34 @@ internal class CacheDatastore(
     }
 
     return key
+  }
+
+  private fun doReadLeastRecentFiles(db: SQLiteDatabase): List<FileRecord> {
+    // rawQuery because none of the nicer query functions let you do sub-queries
+    db.rawQuery(
+      """
+         select * from (
+           select *,
+             sum(${IndexSql.Files.Columns.diskSize}) over 
+               (order by ${IndexSql.Files.Columns.lastAccessUnixTime} desc) 
+               as ${IndexSql.Files.Derived.aggDiskSize}
+           from ${IndexSql.Files.name}
+         ) 
+         where ${IndexSql.Files.Derived.aggDiskSize} > $maxDiskSize 
+        """.trimIndent(),
+      null,
+    ).use { cursor ->
+      if (cursor.count > 0) {
+        val result = mutableListOf<FileRecord>()
+        cursor.moveToFirst()
+        do {
+          result += cursor.toFileRecord()
+        } while (cursor.moveToNext())
+        return result
+      } else {
+        return listOf()
+      }
+    }
   }
 
   private fun ensureDirs() {

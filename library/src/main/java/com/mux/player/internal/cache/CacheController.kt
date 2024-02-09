@@ -79,7 +79,7 @@ internal object CacheController {
     } else {
       ReadHandle(
         url = requestUrl,
-        file = fileRecord,
+        fileRecord = fileRecord,
         datastore = datastore,
         directory = datastore.fileCacheDir(),
       )
@@ -204,7 +204,7 @@ internal object CacheController {
  */
 internal class ReadHandle internal constructor(
   val url: String,
-  val file: FileRecord,
+  val fileRecord: FileRecord,
   datastore: CacheDatastore,
   directory: File,
 ) : Closeable {
@@ -218,16 +218,15 @@ internal class ReadHandle internal constructor(
   private val fileInput: InputStream
 
   init {
-    Log.d(TAG, "Reading from cache file at ${file.relativePath}")
-    cacheFile = File(datastore.fileCacheDir(), file.relativePath)
+    Log.d(TAG, "Reading from cache file at ${fileRecord.relativePath}")
+    cacheFile = File(datastore.fileCacheDir(), fileRecord.relativePath)
     //fileInput = BufferedInputStream(FileInputStream(File(directory, file.relativePath)))
     // todo - oh no were saving absolute paths by mistake
     Log.d(TAG, "Actual file we're reading is $cacheFile")
     fileInput = BufferedInputStream(FileInputStream(cacheFile))
   }
 
-  // todo - needs to be in schema for efficient eviction
-  val fileSize: Long get() = cacheFile.length()
+  val fileSize: Long get() = fileRecord.sizeOnDisk
 
   @Throws(IOException::class)
   fun read(into: ByteArray, offset: Int, len: Int): Int {
