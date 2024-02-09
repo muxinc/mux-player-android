@@ -7,6 +7,7 @@ data class FileRecord(
   val url: String,
   val etag: String,
   val relativePath: String,
+  val sizeOnDisk: Long,
   val lookupKey: String,
   val lastAccessUtcSecs: Long,
   val downloadedAtUtcSecs: Long,
@@ -29,6 +30,7 @@ internal fun FileRecord.toContentValues(): ContentValues {
     put(IndexSql.Files.Columns.resourceAgeUnixTime, resourceAge)
     put(IndexSql.Files.Columns.cacheControl, cacheControl)
     put(IndexSql.Files.Columns.lastAccessUnixTime, lastAccessUtcSecs)
+    put(IndexSql.Files.Columns.diskSize, sizeOnDisk)
   }
 
   return values
@@ -45,6 +47,7 @@ internal fun Cursor.toFileRecord(): FileRecord {
     downloadedAtUtcSecs = getLongOrThrow(IndexSql.Files.Columns.downloadedAtUnixTime),
     cacheMaxAge = getLongOrThrow(IndexSql.Files.Columns.maxAgeUnixTime),
     resourceAge = getLongOrThrow(IndexSql.Files.Columns.resourceAgeUnixTime),
-    cacheControl = getStringOrThrow(IndexSql.Files.Columns.cacheControl)
+    cacheControl = getStringOrThrow(IndexSql.Files.Columns.cacheControl),
+    sizeOnDisk = getLongOrThrow(IndexSql.Files.Columns.diskSize),
   )
 }

@@ -271,6 +271,8 @@ internal class WriteHandle internal constructor(
   }
 
   private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
+  private var writtenBytes = 0
+
   /**
    * Writes the given bytes to both the player socket and the file
    */
@@ -278,6 +280,7 @@ internal class WriteHandle internal constructor(
     Log.i(TAG, "Writing $len bytes unless $fileOutputStream is null")
     fileOutputStream?.write(data, offset, len)
     fileOutputStream?.flush()
+    writtenBytes += len
   }
 
   /**
@@ -316,6 +319,7 @@ internal class WriteHandle internal constructor(
           cacheMaxAge = maxAge ?: TimeUnit.SECONDS.convert(7, TimeUnit.DAYS),
           resourceAge = recordAge ?: 0L,
           cacheControl = cacheControl,
+          sizeOnDisk = writtenBytes.toLong(),
         )
 
         val result = datastore.writeRecord(record)

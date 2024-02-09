@@ -189,7 +189,8 @@ internal class CacheDatastore(
    *   That way we won't accidentally delete something the cache is writing again
    *   We need this because player's thread model may always mean concurrent eviction and lookup/write
    */
-  fun readEvictionCandidates(now: Long): List<Pair<String, String>> {
+  @JvmSynthetic
+  internal fun readEvictionCandidates(): List<Pair<String, String>> {
     // todo start a transaction here
     dbHelper.writableDatabase.use { db ->
       // todo for testability this should be split out
@@ -225,9 +226,6 @@ internal class CacheDatastore(
             cursor.getStringOrThrow(IndexSql.Files.Columns.filePath),
             cursor.getStringOrThrow(IndexSql.Files.Columns.remoteUrl)
           )
-
-          // todo - here we should delete the files & then delete the rows & then set successful
-
         } while (cursor.moveToNext())
         return result
       } else {
@@ -412,6 +410,7 @@ private class DbHelper(
         create table if not exists ${IndexSql.Files.name} (
             ${IndexSql.Files.Columns.lookupKey} text not null unique primary key,
             ${IndexSql.Files.Columns.remoteUrl} text not null,
+            ${IndexSql.Files.Columns.diskSize} integer not null,
             ${IndexSql.Files.Columns.lastAccessUnixTime} integer not null,
             ${IndexSql.Files.Columns.etag} text not null,
             ${IndexSql.Files.Columns.filePath} text not null,

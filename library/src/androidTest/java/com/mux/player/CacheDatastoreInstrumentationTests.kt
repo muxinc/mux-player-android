@@ -1,6 +1,7 @@
 package com.mux.player
 
 import android.content.Context
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mux.player.internal.cache.CacheConstants
@@ -28,6 +29,10 @@ import java.net.URL
  */
 @RunWith(AndroidJUnit4::class)
 class CacheDatastoreInstrumentationTests {
+
+  companion object {
+    const val TAG = "CacheDatastoreInstrumentationTests"
+  }
 
   private val appContext get() = InstrumentationRegistry.getInstrumentation().targetContext
 
@@ -149,6 +154,7 @@ class CacheDatastoreInstrumentationTests {
         resourceAge = 3L,
         cacheControl = "cacheControl",
         lastAccessUtcSecs = 4L,
+        sizeOnDisk = 1L
       )
       val secondRecord = FileRecord(
         url = "url2",
@@ -159,7 +165,8 @@ class CacheDatastoreInstrumentationTests {
         cacheMaxAge = 2L,
         resourceAge = 3L,
         cacheControl = "cacheControl",
-        lastAccessUtcSecs = 4L
+        lastAccessUtcSecs = 4L,
+        sizeOnDisk = 1L
       )
 
       val writeResult1 = datastore.writeRecord(originalRecord)
@@ -195,6 +202,7 @@ class CacheDatastoreInstrumentationTests {
           resourceAge = 3L,
           cacheControl = "cacheControl",
           lastAccessUtcSecs = 4L,
+          sizeOnDisk = 1L
         )
         val result = datastore.writeRecord(originalRecord)
         result.getOrThrow() // not part of test, writing is covered elsewhere
@@ -212,7 +220,33 @@ class CacheDatastoreInstrumentationTests {
 
   @Test
   fun testEviction() {
-    val datastore = CacheDatastore(appContext, maxDiskSize = 256 * 1024)
+    val datastore = CacheDatastore(appContext, maxDiskSize = 1)
+
+    // For this test, size "units" are like one digit.
+    //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
+
+    var fakeLastAccess = 200L // increment by some amount when you need to
+    fun fakeNow(since: Long = 10) = (fakeLastAccess + since).also { fakeLastAccess = it }
+
+    for (x in 0..10) {
+      val url = "https://fake.mux.com/test/url/of/index/$x.ts"
+      val now = fakeNow()
+      datastore.writeRecord(FileRecord(
+        url = url,
+        lookupKey =  datastore.safeCacheKey(URL(url)),
+        relativePath = "dummy/path",
+        etag = "etag-unique-$x",
+        lastAccessUtcSecs = now,
+        downloadedAtUtcSecs = now,
+        cacheMaxAge = 400,
+        resourceAge = 0,
+        cacheControl = "dummy-directive",
+        sizeOnDisk = 1
+      ))
+
+      val canWeCallItPruning = datastore.readEvictionCandidates()
+      Log.w(TAG, "Just checking in here's the eviction candidates:$canWeCallItPruning")
+    }
 
     // so how does this test work? I guess we would want to write some entries with different ages
     //  and see what happens when we read them out
