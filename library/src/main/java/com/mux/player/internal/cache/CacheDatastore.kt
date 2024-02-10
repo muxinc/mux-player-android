@@ -190,6 +190,35 @@ internal class CacheDatastore(
   )
 
   /**
+   * Evicts files from the cache if we are above the maximum size, preferring the least
+   * recently-used items
+   */
+  fun evictByLru(): Result<Unit> {
+    return runCatching {
+      dbHelper.writableDatabase.use { db ->
+        try {
+          // We evict in a transaction so we can delete files without other cache operations adding
+          //  or reading. Even if the delay results in a miss that would have possibly hit, missing
+          //  consistently is more reliable than hitting and deleting the file while in-use
+          db.beginTransaction()
+
+          // todo - remember to skip files that CacheController knows are already being read
+          val candidates = doReadLeastRecentFiles(db)
+          candidates.forEach { candidate ->
+            File(fileCacheDir(), candidate.relativePath).delete()
+          }
+          // remove last so we don't leave orphans
+          doDeleteRecords(db, candidates)
+
+          db.setTransactionSuccessful()
+        } finally {
+          db.endTransaction()
+        }
+      }
+    }
+  }
+
+  /**
    * Reads a list of the least-used records, whose cumulative sizes are above the [maxDiskSize]
    */
   @JvmSynthetic
@@ -233,6 +262,17 @@ internal class CacheDatastore(
     }
 
     return key
+  }
+
+  private fun doDeleteRecords(db: SQLiteDatabase, records: List<FileRecord>): Result<Int> {
+    return runCatching {
+      val deleteValues = records.joinToString(separator = ",") { it.lookupKey }.let { "($it)" }
+      db.delete(
+        /* table = */ IndexSql.Files.name,
+        /* whereClause = */ "${IndexSql.Files.Columns.lookupKey} in ?",
+        /* whereArgs = */ arrayOf(deleteValues)
+      )
+    }
   }
 
   private fun doReadLeastRecentFiles(db: SQLiteDatabase): List<FileRecord> {
