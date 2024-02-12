@@ -1,6 +1,7 @@
 package com.mux.player.internal.cache
 
 import android.content.Context
+import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Base64
@@ -188,7 +189,7 @@ internal class CacheDatastore(
    */
   fun safeCacheKey(url: URL): String = Base64.encodeToString(
     generateCacheKey(url).toByteArray(Charsets.UTF_8),
-    Base64.NO_WRAP or Base64.URL_SAFE
+    Base64.NO_WRAP or Base64.URL_SAFE or Base64.NO_PADDING
   )
 
   /**
@@ -212,6 +213,8 @@ internal class CacheDatastore(
           }
           // remove last so we don't leave orphans
           val deleteResult = doDeleteRecords(db, candidates)
+          Log.v(TAG, "deleted $deleteResult records")
+
           if (deleteResult.isSuccess) {
             db.setTransactionSuccessful()
           }
@@ -271,12 +274,15 @@ internal class CacheDatastore(
 
   private fun doDeleteRecords(db: SQLiteDatabase, records: List<FileRecord>): Result<Int> {
     return runCatching {
-      val deleteValues = records.joinToString(separator = ",") { it.lookupKey }.let { "($it)" }
-      db.delete(
-        /* table = */ IndexSql.Files.name,
-        /* whereClause = */ "${IndexSql.Files.Columns.lookupKey} in (?)",
-        /* whereArgs = */ arrayOf(deleteValues)
-      )
+      var written = 0
+      records.map { it.lookupKey }.forEach {
+        written += db.delete(
+          /* table = */ IndexSql.Files.name,
+          /* whereClause = */ "${IndexSql.Files.Columns.lookupKey}=?",
+          /* whereArgs = */ arrayOf(it)
+        )
+      }
+     written
     }
   }
 
@@ -295,6 +301,7 @@ internal class CacheDatastore(
         """.trimIndent(),
       null,
     ).use { cursor ->
+      Log.v(TAG, "Dumping read-out cursor: ${DatabaseUtils.dumpCursorToString(cursor)}")
       if (cursor.count > 0) {
         val result = mutableListOf<FileRecord>()
         cursor.moveToFirst()
