@@ -108,11 +108,10 @@ internal class CacheDatastore(
   fun moveFromTempFile(tempFile: File, remoteUrl: URL): File {
     val cacheFile = createCacheFile(remoteUrl)
     tempFile.renameTo(cacheFile)
-//    tempFile.copyTo(cacheFile, overwrite = true)
     return cacheFile
   }
 
-  fun writeRecord(fileRecord: FileRecord): Result<Unit> {
+  fun writeFileRecord(fileRecord: FileRecord): Result<Unit> {
     val rowId = dbHelper.writableDatabase.use {
       it.insertWithOnConflict(
         IndexSql.Files.name, null,

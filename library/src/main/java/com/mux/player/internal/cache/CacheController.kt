@@ -218,10 +218,9 @@ internal class ReadHandle internal constructor(
   private val fileInput: InputStream
 
   init {
+    // todo - Are we really doing relative paths here? We want to be
     Log.d(TAG, "Reading from cache file at ${fileRecord.relativePath}")
     cacheFile = File(datastore.fileCacheDir(), fileRecord.relativePath)
-    //fileInput = BufferedInputStream(FileInputStream(File(directory, file.relativePath)))
-    // todo - oh no were saving absolute paths by mistake
     Log.d(TAG, "Actual file we're reading is $cacheFile")
     fileInput = BufferedInputStream(FileInputStream(cacheFile))
   }
@@ -321,7 +320,7 @@ internal class WriteHandle internal constructor(
           sizeOnDisk = writtenBytes.toLong(),
         )
 
-        val result = datastore.writeRecord(record)
+        val result = datastore.writeFileRecord(record)
 
         // todo - return a fail or throw somerthing
       } else {
