@@ -95,8 +95,11 @@ internal class CacheDatastore(
    * automatically whenever the JVM shuts down gracefully
    */
   fun createTempDownloadFile(remoteUrl: URL): File {
-    return createTempMediaFile(remoteUrl.path.split("/").last())
-      .also { it.deleteOnExit() }
+    return File.createTempFile(
+      "mux-download-${remoteUrl.path.split("/").last()}",
+      ".part",
+      fileTempDir()
+    ).also { it.deleteOnExit() }
   }
 
   /**
@@ -193,7 +196,7 @@ internal class CacheDatastore(
    * Evicts files from the cache if we are above the maximum size, preferring the least
    * recently-used items
    */
-  fun evictByLru(): Result<Unit> {
+  fun evictByLru(): Result<Int> {
     return runCatching {
       dbHelper.writableDatabase.use { db ->
         try {
@@ -208,9 +211,11 @@ internal class CacheDatastore(
             File(fileCacheDir(), candidate.relativePath).delete()
           }
           // remove last so we don't leave orphans
-          doDeleteRecords(db, candidates)
-
-          db.setTransactionSuccessful()
+          val deleteResult = doDeleteRecords(db, candidates)
+          if (deleteResult.isSuccess) {
+            db.setTransactionSuccessful()
+          }
+          return deleteResult
         } finally {
           db.endTransaction()
         }
@@ -333,14 +338,6 @@ internal class CacheDatastore(
       fileTempDir.delete()
       fileTempDir.mkdirs()
     }
-  }
-
-  /**
-   * Creates a new temp file for downloading-into. Temp files go in a special dir that gets cleared
-   * out when the datastore is opened
-   */
-  private fun createTempMediaFile(fileBasename: String): File {
-    return File.createTempFile("mux-download-$fileBasename", ".part", fileTempDir())
   }
 
   /**
