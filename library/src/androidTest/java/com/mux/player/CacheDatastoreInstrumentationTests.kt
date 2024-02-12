@@ -283,7 +283,7 @@ class CacheDatastoreInstrumentationTests {
 
   @Test
   fun testEvictByLru() {
-    val maxCacheSize = 5000L
+    val maxCacheSize = 5500L
     val dummyFileSize = 1000L
 
     CacheDatastore(appContext, maxDiskSize = maxCacheSize).use { datastore ->
@@ -318,15 +318,15 @@ class CacheDatastoreInstrumentationTests {
         )
       } // for(x in ...
 
-      val filesBeforeEviction = datastore.fileCacheDir().listFiles()!!.map { it.name }.joinToString("\n")
-      val evictResult = datastore.evictByLru().getOrThrow() // failing is not part of the test
-      val filesAfterEviction = datastore.fileCacheDir().listFiles()!!.map { it.name }.joinToString("\n")
-
-      Log.d(TAG,"Evicted $evictResult rows")
-//      Log.d(TAG, "Before: ${filesBeforeEviction.contentToString()}")
-//      Log.d(TAG, "After: ${filesAfterEviction.contentToString()}")
-      Log.d(TAG, "Before: $filesBeforeEviction")
-      Log.d(TAG, "After: $filesAfterEviction")
+      val filesBeforeEviction = datastore.fileCacheDir().listFiles()!!.filter { !it.isDirectory }
+      // this condition shouldn't fail
+      datastore.evictByLru().getOrThrow()
+      val filesAfterEviction = datastore.fileCacheDir().listFiles()!!.filter { !it.isDirectory }
+      val totalDiskUsageAfterEvict = filesAfterEviction.sumOf { it.length() }
+      Assert.assertTrue(
+        "After eviction, cache is under max size",
+        totalDiskUsageAfterEvict <= maxCacheSize
+      )
     } // CacheDatastore().use
   }
 

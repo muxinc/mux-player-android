@@ -1,7 +1,6 @@
 package com.mux.player.internal.cache
 
 import android.content.Context
-import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Base64
@@ -197,33 +196,8 @@ internal class CacheDatastore(
    * recently-used items
    */
   fun evictByLru(): Result<Int> {
-    return runCatching {
-      dbHelper.writableDatabase.use { db ->
-        try {
-          // We evict in a transaction so we can delete files without other cache operations adding
-          //  or reading. Even if the delay results in a miss that would have possibly hit, missing
-          //  consistently is more reliable than hitting and deleting the file while in-use
-          db.beginTransaction()
+    return dbHelper.writableDatabase.use {doEvictByLru(it) }
 
-          // todo - remember to skip files that CacheController knows are already being read
-          val candidates = doReadLeastRecentFiles(db)
-          Log.i(TAG, "About to evict ${candidates.map { it.relativePath }}")
-          candidates.forEach { candidate ->
-            File(fileCacheDir(), candidate.relativePath).delete()
-          }
-          // remove last so we don't leave orphans
-          val deleteResult = doDeleteRecords(db, candidates)
-          Log.v(TAG, "deleted $deleteResult records")
-
-          if (deleteResult.isSuccess) {
-            db.setTransactionSuccessful()
-          }
-          return deleteResult
-        } finally {
-          db.endTransaction()
-        }
-      }
-    }
   }
 
   /**
@@ -282,7 +256,33 @@ internal class CacheDatastore(
           /* whereArgs = */ arrayOf(it)
         )
       }
-     written
+      written
+    }
+  }
+
+  private fun doEvictByLru(db: SQLiteDatabase): Result<Int> {
+    try {
+      // We evict in a transaction so we can delete files without other cache operations adding
+      //  or reading. Even if the delay results in a miss that would have possibly hit, missing
+      //  consistently is more reliable than hitting and deleting the file while in-use
+      db.beginTransaction()
+
+      // todo - remember to skip files that CacheController knows are already being read
+      val candidates = doReadLeastRecentFiles(db)
+      Log.i(TAG, "About to evict ${candidates.map { it.relativePath }}")
+      candidates.forEach { candidate ->
+        File(fileCacheDir(), candidate.relativePath).delete()
+      }
+      // remove last so we don't leave orphans
+      val deleteResult = doDeleteRecords(db, candidates)
+      Log.v(TAG, "deleted $deleteResult records")
+
+      if (deleteResult.isSuccess) {
+        db.setTransactionSuccessful()
+      }
+      return deleteResult
+    } finally {
+      db.endTransaction()
     }
   }
 
@@ -301,7 +301,6 @@ internal class CacheDatastore(
         """.trimIndent(),
       null,
     ).use { cursor ->
-      Log.v(TAG, "Dumping read-out cursor: ${DatabaseUtils.dumpCursorToString(cursor)}")
       if (cursor.count > 0) {
         val result = mutableListOf<FileRecord>()
         cursor.moveToFirst()
@@ -382,9 +381,12 @@ internal class CacheDatastore(
 
       val helper = DbHelper(context, indexDbDir())
       closeIfInterrupted(helper)
-      val db = helper.writableDatabase
-      db.close()
-      // todo- eviction pass with that db
+
+      // Do some db maintenance when we start up, in case shutdown wasn't clean
+      helper.writableDatabase.use { db ->
+        doEvictByLru(db)
+      }
+
       closeIfInterrupted(helper)
       return helper;
     }
