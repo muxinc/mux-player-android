@@ -206,6 +206,7 @@ internal class CacheDatastore(
 
           // todo - remember to skip files that CacheController knows are already being read
           val candidates = doReadLeastRecentFiles(db)
+          Log.i(TAG, "About to evict ${candidates.map { it.relativePath }}")
           candidates.forEach { candidate ->
             File(fileCacheDir(), candidate.relativePath).delete()
           }

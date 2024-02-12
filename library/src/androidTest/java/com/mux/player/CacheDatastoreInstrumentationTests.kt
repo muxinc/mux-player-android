@@ -282,16 +282,17 @@ class CacheDatastoreInstrumentationTests {
   }
 
   @Test
-  fun testReadEvictByLru() {
+  fun testEvictByLru() {
     val maxCacheSize = 5000L
+    val dummyFileSize = 1000L
+
     CacheDatastore(appContext, maxDiskSize = maxCacheSize).use { datastore ->
       datastore.open()
       //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
-
       var fakeLastAccess = 200L // increment by some amount when you need to
       fun fakeNow(since: Long = 10) = (fakeLastAccess + since).also { fakeLastAccess = it }
       fun createCacheFile(url: String) = createDummyTempFile(datastore, url)
-        .also { writeDummyTempFile(it, 1000) }
+        .also { writeDummyTempFile(it, dummyFileSize) }
         .let{ datastore.moveFromTempFile(it, URL(url)) }
 
       val recordsWritten = mutableListOf<FileRecord>()
@@ -312,16 +313,20 @@ class CacheDatastoreInstrumentationTests {
             cacheMaxAge = 400,
             resourceAge = 0,
             cacheControl = "dummy-directive",
-            sizeOnDisk = 1
+            sizeOnDisk = dummyFileSize,
           ).also { recordsWritten += it }
         )
       } // for(x in ...
 
-      val filesBeforeEviction = datastore.fileCacheDir().listFiles()
+      val filesBeforeEviction = datastore.fileCacheDir().listFiles()!!.map { it.name }.joinToString("\n")
       val evictResult = datastore.evictByLru().getOrThrow() // failing is not part of the test
-      val filesAfterEviction = datastore.fileCacheDir().listFiles()
+      val filesAfterEviction = datastore.fileCacheDir().listFiles()!!.map { it.name }.joinToString("\n")
 
       Log.d(TAG,"Evicted $evictResult rows")
+//      Log.d(TAG, "Before: ${filesBeforeEviction.contentToString()}")
+//      Log.d(TAG, "After: ${filesAfterEviction.contentToString()}")
+      Log.d(TAG, "Before: $filesBeforeEviction")
+      Log.d(TAG, "After: $filesAfterEviction")
     } // CacheDatastore().use
   }
 
