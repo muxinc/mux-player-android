@@ -283,7 +283,7 @@ class CacheDatastoreInstrumentationTests {
 
   @Test
   fun testReadEvictByLru() {
-    val maxCacheSize = 50L
+    val maxCacheSize = 5000L
     CacheDatastore(appContext, maxDiskSize = maxCacheSize).use { datastore ->
       datastore.open()
       //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
@@ -291,7 +291,7 @@ class CacheDatastoreInstrumentationTests {
       var fakeLastAccess = 200L // increment by some amount when you need to
       fun fakeNow(since: Long = 10) = (fakeLastAccess + since).also { fakeLastAccess = it }
       fun createCacheFile(url: String) = createDummyTempFile(datastore, url)
-        .also { writeDummyTempFile(it, 1024) }
+        .also { writeDummyTempFile(it, 1000) }
         .let{ datastore.moveFromTempFile(it, URL(url)) }
 
       val recordsWritten = mutableListOf<FileRecord>()
@@ -317,8 +317,11 @@ class CacheDatastoreInstrumentationTests {
         )
       } // for(x in ...
 
+      val filesBeforeEviction = datastore.fileCacheDir().listFiles()
+      val evictResult = datastore.evictByLru().getOrThrow() // failing is not part of the test
+      val filesAfterEviction = datastore.fileCacheDir().listFiles()
 
-
+      Log.d(TAG,"Evicted $evictResult rows")
     } // CacheDatastore().use
   }
 

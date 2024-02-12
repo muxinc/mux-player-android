@@ -273,7 +273,7 @@ internal class CacheDatastore(
       val deleteValues = records.joinToString(separator = ",") { it.lookupKey }.let { "($it)" }
       db.delete(
         /* table = */ IndexSql.Files.name,
-        /* whereClause = */ "${IndexSql.Files.Columns.lookupKey} in ?",
+        /* whereClause = */ "${IndexSql.Files.Columns.lookupKey} in (?)",
         /* whereArgs = */ arrayOf(deleteValues)
       )
     }
