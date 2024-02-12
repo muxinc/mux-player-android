@@ -72,6 +72,9 @@ internal object CacheController {
     // todo - check for initialization and throw Something
 
     val fileRecord = datastore.readRecordByUrl(requestUrl)
+
+
+
     Log.d(TAG, "Read file record: $fileRecord")
     // todo readRecord checks for the file?
     return if (fileRecord == null) {
@@ -321,6 +324,11 @@ internal class WriteHandle internal constructor(
         )
 
         val result = datastore.writeFileRecord(record)
+
+        // Just evict synchronously on-write. If this is a burden we can do it async (or less often)
+        if (result.isSuccess) {
+          datastore.evictByLru()
+        }
 
         // todo - return a fail or throw somerthing
       } else {

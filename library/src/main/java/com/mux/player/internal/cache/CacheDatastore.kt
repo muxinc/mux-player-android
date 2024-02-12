@@ -196,7 +196,7 @@ internal class CacheDatastore(
    * recently-used items
    */
   fun evictByLru(): Result<Int> {
-    return dbHelper.writableDatabase.use {doEvictByLru(it) }
+    return dbHelper.writableDatabase.use { doEvictByLru(it) }
 
   }
 
