@@ -1,15 +1,13 @@
 package com.mux.player
 
 import android.content.Context
-import android.util.Base64
-import com.mux.player.cacheing.CacheController
-import com.mux.player.cacheing.CacheDatastore
+import com.mux.player.internal.cache.CacheController
+import com.mux.player.internal.cache.CacheDatastore
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import java.net.URL
 
 class CacheControllerTests : AbsRobolectricTest() {
 

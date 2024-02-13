@@ -23,7 +23,6 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="Examples"
             android:theme="@style/Theme.MuxVideoMedia3.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

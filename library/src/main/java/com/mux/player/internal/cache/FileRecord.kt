@@ -2,16 +2,12 @@ package com.mux.player.internal.cache
 
 import android.content.ContentValues
 import android.database.Cursor
-import com.mux.player.cacheing.CacheController
-import com.mux.player.cacheing.IndexSchema
-import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
 
 data class FileRecord(
   val url: String,
   val etag: String,
   val relativePath: String,
+  val sizeOnDisk: Long,
   val lookupKey: String,
   val lastAccessUtcSecs: Long,
   val downloadedAtUtcSecs: Long,
@@ -25,15 +21,16 @@ internal fun FileRecord.toContentValues(): ContentValues {
   val values = ContentValues()
 
   values.apply {
-    put(IndexSchema.FilesTable.Columns.lookupKey, lookupKey)
-    put(IndexSchema.FilesTable.Columns.etag, etag)
-    put(IndexSchema.FilesTable.Columns.filePath, relativePath)
-    put(IndexSchema.FilesTable.Columns.remoteUrl, url)
-    put(IndexSchema.FilesTable.Columns.downloadedAtUnixTime, downloadedAtUtcSecs)
-    put(IndexSchema.FilesTable.Columns.maxAgeUnixTime, cacheMaxAge)
-    put(IndexSchema.FilesTable.Columns.resourceAgeUnixTime, resourceAge)
-    put(IndexSchema.FilesTable.Columns.cacheControl, cacheControl)
-    put(IndexSchema.FilesTable.Columns.lastAccessUnixTime, lastAccessUtcSecs)
+    put(IndexSql.Files.Columns.lookupKey, lookupKey)
+    put(IndexSql.Files.Columns.etag, etag)
+    put(IndexSql.Files.Columns.filePath, relativePath)
+    put(IndexSql.Files.Columns.remoteUrl, url)
+    put(IndexSql.Files.Columns.downloadedAtUnixTime, downloadedAtUtcSecs)
+    put(IndexSql.Files.Columns.maxAgeUnixTime, cacheMaxAge)
+    put(IndexSql.Files.Columns.resourceAgeUnixTime, resourceAge)
+    put(IndexSql.Files.Columns.cacheControl, cacheControl)
+    put(IndexSql.Files.Columns.lastAccessUnixTime, lastAccessUtcSecs)
+    put(IndexSql.Files.Columns.diskSize, sizeOnDisk)
   }
 
   return values
@@ -42,14 +39,15 @@ internal fun FileRecord.toContentValues(): ContentValues {
 @JvmSynthetic
 internal fun Cursor.toFileRecord(): FileRecord {
   return FileRecord(
-    url = getStringOrThrow(IndexSchema.FilesTable.Columns.remoteUrl),
-    lookupKey = getStringOrThrow(IndexSchema.FilesTable.Columns.lookupKey),
-    lastAccessUtcSecs = getLongOrThrow(IndexSchema.FilesTable.Columns.lastAccessUnixTime),
-    etag = getStringOrThrow(IndexSchema.FilesTable.Columns.etag),
-    relativePath = getStringOrThrow(IndexSchema.FilesTable.Columns.filePath),
-    downloadedAtUtcSecs = getLongOrThrow(IndexSchema.FilesTable.Columns.downloadedAtUnixTime),
-    cacheMaxAge = getLongOrThrow(IndexSchema.FilesTable.Columns.maxAgeUnixTime),
-    resourceAge = getLongOrThrow(IndexSchema.FilesTable.Columns.resourceAgeUnixTime),
-    cacheControl = getStringOrThrow(IndexSchema.FilesTable.Columns.cacheControl)
+    url = getStringOrThrow(IndexSql.Files.Columns.remoteUrl),
+    lookupKey = getStringOrThrow(IndexSql.Files.Columns.lookupKey),
+    lastAccessUtcSecs = getLongOrThrow(IndexSql.Files.Columns.lastAccessUnixTime),
+    etag = getStringOrThrow(IndexSql.Files.Columns.etag),
+    relativePath = getStringOrThrow(IndexSql.Files.Columns.filePath),
+    downloadedAtUtcSecs = getLongOrThrow(IndexSql.Files.Columns.downloadedAtUnixTime),
+    cacheMaxAge = getLongOrThrow(IndexSql.Files.Columns.maxAgeUnixTime),
+    resourceAge = getLongOrThrow(IndexSql.Files.Columns.resourceAgeUnixTime),
+    cacheControl = getStringOrThrow(IndexSql.Files.Columns.cacheControl),
+    sizeOnDisk = getLongOrThrow(IndexSql.Files.Columns.diskSize),
   )
 }

@@ -1,11 +1,14 @@
 package com.mux.player.internal.cache
 
+import android.annotation.SuppressLint
+import android.content.Context
 import android.database.Cursor
-import com.mux.player.cacheing.CacheConstants
-import com.mux.player.cacheing.CacheController
+import android.os.Build
+import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.TimeZone
 
 @JvmSynthetic
 @Throws(IOException::class)
@@ -76,6 +79,24 @@ internal fun Map<String, List<String>>.getAge(): String? =
 // todo - make a Headers model
 internal fun Map<String, List<String>>.getContentType(): String? =
   mapKeys { it.key.lowercase() }["content-type"]?.last()
+
+@JvmSynthetic
+internal fun nowUtc() = System.currentTimeMillis().let { timeMs ->
+  val timezone = TimeZone.getDefault()
+  (timeMs + timezone.getOffset(timeMs)) / 1000
+}
+
+/**
+ * Returns this app's no-backup internal files dir, or the regular files dir on older api levels
+ */
+internal val Context.filesDirNoBackupCompat: File
+  @JvmSynthetic
+  @SuppressLint("ObsoleteSdkInt")
+  get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+    noBackupFilesDir
+  } else {
+    filesDir
+  }
 
 @JvmSynthetic
 internal fun parseSMaxAge(cacheControl: String): Long? {

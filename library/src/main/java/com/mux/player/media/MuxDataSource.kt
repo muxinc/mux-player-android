@@ -10,13 +10,9 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
-import androidx.media3.datasource.TransferListener
-import com.mux.player.cacheing.CacheConstants
-import com.mux.player.cacheing.CacheController
-import com.mux.player.cacheing.ReadHandle
-import com.mux.player.cacheing.WriteHandle
-import java.io.File
-import java.util.concurrent.atomic.AtomicReference
+import com.mux.player.internal.cache.CacheController
+import com.mux.player.internal.cache.ReadHandle
+import com.mux.player.internal.cache.WriteHandle
 
 @OptIn(UnstableApi::class)
 class MuxDataSource private constructor(
@@ -58,7 +54,6 @@ class MuxDataSource private constructor(
       val writer = cacheWriter!!
       val upstreamSrc = this.upstream!!
       val bytesFromUpstream = upstreamSrc.read(buffer, offset, length)
-      Log.d(TAG, "Got $bytesFromUpstream from upstream")
 
       if (bytesFromUpstream > 0) {
         writer.write(buffer, offset, bytesFromUpstream)
@@ -66,7 +61,7 @@ class MuxDataSource private constructor(
         writer.finishedWriting()
       }
 
-      return bytesFromUpstream
+      bytesFromUpstream
     }
   }
 
