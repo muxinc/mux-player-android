@@ -54,7 +54,6 @@ class MuxDataSource private constructor(
       val writer = cacheWriter!!
       val upstreamSrc = this.upstream!!
       val bytesFromUpstream = upstreamSrc.read(buffer, offset, length)
-      Log.d(TAG, "Got $bytesFromUpstream from upstream")
 
       if (bytesFromUpstream > 0) {
         writer.write(buffer, offset, bytesFromUpstream)

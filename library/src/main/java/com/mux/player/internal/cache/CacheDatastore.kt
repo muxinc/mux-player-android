@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicReference
  */
 internal class CacheDatastore(
   val context: Context,
-  val maxDiskSize: Long = 256 * 1024 * 1024
+  val maxDiskSize: Long = 256 * 1024 * 1024,
 ) : Closeable {
 
   companion object {

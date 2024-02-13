@@ -278,7 +278,6 @@ internal class WriteHandle internal constructor(
    * Writes the given bytes to both the player socket and the file
    */
   fun write(data: ByteArray, offset: Int, len: Int) {
-    Log.i(TAG, "Writing $len bytes unless $fileOutputStream is null")
     fileOutputStream?.write(data, offset, len)
     fileOutputStream?.flush()
     writtenBytes += len
