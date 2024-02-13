@@ -33,7 +33,7 @@ public class CachingTests extends TestBase{
   @Before
   public void init() {
     // start proxy server on port 6000, run in seprate thread by default
-    urlToPlay = "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8";
+    urlToPlay = "https://stream.mux.com/a4nOgmxGWg6gULfcBbAa00gXyfcwPnAFldF8RdsNyk8M.m3u8";
     super.init();
   }
 
