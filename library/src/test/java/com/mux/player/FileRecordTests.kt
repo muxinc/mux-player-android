@@ -19,10 +19,15 @@ class FileRecordTests : AbsRobolectricTest() {
       cacheMaxAge = 2L,
       resourceAge = 3L,
       cacheControl = "cacheControl",
-      lastAccessUtcSecs = 4L
+      lastAccessUtcSecs = 4L,
+      sizeOnDisk = 5L
     )
 
     val contentValues = record.toContentValues()
+    Assert.assertEquals(
+      "size on disk should be saved",
+      5L, contentValues.getAsLong(IndexSql.Files.Columns.diskSize)
+    )
     Assert.assertEquals(
       "last-access should be saved",
       4L, contentValues.getAsLong(IndexSql.Files.Columns.lastAccessUnixTime)
