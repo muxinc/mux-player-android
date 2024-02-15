@@ -293,7 +293,7 @@ class CacheDatastoreInstrumentationTests {
       fun fakeNow(since: Long = 10) = (fakeLastAccess + since).also { fakeLastAccess = it }
       fun createCacheFile(url: String) = createDummyTempFile(datastore, url)
         .also { writeDummyTempFile(it, dummyFileSize) }
-        .let{ datastore.moveFromTempFile(it, URL(url)) }
+        .let { datastore.moveFromTempFile(it, URL(url)) }
 
       val recordsWritten = mutableListOf<FileRecord>()
       for (x in 0..10) {
@@ -318,8 +318,10 @@ class CacheDatastoreInstrumentationTests {
         )
       } // for(x in ...
 
+      // here we're testing file management. The index operations for eviction are tested elsewhere
+      //   I think this is still in-spec (but I'm also not worried about it)
       val filesBeforeEviction = datastore.fileCacheDir().listFiles()!!.filter { !it.isDirectory }
-      // this condition shouldn't fail
+      // this shouldn't fail in the happy path
       datastore.evictByLru().getOrThrow()
       val filesAfterEviction = datastore.fileCacheDir().listFiles()!!.filter { !it.isDirectory }
       val totalDiskUsageAfterEvict = filesAfterEviction.sumOf { it.length() }
