@@ -131,6 +131,9 @@ class MuxDataSource private constructor(
       // Entry was still valid, so read from cache instead
       upstream.close()
       this.upstream = null
+
+      // todo -
+
       openAndInitFromCache(readHandle)
     }
   }
@@ -181,6 +184,7 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
   private var responseCode: Int? = null
   private var responseMessage: String? = null
 
+  private var open: Boolean = false
   private var dataSpec: DataSpec? = null
   private val requestHeaders = mutableMapOf<String, String>()
 
@@ -242,6 +246,7 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
       }
 
       this.bodyInputSteam = bodyStream
+      this.open = true
       //return 0 // todo = bodyInputStream.available()? returning 0 all the time is technically ok tho
       return bodyStream.available().toLong()
     }
@@ -258,6 +263,10 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
   override fun close() {
     runCatching { bodyInputSteam?.close() }
     closeConnection()
+    if (open) {
+      transferEnded()
+      open = false
+    }
   }
 
   override fun setRequestProperty(name: String, value: String) {
