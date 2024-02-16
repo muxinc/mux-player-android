@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicReference
  * reading and writing from the cache, as well as methods for obtaining files for the Proxy to
  * download into.
  *
- * The SDK should keep an instance of this class open as long as the cache could likely be accessed.
+ * You should keep an instance of this class open as long as the cache could likely be accessed.
  * CacheController is immediately responsible for deciding this (though in this in-dev iteration it
  * simply keeps one and doesn't close it, which we should change before 1.0)
  */
