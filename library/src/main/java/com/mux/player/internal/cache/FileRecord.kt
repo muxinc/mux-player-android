@@ -3,7 +3,7 @@ package com.mux.player.internal.cache
 import android.content.ContentValues
 import android.database.Cursor
 
-data class FileRecord(
+internal data class FileRecord(
   val url: String,
   val etag: String,
   val relativePath: String,
@@ -14,7 +14,11 @@ data class FileRecord(
   val cacheMaxAge: Long,
   val resourceAge: Long,
   val cacheControl: String,
-)
+) {
+  fun isStale(nowUtc: Long): Boolean {
+    return (nowUtc - downloadedAtUtcSecs) + resourceAge >= cacheMaxAge
+  }
+}
 
 @JvmSynthetic
 internal fun FileRecord.toContentValues(): ContentValues {

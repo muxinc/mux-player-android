@@ -69,14 +69,7 @@ internal object CacheController {
   fun tryRead(
     requestUrl: String,
   ): ReadHandle? {
-    // todo - check for initialization and throw Something
-
     val fileRecord = datastore.readRecordByUrl(requestUrl)
-
-
-
-    Log.d(TAG, "Read file record: $fileRecord")
-    // todo readRecord checks for the file?
     return if (fileRecord == null) {
       null
     } else {
@@ -149,7 +142,6 @@ internal object CacheController {
   @TargetApi(Build.VERSION_CODES.N)
   private fun closeDatastoreApiN() {
     val totalPlayersNow = playersWithCache.updateAndGet { if (it > 0) it - 1 else it }
-    Log.d(TAG, "closeDatastoreApiN: now have $totalPlayersNow players")
     if (totalPlayersNow == 0) {
       ioScope.launch { datastore.close() }
     }
@@ -157,15 +149,24 @@ internal object CacheController {
 
   private fun closeDatastoreLegacy() {
     val totalPlayersNow = playersWithCache.decrementAndGet()
-    Log.d(TAG, "closeDatastoreLegacy: now have $totalPlayersNow players")
     if (totalPlayersNow == 0) {
       ioScope.launch { datastore.close() }
     }
   }
 
+  /**
+   * Returns true if the response must be revalidated before use.
+   *
+   * Requiring revalidation doesn't necessarily mean that the entry needs to be deleted
+   */
+  @JvmSynthetic
+  internal fun revalidateRequired(nowUtc: Long, fileRecord: FileRecord): Boolean {
+    // assume 'immutable' if we didn't get 'no-cache' because it saves a round-trip.
+    return fileRecord.isStale(nowUtc) || RX_NO_CACHE.containsMatchIn(fileRecord.cacheControl)
+  }
 
   /**
-   * Returns true if the request should be cached, based on its URL and the headers of the response
+   * Returns true if the response should be cached, based on its URL and the headers of the response
    */
   @JvmSynthetic
   internal fun shouldCacheResponse(
@@ -222,9 +223,8 @@ internal class ReadHandle internal constructor(
 
   init {
     // todo - Are we really doing relative paths here? We want to be
-    Log.d(TAG, "Reading from cache file at ${fileRecord.relativePath}")
     cacheFile = File(datastore.fileCacheDir(), fileRecord.relativePath)
-    Log.d(TAG, "Actual file we're reading is $cacheFile")
+    Log.v(TAG, "Reading from $cacheFile")
     fileInput = BufferedInputStream(FileInputStream(cacheFile))
   }
 
@@ -289,12 +289,9 @@ internal class WriteHandle internal constructor(
    */
   fun finishedWriting() {
     // If there's a temp file, we are caching it so move it from the temp file and write to index
-    Log.i(TAG, "flushing $fileOutputStream")
     fileOutputStream?.flush()
-    Log.i(TAG, "closing $fileOutputStream")
     fileOutputStream?.close()
-    Log.i(TAG, "temp file is $tempFile")
-    Log.i(TAG, "temp file has ${tempFile?.length()}")
+
     if (tempFile != null) {
       val cacheControl = responseHeaders.getCacheControl()
       val eTag = responseHeaders.getETag()
