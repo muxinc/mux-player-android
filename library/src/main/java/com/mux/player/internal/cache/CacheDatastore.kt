@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReference
  * CacheController is immediately responsible for deciding this (though in this in-dev iteration it
  * simply keeps one and doesn't close it, which we should change before 1.0)
  */
-class CacheDatastore(
+internal class CacheDatastore(
   val context: Context,
   val maxDiskSize: Long = 256 * 1024 * 1024,
 ) : Closeable {
