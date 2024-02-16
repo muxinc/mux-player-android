@@ -3,7 +3,7 @@ package com.mux.player.internal.cache
 import android.content.ContentValues
 import android.database.Cursor
 
-internal data class FileRecord(
+data class FileRecord(
   val url: String,
   val etag: String,
   val relativePath: String,
