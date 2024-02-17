@@ -141,8 +141,14 @@ class MuxPlayer private constructor(
       return this
     }
 
+    /**
+     * Enable or disable Mux Player's smart cache for this player.
+     *
+     * The smart-cache API is experimental and may not be suitable for all playback situations.
+     * Smart caching is only expected to work for todo - finish out this, but do single-res 1st
+     */
     @Suppress("unused")
-    fun enableSmartCaching(enable: Boolean): Builder {
+    fun enableSmartCache(enable: Boolean): Builder {
       enableSmartCache = enable
       setUpMediaSourceFactory(this.playerBuilder)
       return this

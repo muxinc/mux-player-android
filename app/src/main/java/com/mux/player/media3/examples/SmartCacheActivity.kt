@@ -17,7 +17,6 @@ import com.mux.stats.sdk.core.model.CustomerViewData
 import com.mux.stats.sdk.core.util.UUID
 import com.mux.player.MuxPlayer
 import com.mux.player.media.MediaItems
-import com.mux.player.media.PlaybackResolution
 import com.mux.player.media3.PlaybackIds
 import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
 
@@ -98,7 +97,7 @@ class SmartCacheActivity : AppCompatActivity() {
         setSeekBackIncrementMs(10_000)
         setSeekForwardIncrementMs(30_000)
       }
-      .enableSmartCaching(true)
+      .enableSmartCache(true)
       .build()
 
     out.addListener(object : Player.Listener {
