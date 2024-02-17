@@ -20,6 +20,10 @@
             android:exported="false"
             android:label="Max-Res Modifier"
             />
+        <activity android:name=".examples.SmartCacheActivity"
+            android:exported="false"
+            android:label="Max-Res Modifier"
+            />
         <activity
             android:name=".MainActivity"
             android:exported="true"
