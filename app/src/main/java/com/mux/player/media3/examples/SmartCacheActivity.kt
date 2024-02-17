@@ -61,7 +61,7 @@ class SmartCacheActivity : AppCompatActivity() {
     )
       .setMediaMetadata(
         MediaMetadata.Builder()
-          .setTitle("Basic MuxExoPlayer Example")
+          .setTitle("Smart Caching Mux Player Example")
           .build()
       )
       .build()

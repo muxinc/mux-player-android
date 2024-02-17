@@ -62,7 +62,7 @@ class BasicPlayerActivity : AppCompatActivity() {
     )
       .setMediaMetadata(
         MediaMetadata.Builder()
-          .setTitle("Basic MuxExoPlayer Example")
+          .setTitle("Basic MuxPlayer Example")
           .build()
       )
       .build()

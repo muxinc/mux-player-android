@@ -63,7 +63,7 @@ class MaxResActivity : AppCompatActivity() {
     )
       .setMediaMetadata(
         MediaMetadata.Builder()
-          .setTitle("Basic MuxExoPlayer Example")
+          .setTitle("MuxPlayer Example: Resolution Modifiers")
           .build()
       )
       .build()
