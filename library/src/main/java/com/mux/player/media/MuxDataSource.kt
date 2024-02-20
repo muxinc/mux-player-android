@@ -158,7 +158,7 @@ class MuxDataSource private constructor(
 }
 
 /**
- * HttpDataSource used for revalidating stale segments.
+ * HttpDataSource used for revalidating stale segments/chunks.
  *
  * This is required because the DefaultHttpDataSource doesn't support 304 responses
  * It's ok for this class to be simple because the main special cases covered by the
