@@ -144,8 +144,13 @@ class MuxPlayer private constructor(
     /**
      * Enable or disable Mux Player's smart cache for this player.
      *
-     * The smart-cache API is experimental and may not be suitable for all playback situations.
-     * Smart caching is only expected to work for todo - finish out this, but do single-res 1st
+     * Mux's Smart caching differs from ExoPlayer's SimpleCache in that it can respond to directives
+     * from Mux Video's delivery infrastructure to maximize cache efficiency and playback
+     * experience.
+     *
+     * The smart-cache API is experimental and may not yet be suitable for all playback situations.
+     * Smart caching should be most effective for short-form content at a single resolution. Support
+     * for additional situations and use-cases is planned before 1.0 of Mux Player.
      */
     @Suppress("unused")
     fun enableSmartCache(enable: Boolean): Builder {
