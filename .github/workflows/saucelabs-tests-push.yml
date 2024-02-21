@@ -26,9 +26,7 @@ jobs:
       - name: Build automated tests
         uses: gradle/gradle-build-action@v3.1.0
         with:
-          arguments: >
-            automatedtests:assembleDebug :automatedtests:assembleDebugAndroidTest
-            library:assembleDebug :library:assembleDebugAndroidTest
+          arguments: automatedtests:assembleDebug :automatedtests:assembleDebugAndroidTest
       - name: Upload Test APKs
         uses: actions/upload-artifact@v3
         with:
@@ -36,29 +34,17 @@ jobs:
           path: |
             automatedtests/build/outputs/apk/androidTest/debug/automatedtests-debug-androidTest.apk
             automatedtests/build/outputs/apk/debug/automatedtests-debug.apk
-            library/build/outputs/apk/androidTest/debug/library-debug-androidTest.apk
-            library/build/outputs/aar/debug/library-debug.aar
 
   test:
     name: Run Sauce Labs Tests
     runs-on: ubuntu-latest
     needs: build
 
-    strategy:
-      max-parallel: 2
-      # TODO - Use an emulator for the tests in library
-      matrix:
-        module: ['library', 'automatedtests']
-        type: ['aar', 'apk']
-        exclude:
-          - module: 'library'
-            type: 'apk'
-          - module: 'automatedtests'
-            type: 'aar'
-
     env:
-      app_apk: ${{ matrix.module }}\/build\/outputs\/${{ matrix.type }}\/debug\/${{ matrix.module }}-debug.${{ matrix.type }}
-      test_apk: ${{ matrix.module }}\/build\/outputs\/${{ matrix.type }}\/androidTest\/debug\/${{ matrix.module }}-debug-androidTest.${{ matrix.type }}
+      app_artifact: automatedtests\/build\/outputs\/apk\/debug\/automatedtests-debug.apk
+      test_artifact: automatedtests\/build\/outputs\/apk\/androidTest\/debug\/automatedtests-debug-androidTest.apk
+      app_apk:  debug\/automatedtests-debug.apk
+      test_apk: androidTest\/debug\/automatedtests-debug-androidTest.apk
 
     steps:
       - uses: actions/checkout@v3

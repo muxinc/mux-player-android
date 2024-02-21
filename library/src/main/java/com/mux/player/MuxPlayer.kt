@@ -3,6 +3,7 @@ package com.mux.player
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player.Listener
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import com.mux.player.internal.cache.CacheController
 import com.mux.stats.sdk.core.model.CustomerData
@@ -10,6 +11,7 @@ import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.Logger
 import com.mux.player.internal.createNoLogger
+import com.mux.player.media.MuxDataSource
 import com.mux.player.media.MuxMediaSourceFactory
 import com.mux.stats.sdk.muxstats.ExoPlayerBinding
 import com.mux.stats.sdk.muxstats.INetworkRequest
@@ -121,7 +123,7 @@ class MuxPlayer private constructor(
   ) {
 
     private var dataEnvKey: String? = null
-    private var optOutOfData: Boolean = false
+    private var enableSmartCache: Boolean = false
     private var logger: Logger? = null
     private var customerData: CustomerData = CustomerData()
     private var exoPlayerBinding: ExoPlayerBinding? = null
@@ -136,6 +138,24 @@ class MuxPlayer private constructor(
     @Suppress("unused")
     fun setMuxDataEnv(envKey: String): Builder {
       dataEnvKey = envKey
+      return this
+    }
+
+    /**
+     * Enable or disable Mux Player's smart cache for this player.
+     *
+     * Mux's Smart caching differs from ExoPlayer's SimpleCache in that it can respond to directives
+     * from Mux Video's delivery infrastructure to maximize cache efficiency and playback
+     * experience.
+     *
+     * The smart-cache API is experimental and may not yet be suitable for all playback situations.
+     * Smart caching should be most effective for short-form content. Support for additional
+     * situations and use-cases is planned before 1.0 of Mux Player.
+     */
+    @Suppress("unused")
+    fun enableSmartCache(enable: Boolean): Builder {
+      enableSmartCache = enable
+      setUpMediaSourceFactory(this.playerBuilder)
       return this
     }
 
@@ -213,7 +233,7 @@ class MuxPlayer private constructor(
         logger = logger ?: createNoLogger(),
         initialCustomerData = customerData,
         network = network,
-        exoPlayerBinding = exoPlayerBinding
+        exoPlayerBinding = exoPlayerBinding,
       )
     }
 
@@ -228,12 +248,17 @@ class MuxPlayer private constructor(
       return this
     }
 
-    private fun setDefaults(builder: ExoPlayer.Builder) {
-      builder.setMediaSourceFactory(MuxMediaSourceFactory(context))
+    private fun setUpMediaSourceFactory(builder: ExoPlayer.Builder) {
+      val mediaSourceFactory = if (enableSmartCache) {
+        MuxMediaSourceFactory(context, MuxDataSource.Factory())
+      } else {
+        MuxMediaSourceFactory(context, DefaultDataSource.Factory(context))
+      }
+      builder.setMediaSourceFactory(mediaSourceFactory)
     }
 
     init {
-      setDefaults(playerBuilder)
+      setUpMediaSourceFactory(playerBuilder)
     }
   }
 }

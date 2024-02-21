@@ -13,6 +13,7 @@ import com.mux.player.media3.databinding.ActivityMainBinding
 import com.mux.player.media3.databinding.ListitemExampleBinding
 import com.mux.player.media3.examples.BasicPlayerActivity
 import com.mux.player.media3.examples.MaxResActivity
+import com.mux.player.media3.examples.SmartCacheActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -45,6 +46,10 @@ class MainActivity : AppCompatActivity() {
     Example(
       title = "Max-Resolution Modifier",
       destination = Intent(this@MainActivity, MaxResActivity::class.java)
+    ),
+    Example(
+      title = "Smart Caching",
+      destination = Intent(this@MainActivity, SmartCacheActivity::class.java)
     )
   )
 }
