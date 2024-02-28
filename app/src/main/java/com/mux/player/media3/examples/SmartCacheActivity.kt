@@ -17,15 +17,13 @@ import com.mux.stats.sdk.core.model.CustomerViewData
 import com.mux.stats.sdk.core.util.UUID
 import com.mux.player.MuxPlayer
 import com.mux.player.media.MediaItems
-import com.mux.player.media.PlaybackResolution
 import com.mux.player.media3.PlaybackIds
 import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
 
 /**
- * A simple example that uses the normal media3 player UI to play a video in the foreground from
- * Mux Video, using a Playback ID
+ * An example that demonstrates Mux Player's
  */
-class BasicPlayerActivity : AppCompatActivity() {
+class SmartCacheActivity : AppCompatActivity() {
 
   private lateinit var binding: ActivityBasicPlayerBinding
   private val playerView get() = binding.player
@@ -62,7 +60,7 @@ class BasicPlayerActivity : AppCompatActivity() {
     )
       .setMediaMetadata(
         MediaMetadata.Builder()
-          .setTitle("Basic MuxPlayer Example")
+          .setTitle("Smart Caching Mux Player Example")
           .build()
       )
       .build()
@@ -99,13 +97,14 @@ class BasicPlayerActivity : AppCompatActivity() {
         setSeekBackIncrementMs(10_000)
         setSeekForwardIncrementMs(30_000)
       }
+      .enableSmartCache(true)
       .build()
 
     out.addListener(object : Player.Listener {
       override fun onPlayerError(error: PlaybackException) {
         Log.e(TAG, "player error!", error)
         Toast.makeText(
-          this@BasicPlayerActivity,
+          this@SmartCacheActivity,
           "Playback error! ${error.localizedMessage}",
           Toast.LENGTH_LONG
         ).show()
@@ -116,6 +115,6 @@ class BasicPlayerActivity : AppCompatActivity() {
   }
 
   companion object {
-    val TAG = BasicPlayerActivity::class.simpleName
+    val TAG = SmartCacheActivity::class.simpleName
   }
 }
