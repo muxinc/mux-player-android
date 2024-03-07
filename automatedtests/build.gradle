@@ -10,7 +10,7 @@ android {
     minSdkVersion 21
     // Target SDK 31 causes manifest merger errors. One of our dependencies is not setting
     //  `android:exported` for an Activity. Error logs have no more useful information
-    targetSdkVersion 33 //project.ext.targetSdkVersion
+    targetSdkVersion 34 //project.ext.targetSdkVersion
     versionCode 1
     versionName "1.0"
     multiDexEnabled true

@@ -177,7 +177,7 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
         .setUri(Uri.parse(urlToPlay))
         .setMediaMetadata(
             new MediaMetadata.Builder()
-                .setTitle("Basic MuxExoPlayer Example")
+                .setTitle("Basic MuxPlayer Example")
                 .build()
         )
         .build();

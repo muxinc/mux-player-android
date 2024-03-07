@@ -25,12 +25,12 @@ implementation("com.mux.player:android:[Current Version]")
 
 ## Play a Mux Video Asset
 
-### Create a MuxExoPlayer
+### Create a MuxPlayer
 
-To use the SDK, you must create a `MuxExoPlayer` object using its `Builder`. The basic configuration will enable all of Mux's extra features, and you can make additional config changes using our `Builder`. Almost all of our defaults config options are the same as ExoPlayer's. We only change things about the default configuration when we need to in order to support a Mux Player feature.
+To use the SDK, you must create a `MuxPlayer` object using its `Builder`. The basic configuration will enable all of Mux's extra features, and you can make additional config changes using our `Builder`. Almost all of our defaults config options are the same as ExoPlayer's. We only change things about the default configuration when we need to in order to support a Mux Player feature.
 
 ```kotlin
-val out: MuxExoPlayer = MuxExoPlayer.Builder(context = this)
+val out: MuxPlayer = MuxPlayer.Builder(context = this)
   .enableLogcat() // Only applies to Mux. Media3 logging is not touched
   .applyExoConfig {
     // Call ExoPlayer.Builder methods here (but not build()!)
