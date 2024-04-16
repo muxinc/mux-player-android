@@ -249,8 +249,9 @@ class MuxPlayer private constructor(
     }
 
     private fun setUpMediaSourceFactory(builder: ExoPlayer.Builder) {
+      // todo - probably always use MuxMediaSource
       val mediaSourceFactory = if (enableSmartCache) {
-        MuxMediaSourceFactory(context, MuxDataSource.Factory())
+        MuxMediaSourceFactory(context, DefaultDataSource.Factory(context, MuxDataSource.Factory()))
       } else {
         MuxMediaSourceFactory(context, DefaultDataSource.Factory(context))
       }
