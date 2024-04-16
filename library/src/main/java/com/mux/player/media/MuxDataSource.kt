@@ -141,6 +141,7 @@ class MuxDataSource private constructor(
   private fun openAndInitFromRemote(dataSpec: DataSpec, fac: HttpDataSource.Factory): Long {
     respondingFromCache = false
     val upstream = fac.createDataSource()
+
     this.upstream = upstream
     val available = upstream.open(dataSpec)
     cacheWriter = CacheController.downloadStarted(
