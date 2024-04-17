@@ -13,6 +13,8 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.HttpDataSource.HttpDataSourceException
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
+import androidx.media3.exoplayer.upstream.BandwidthMeter
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import com.google.common.net.HttpHeaders
 import com.mux.player.internal.cache.CacheController
 import com.mux.player.internal.cache.ReadHandle
@@ -25,7 +27,8 @@ import java.net.URL
 
 @OptIn(UnstableApi::class)
 class MuxDataSource private constructor(
-  val upstreamSrcFac: HttpDataSource.Factory,
+  private val upstreamSrcFac: HttpDataSource.Factory,
+  private val bandwidthMeterProvider: () -> BandwidthMeter // add to DataSources created in here
 ) : BaseDataSource(false) {
 
   /**
@@ -33,10 +36,11 @@ class MuxDataSource private constructor(
    * data that Mux's cache cannot provide
    */
   class Factory(
-    private val upstream: HttpDataSource.Factory = DefaultHttpDataSource.Factory()
+    private val upstream: HttpDataSource.Factory = DefaultHttpDataSource.Factory(),
+    private val bandwidthMeterProvider: () -> BandwidthMeter
   ) : DataSource.Factory {
     override fun createDataSource(): DataSource {
-      return MuxDataSource(upstream)
+      return MuxDataSource(upstream, bandwidthMeterProvider)
     }
   }
 
@@ -132,8 +136,6 @@ class MuxDataSource private constructor(
       upstream.close()
       this.upstream = null
 
-      // todo -
-
       openAndInitFromCache(readHandle)
     }
   }
@@ -141,8 +143,9 @@ class MuxDataSource private constructor(
   private fun openAndInitFromRemote(dataSpec: DataSpec, fac: HttpDataSource.Factory): Long {
     respondingFromCache = false
     val upstream = fac.createDataSource()
-
+    bandwidthMeterProvider().transferListener?.let { upstream.addTransferListener(it) }
     this.upstream = upstream
+
     val available = upstream.open(dataSpec)
     cacheWriter = CacheController.downloadStarted(
       dataSpec.uri.toString(),
@@ -192,6 +195,8 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
   override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
     val readBytes = bodyInputSteam?.read(buffer, offset, length) ?: 0
 
+    bytesTransferred(readBytes)
+
     return if (readBytes == -1) {
       C.RESULT_END_OF_INPUT
     } else {
@@ -201,6 +206,8 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
   }
 
   override fun open(dataSpec: DataSpec): Long {
+    transferInitializing(dataSpec)
+
     val conn = try {
       val hurlConn = createConnection(dataSpec, requestHeaders)
       this.responseCode = hurlConn.responseCode
@@ -217,9 +224,11 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
     val code = conn.responseCode
     val msg = conn.responseMessage
     if (code == HttpURLConnection.HTTP_NOT_MODIFIED) {
+      transferEnded()
       // not-modified, not an error, we don't have to download the body again
       return 0
     } else if (code < 200 || code > 299) {
+      transferEnded()
       // some kind of error
       val errorBody = conn.errorStream.use { errorBody -> errorBody.readBytes() }
       throw InvalidResponseCodeException(
@@ -237,6 +246,7 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
         transferStarted(dataSpec)
         stream
       } catch (e: IOException) {
+        transferEnded()
         closeConnection()
         throw HttpDataSourceException(
           e,
@@ -246,6 +256,7 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
         )
       }
 
+      transferStarted(dataSpec)
       this.bodyInputSteam = bodyStream
       this.open = true
       //return 0 // todo = bodyInputStream.available()? returning 0 all the time is technically ok tho
