@@ -27,6 +27,8 @@ class MuxDrmSessionManagerProvider(
   override fun get(mediaItem: MediaItem): DrmSessionManager {
     synchronized(lock) {
       val currentSessionManager = sessionManager
+      // todo - do we need to change for every new media item? or just if drm key is different?
+      //  i think we *do* want to do make new session managers for new keys && new playbackIds
       if (currentSessionManager != null && this.mediaItem == mediaItem) {
         return currentSessionManager
       } else {
