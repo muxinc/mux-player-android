@@ -2,9 +2,13 @@ package com.mux.player.media
 
 import android.content.Context
 import androidx.annotation.OptIn
+import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.drm.DrmSessionManager
+import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.CmcdConfiguration
@@ -32,7 +36,15 @@ class MuxMediaSourceFactory @JvmOverloads constructor(
 ) : MediaSource.Factory by innerFactory {
 
   init {
+    // basics
     innerFactory.setCmcdConfigurationFactory(CmcdConfiguration.Factory.DEFAULT)
     innerFactory.setDataSourceFactory(dataSourceFactory)
+
+    // drm
+    innerFactory.setDrmSessionManagerProvider(MuxDrmSessionManagerProvider(
+      drmHttpDataSourceFactory = DefaultHttpDataSource.Factory()
+    ))
   }
 }
+
+
