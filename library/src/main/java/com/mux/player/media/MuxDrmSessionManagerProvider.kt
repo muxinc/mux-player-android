@@ -20,31 +20,47 @@ class MuxDrmSessionManagerProvider(
   val drmHttpDataSourceFactory: HttpDataSource.Factory,
 ) : DrmSessionManagerProvider {
 
-  private val sessionManager by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { createSessionManager() }
+  private val lock = Any()
+  private var mediaItem: MediaItem? = null
+  private var sessionManager: DrmSessionManager? = null
 
   override fun get(mediaItem: MediaItem): DrmSessionManager {
-    return sessionManager
+    synchronized(lock) {
+      val currentSessionManager = sessionManager
+      if (currentSessionManager != null && this.mediaItem == mediaItem) {
+        return currentSessionManager
+      } else {
+        return createSessionManager(mediaItem)
+      }
+    }
   }
 
-  private fun createSessionManager(): DrmSessionManager {
-    // todo - configure DRMSessionManager correctly
+  private fun createSessionManager(mediaItem: MediaItem): DrmSessionManager {
 
-    // QUESTIONS FOR CHRISTIAN
-    //  playClearSamplesWithoutKeys?
-    //  force drm sessions for any track types?
+    // todo - MuxDrmCallback needs playback id and drm key
 
     return DefaultDrmSessionManager.Builder()
       .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
       .setMultiSession(false)
-      .setPlayClearSamplesWithoutKeys(true) // todo - right??
+      //.setPlayClearSamplesWithoutKeys(true) // todo - right?? Well probably not
       .build(MuxDrmCallback(drmHttpDataSourceFactory))
   }
 }
+
+
+// TO WORRY ABOUT
+// custom domain + drm token
+
+// iOS - App Certificate fetched
+// DRMToday.swift
 
 @OptIn(UnstableApi::class)
 class MuxDrmCallback(
   val drmHttpDataSourceFactory: HttpDataSource.Factory
 ) : MediaDrmCallback {
+
+  companion object {
+  }
 
   override fun executeProvisionRequest(
     uuid: UUID,
@@ -57,4 +73,12 @@ class MuxDrmCallback(
     TODO("Not yet implemented")
   }
 
+  private fun createLicenseUri(playbackId: String, drmToken: String, domain: String): String {
+    return "https://license.${domain}/license/widevine/${playbackId}?token=${drmToken}"
+  }
+
+  private fun createKeyUri(playbackId: String, drmToken: String, domain: String): String {
+    // todo - assmption that the keys are at key.mux.com (or whatever)
+    return "https://key.${domain}/license/widevine/${playbackId}?token=${drmToken}"
+  }
 }
