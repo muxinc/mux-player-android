@@ -1,8 +1,10 @@
 package com.mux.player.media
 
 import android.net.Uri
+import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
+import com.mux.player.internal.Constants
 
 /**
  * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with
@@ -38,6 +40,7 @@ object MediaItems {
     renditionOrder: RenditionOrder? = null,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
+    drmToken: String? = null,
   ): MediaItem = builderFromMuxPlaybackId(
     playbackId,
     maxResolution,
@@ -45,7 +48,9 @@ object MediaItems {
     renditionOrder,
     domain,
     playbackToken,
+    drmToken
   ).build()
+
 
   /**
    * Creates a new [MediaItem.Builder] that points to a given Mux Playback ID. You can add
@@ -65,6 +70,7 @@ object MediaItems {
     renditionOrder: RenditionOrder? = null,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
+    drmToken: String? = null,
   ): MediaItem.Builder {
     return MediaItem.Builder()
       .setUri(
@@ -79,6 +85,12 @@ object MediaItems {
       )
       .setRequestMetadata(
         RequestMetadata.Builder()
+          .setExtras(
+            Bundle().apply {
+              putString(Constants.BUNDLE_DRM_TOKEN, drmToken)
+              putString(Constants.BUNDLE_PLAYBACK_ID, playbackId)
+            }
+          )
           .build()
       )
   }

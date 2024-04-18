@@ -1,10 +1,9 @@
 package com.mux.player.media
 
-import androidx.annotation.GuardedBy
+import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaItem.DrmConfiguration
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
@@ -13,6 +12,7 @@ import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
 import androidx.media3.exoplayer.drm.ExoMediaDrm
 import androidx.media3.exoplayer.drm.FrameworkMediaDrm
 import androidx.media3.exoplayer.drm.MediaDrmCallback
+import com.mux.player.internal.Constants
 import java.util.UUID
 
 @OptIn(UnstableApi::class)
@@ -28,7 +28,7 @@ class MuxDrmSessionManagerProvider(
     synchronized(lock) {
       val currentSessionManager = sessionManager
       // todo - do we need to change for every new media item? or just if drm key is different?
-      //  i think we *do* want to do make new session managers for new keys && new playbackIds
+      //  i *think* we want to do make new a session manager for new keys || new playbackIds
       if (currentSessionManager != null && this.mediaItem == mediaItem) {
         return currentSessionManager
       } else {
@@ -38,14 +38,30 @@ class MuxDrmSessionManagerProvider(
   }
 
   private fun createSessionManager(mediaItem: MediaItem): DrmSessionManager {
-
-    // todo - MuxDrmCallback needs playback id and drm key
-
+    // todo - resolve the !!s
     return DefaultDrmSessionManager.Builder()
       .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
       .setMultiSession(false)
       //.setPlayClearSamplesWithoutKeys(true) // todo - right?? Well probably not
-      .build(MuxDrmCallback(drmHttpDataSourceFactory))
+      .build(MuxDrmCallback(
+        drmHttpDataSourceFactory,
+        domain = getUriDomain(mediaItem.localConfiguration!!.uri),
+        drmKey = mediaItem.getDrmKey()!!,
+        playbackId = mediaItem.getPlaybackId()!!,
+      ))
+  }
+
+  private fun MediaItem.getPlaybackId(): String? {
+    return requestMetadata.extras?.getString(Constants.BUNDLE_PLAYBACK_ID, null)
+  }
+
+  private fun MediaItem.getDrmKey(): String? {
+    return requestMetadata.extras?.getString(Constants.BUNDLE_DRM_TOKEN, null)
+  }
+
+  private fun getUriDomain(uri: Uri): String {
+    // todo - so like, license.stream.mux.com??
+    return uri.host!!
   }
 }
 
@@ -58,7 +74,10 @@ class MuxDrmSessionManagerProvider(
 
 @OptIn(UnstableApi::class)
 class MuxDrmCallback(
-  val drmHttpDataSourceFactory: HttpDataSource.Factory
+  val drmHttpDataSourceFactory: HttpDataSource.Factory,
+  val domain: String,
+  val drmKey: String,
+  val playbackId: String,
 ) : MediaDrmCallback {
 
   companion object {
@@ -80,7 +99,7 @@ class MuxDrmCallback(
   }
 
   private fun createKeyUri(playbackId: String, drmToken: String, domain: String): String {
-    // todo - assmption that the keys are at key.mux.com (or whatever)
+    // todo - assumption that the keys are at key.mux.com (or whatever)
     return "https://key.${domain}/license/widevine/${playbackId}?token=${drmToken}"
   }
 }
