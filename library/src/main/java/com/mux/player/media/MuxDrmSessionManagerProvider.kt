@@ -79,6 +79,7 @@ class MuxDrmCallback(
     uuid: UUID,
     request: ExoMediaDrm.ProvisionRequest
   ): ByteArray {
+    // todo - the request itself has a url too, would it be correct/does it come from the manifest?
     // todo - some headers and stuff required?
     return executePost(
       uri = createLicenseUri(playbackId, drmKey, domain),
@@ -90,6 +91,7 @@ class MuxDrmCallback(
 
   override fun executeKeyRequest(uuid: UUID, request: ExoMediaDrm.KeyRequest): ByteArray {
     // todo - some headers and stuff required?
+    // todo - the request itself has a url too, would it be correct/does it come from the manifest?
     return executePost(
       uri = createKeyUri(playbackId, drmKey, domain),
       headers = mapOf(),
@@ -103,7 +105,7 @@ class MuxDrmCallback(
   }
 
   private fun createKeyUri(playbackId: String, drmToken: String, domain: String): Uri {
-    // todo - assumption that the keys are at key.mux.com (or whatever)
+    // todo - assumption that the keys are at key.stream.mux.com (or whatever)
     return "https://key.${domain}/license/widevine/${playbackId}?token=${drmToken}".toUri()
   }
 }
