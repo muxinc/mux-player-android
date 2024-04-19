@@ -2,6 +2,7 @@ package com.mux.player.media
 
 import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
@@ -13,6 +14,7 @@ import androidx.media3.exoplayer.drm.ExoMediaDrm
 import androidx.media3.exoplayer.drm.FrameworkMediaDrm
 import androidx.media3.exoplayer.drm.MediaDrmCallback
 import com.mux.player.internal.Constants
+import com.mux.player.internal.executePost
 import java.util.UUID
 
 @OptIn(UnstableApi::class)
@@ -65,43 +67,43 @@ class MuxDrmSessionManagerProvider(
   }
 }
 
-
-// TO WORRY ABOUT
-// custom domain + drm token
-
-// iOS - App Certificate fetched
-// DRMToday.swift
-
 @OptIn(UnstableApi::class)
 class MuxDrmCallback(
-  val drmHttpDataSourceFactory: HttpDataSource.Factory,
-  val domain: String,
-  val drmKey: String,
-  val playbackId: String,
+  private val drmHttpDataSourceFactory: HttpDataSource.Factory,
+  private val domain: String,
+  private val drmKey: String,
+  private val playbackId: String,
 ) : MediaDrmCallback {
-
-  companion object {
-  }
 
   override fun executeProvisionRequest(
     uuid: UUID,
     request: ExoMediaDrm.ProvisionRequest
   ): ByteArray {
-    TODO("Not yet implemented")
-
-
+    // todo - some headers and stuff required?
+    return executePost(
+      uri = createLicenseUri(playbackId, drmKey, domain),
+      headers = mapOf(),
+      requestBody = request.data,
+      dataSourceFactory =drmHttpDataSourceFactory,
+    )
   }
 
   override fun executeKeyRequest(uuid: UUID, request: ExoMediaDrm.KeyRequest): ByteArray {
-    TODO("Not yet implemented")
+    // todo - some headers and stuff required?
+    return executePost(
+      uri = createKeyUri(playbackId, drmKey, domain),
+      headers = mapOf(),
+      requestBody = request.data,
+      dataSourceFactory =drmHttpDataSourceFactory,
+    )
   }
 
-  private fun createLicenseUri(playbackId: String, drmToken: String, domain: String): String {
-    return "https://license.${domain}/license/widevine/${playbackId}?token=${drmToken}"
+  private fun createLicenseUri(playbackId: String, drmToken: String, domain: String): Uri {
+    return "https://license.${domain}/license/widevine/${playbackId}?token=${drmToken}".toUri()
   }
 
-  private fun createKeyUri(playbackId: String, drmToken: String, domain: String): String {
+  private fun createKeyUri(playbackId: String, drmToken: String, domain: String): Uri {
     // todo - assumption that the keys are at key.mux.com (or whatever)
-    return "https://key.${domain}/license/widevine/${playbackId}?token=${drmToken}"
+    return "https://key.${domain}/license/widevine/${playbackId}?token=${drmToken}".toUri()
   }
 }
