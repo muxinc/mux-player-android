@@ -3,7 +3,6 @@ package com.mux.player.internal.cache
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import android.os.Build
 import android.util.Base64
 import com.mux.player.internal.Constants
 import com.mux.player.oneOf
@@ -283,42 +282,18 @@ internal class CacheDatastore(
     }
   }
 
-  private fun doReadLeastRecentFilesNoWindowFunc(db: SQLiteDatabase): List<FileRecord> {
-    // for sqlite version lover then 3.25 which is Android API level 29 and older
-    db.rawQuery(
-      """
-         select * from ${IndexSql.Files.name} order by ${IndexSql.Files.Columns.lastAccessUnixTime} desc
-      """.trimIndent(),
-      null,
-    ).use { cursor ->
-      if (cursor.count > 0) {
-        val result = mutableListOf<FileRecord>()
-        cursor.moveToFirst()
-        do {
-          val record = cursor.toFileRecord()
-          if (record.aggDiskSize(db) > maxDiskSize) {
-            result += record
-          }
-        } while (cursor.moveToNext())
-        return result
-      } else {
-        return listOf()
-      }
-    }
-  }
-
-  private fun doReadLeastRecentFilesWithWindowFunc(db: SQLiteDatabase): List<FileRecord> {
+  private fun doReadLeastRecentFiles(db: SQLiteDatabase): List<FileRecord> {
     // rawQuery because none of the nicer query functions let you do sub-queries
     db.rawQuery(
       """
          select * from (
            select *,
-             sum(${IndexSql.Files.Columns.diskSize}) over
-               (order by ${IndexSql.Files.Columns.lastAccessUnixTime} desc)
+             sum(${IndexSql.Files.Columns.diskSize}) over 
+               (order by ${IndexSql.Files.Columns.lastAccessUnixTime} desc) 
                as ${IndexSql.Files.Derived.aggDiskSize}
            from ${IndexSql.Files.name}
-         )
-         where ${IndexSql.Files.Derived.aggDiskSize} > $maxDiskSize
+         ) 
+         where ${IndexSql.Files.Derived.aggDiskSize} > $maxDiskSize 
         """.trimIndent(),
       null,
     ).use { cursor ->
@@ -334,14 +309,6 @@ internal class CacheDatastore(
       }
     }
   }
-  private fun doReadLeastRecentFiles(db: SQLiteDatabase): List<FileRecord> {
-    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
-      return doReadLeastRecentFilesNoWindowFunc(db)
-    } else {
-      return doReadLeastRecentFilesWithWindowFunc(db)
-    }
-  }
-
 
   private fun ensureDirs() {
     fileTempDir().mkdirs()
