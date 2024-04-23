@@ -189,12 +189,8 @@ internal object CacheController {
       return false
     }
 
-    // todo - Need to specifically only cache segments. Check content-type first then url
-
     // todo - additional logic here:
     //  * check disk space against Content-Length?
-    //  * check for headers like Age?
-    //  * make sure the entry is not already expired by like a second or whatever (edge case)
 
     return true
   }
