@@ -2,6 +2,7 @@ package com.mux.player.internal.cache
 
 import android.content.ContentValues
 import android.database.Cursor
+import android.database.sqlite.SQLiteDatabase
 
 internal data class FileRecord(
   val url: String,
@@ -17,6 +18,21 @@ internal data class FileRecord(
 ) {
   fun isStale(nowUtc: Long): Boolean {
     return (nowUtc - downloadedAtUtcSecs) + resourceAge >= cacheMaxAge
+  }
+
+  fun aggDiskSize(db: SQLiteDatabase) : Int {
+    var result = -1
+    db.rawQuery(
+      """
+         select sum(${IndexSql.Files.Columns.diskSize}) from ${IndexSql.Files.name}
+         where ${IndexSql.Files.Columns.lastAccessUnixTime} >= $lastAccessUtcSecs
+      """.trimIndent(), null).use { cursor ->
+      if (cursor.count > 0) {
+        cursor.moveToFirst()
+        result = cursor.getInt(0)
+      }
+    }
+    return result
   }
 }
 
