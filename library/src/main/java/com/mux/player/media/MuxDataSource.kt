@@ -122,8 +122,7 @@ class MuxDataSource private constructor(
 
       // todo - we *could* delete the row here, but consider that stale items can be used if
       //  state-while-revalidate or stale-while-error or if we're disconnected (unless must-revalidate)..
-      //  Right now, we saved time by assuming state-while-error and *not* must-revalidate so we
-      //    would just wanna keep the stale entries around in case we can use them
+      //  For now, we saved time by assuming state-while-error and *not* must-revalidate & keep it
 
       upstreamBytes
     } else {
@@ -131,8 +130,6 @@ class MuxDataSource private constructor(
       // Entry was still valid, so read from cache instead
       upstream.close()
       this.upstream = null
-
-      // todo -
 
       openAndInitFromCache(readHandle)
     }
