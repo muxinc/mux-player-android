@@ -5,7 +5,7 @@ import android.annotation.TargetApi
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import com.mux.player.internal.cache.CacheController.downloadStarted
+import com.mux.player.internal.cache.CacheController.startWriting
 import com.mux.player.internal.cache.CacheController.setup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -84,9 +84,11 @@ internal object CacheController {
 
   /**
    * Call when you are about to download the body of a response. This method returns an object you
-   * can use to write your data. See [WriteHandle] for more information
+   * can use to write your data. When you are done writing, call [WriteHandle.finishedWriting].
+   *
+   * @see [WriteHandle]
    */
-  fun downloadStarted(
+  fun startWriting(
     requestUrl: String,
     responseHeaders: Map<String, List<String>>,
   ): WriteHandle {
@@ -251,7 +253,7 @@ internal class ReadHandle internal constructor(
 }
 
 /**
- * Object for writing to both the player and the cache. Call [downloadStarted] to get one of these
+ * Object for writing to both the player and the cache. Call [startWriting] to get one of these
  * for any given web response. Writes to this handle will go to the player and also to the cache
  * if required
  */

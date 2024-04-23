@@ -141,7 +141,7 @@ class MuxDataSource private constructor(
 
     this.upstream = upstream
     val available = upstream.open(dataSpec)
-    cacheWriter = CacheController.downloadStarted(
+    cacheWriter = CacheController.startWriting(
       dataSpec.uri.toString(),
       upstream.responseHeaders,
     )
