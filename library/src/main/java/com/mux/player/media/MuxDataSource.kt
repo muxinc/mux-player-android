@@ -218,6 +218,7 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
     val msg = conn.responseMessage
     if (code == HttpURLConnection.HTTP_NOT_MODIFIED) {
       // not-modified, not an error, we don't have to download the body again
+      runCatching { conn.disconnect() }
       return 0
     } else if (code < 200 || code > 299) {
       // some kind of error
