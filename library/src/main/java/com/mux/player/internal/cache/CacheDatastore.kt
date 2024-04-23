@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Base64
 import android.util.Log
+import com.mux.player.internal.Constants
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
@@ -168,19 +169,19 @@ internal class CacheDatastore(
    * downloaded. Temp files are deleted on JVM exit. Every temp file is unique, preventing
    * collisions between multiple potential writers to the same file
    */
-  fun fileTempDir(): File = File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
+  fun fileTempDir(): File = File(context.cacheDir, Constants.TEMP_FILE_DIR)
 
   /**
    * A subdirectory within the app's cache dir where we keep cached media files that have been
    * committed to the cache with `WriteHandle.finishedWriting`. Temp files are guaranteed not to be
    * open for writing or appending, and their content can be relied upon assuming the file exists
    */
-  fun fileCacheDir(): File = File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
+  fun fileCacheDir(): File = File(context.cacheDir, Constants.CACHE_FILES_DIR)
 
   /**
    * A subdirectory within an app's no-backup files dir that contains the cache's index
    */
-  fun indexDbDir(): File = File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
+  fun indexDbDir(): File = File(context.filesDirNoBackupCompat, Constants.CACHE_BASE_DIR)
 
   /**
    * Generates a URL-safe cache key for a given URL. Delegates to [generateCacheKey] but encodes it
@@ -231,7 +232,7 @@ internal class CacheDatastore(
       urlStr
     } else {
       val extension = matchResult.groups[3]!!.value
-      val isSegment = extension.oneOf(CacheConstants.EXT_TS, CacheConstants.EXT_M4S)
+      val isSegment = extension.oneOf(Constants.EXT_TS, Constants.EXT_M4S)
 
       if (isSegment) {
         // todo - we can pull out more-specific key parts using groups 2 and 1 if we want, but the

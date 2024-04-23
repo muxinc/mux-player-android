@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.database.Cursor
 import android.os.Build
+import com.mux.player.internal.Constants
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -49,9 +50,9 @@ internal fun InputStream.consumeInto(outputStream: OutputStream, readSize: Int =
 
 @JvmSynthetic
 internal fun isContentTypeSegment(contentTypeHeader: String?): Boolean {
-  return contentTypeHeader.equals(CacheConstants.MIME_TS, true)
-          || contentTypeHeader.equals(CacheConstants.MIME_M4S, true)
-          || contentTypeHeader.equals(CacheConstants.MIME_M4S_ALT, true)
+  return contentTypeHeader.equals(Constants.MIME_TS, true)
+          || contentTypeHeader.equals(Constants.MIME_M4S, true)
+          || contentTypeHeader.equals(Constants.MIME_M4S_ALT, true)
 }
 
 @JvmSynthetic
