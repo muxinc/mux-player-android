@@ -73,7 +73,7 @@ internal object CacheController {
     return if (fileRecord == null) {
       null
     } else {
-      ReadHandle(
+      ReadHandle.create(
         url = requestUrl,
         fileRecord = fileRecord,
         datastore = datastore,
@@ -95,7 +95,7 @@ internal object CacheController {
     return if (shouldCacheResponse(requestUrl, responseHeaders)) {
       val tempFile = datastore.createTempDownloadFile(URL(requestUrl))
 
-      WriteHandle(
+      WriteHandle.create(
         controller = this,
         tempFile = tempFile,
         responseHeaders = responseHeaders,
@@ -104,7 +104,7 @@ internal object CacheController {
       )
     } else {
       // not supposed to cache, so the WriteHandle just writes to the player
-      WriteHandle(
+      WriteHandle.create(
         controller = this,
         tempFile = null,
         url = requestUrl,
@@ -202,9 +202,9 @@ internal object CacheController {
  * Object for reading from the Cache. The methods on this object will read bytes from a cache copy
  * of the remote resource.
  *
- * Use [readAllInto] to read the entire file into an OutputStream.
+ * Obtain an instance via [CacheController.tryRead]
  */
-internal class ReadHandle internal constructor(
+internal class ReadHandle private constructor(
   val url: String,
   val fileRecord: FileRecord,
   datastore: CacheDatastore,
@@ -214,6 +214,13 @@ internal class ReadHandle internal constructor(
   companion object {
     const val READ_SIZE = 32 * 1024
     private const val TAG = "ReadHandle"
+
+    @JvmSynthetic internal fun create(
+      url: String,
+      fileRecord: FileRecord,
+      datastore: CacheDatastore,
+      directory: File,
+    ): ReadHandle = ReadHandle(url, fileRecord, datastore, directory)
   }
 
   private val cacheFile: File
@@ -257,7 +264,7 @@ internal class ReadHandle internal constructor(
  * for any given web response. Writes to this handle will go to the player and also to the cache
  * if required
  */
-internal class WriteHandle internal constructor(
+internal class WriteHandle private constructor(
   val url: String,
   val responseHeaders: Map<String, List<String>>,
   private val controller: CacheController,
@@ -267,6 +274,14 @@ internal class WriteHandle internal constructor(
 
   companion object {
     private const val TAG = "WriteHandle"
+
+    @JvmSynthetic internal fun create(
+      url: String,
+      responseHeaders: Map<String, List<String>>,
+      controller: CacheController,
+      datastore: CacheDatastore,
+      tempFile: File?,
+    ): WriteHandle = WriteHandle(url, responseHeaders, controller, datastore, tempFile)
   }
 
   private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
