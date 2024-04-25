@@ -1,6 +1,7 @@
 package com.mux.player.media
 
 import android.net.Uri
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.core.net.toUri
 import androidx.media3.common.C
@@ -45,12 +46,14 @@ class MuxDrmSessionManagerProvider(
       .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
       .setMultiSession(false)
       //.setPlayClearSamplesWithoutKeys(true) // todo - right?? Well probably not
-      .build(MuxDrmCallback(
-        drmHttpDataSourceFactory,
-        domain = getUriDomain(mediaItem.localConfiguration!!.uri),
-        drmKey = mediaItem.getDrmKey()!!,
-        playbackId = mediaItem.getPlaybackId()!!,
-      ))
+      .build(
+        MuxDrmCallback(
+          drmHttpDataSourceFactory,
+          domain = getUriDomain(mediaItem.localConfiguration!!.uri),
+          drmKey = mediaItem.getDrmKey()!!,
+          playbackId = mediaItem.getPlaybackId()!!,
+        )
+      )
   }
 
   private fun MediaItem.getPlaybackId(): String? {
@@ -75,37 +78,49 @@ class MuxDrmCallback(
   private val playbackId: String,
 ) : MediaDrmCallback {
 
+  companion object {
+    const val TAG = "MuxDrmCallback"
+  }
+
   override fun executeProvisionRequest(
     uuid: UUID,
     request: ExoMediaDrm.ProvisionRequest
   ): ByteArray {
     // todo - the request itself has a url too, would it be correct/does it come from the manifest?
     // todo - some headers and stuff required?
+    Log.d(TAG, "executeProvisionRequest: Default URL is ${request.defaultUrl}")
     return executePost(
       uri = createLicenseUri(playbackId, drmKey, domain),
       headers = mapOf(),
       requestBody = request.data,
-      dataSourceFactory =drmHttpDataSourceFactory,
+      dataSourceFactory = drmHttpDataSourceFactory,
     )
   }
 
-  override fun executeKeyRequest(uuid: UUID, request: ExoMediaDrm.KeyRequest): ByteArray {
+  override fun executeKeyRequest(
+    uuid: UUID,
+    request: ExoMediaDrm.KeyRequest
+  ): ByteArray {
     // todo - some headers and stuff required?
-    // todo - the request itself has a url too, would it be correct/does it come from the manifest?
+    // todo - the request itself has a url too, would it be correct to use it?
+    Log.d(TAG, "executeKeyRequest: license server url is ${request.licenseServerUrl}")
     return executePost(
       uri = createKeyUri(playbackId, drmKey, domain),
       headers = mapOf(),
       requestBody = request.data,
-      dataSourceFactory =drmHttpDataSourceFactory,
+      dataSourceFactory = drmHttpDataSourceFactory,
     )
   }
 
-  private fun createLicenseUri(playbackId: String, drmToken: String, domain: String): Uri {
-    return "https://license.${domain}/license/widevine/${playbackId}?token=${drmToken}".toUri()
+  /**
+   * @param licenseDomain The domain for the license server (eg, license.mux.com)
+   */
+  private fun createLicenseUri(playbackId: String, drmToken: String, licenseDomain: String): Uri {
+    return "https://${licenseDomain}/license/widevine/${playbackId}?token=${drmToken}".toUri()
   }
 
-  private fun createKeyUri(playbackId: String, drmToken: String, domain: String): Uri {
+  private fun createKeyUri(playbackId: String, drmToken: String, licenseDomain: String): Uri {
     // todo - assumption that the keys are at key.stream.mux.com (or whatever)
-    return "https://key.${domain}/license/widevine/${playbackId}?token=${drmToken}".toUri()
+    return "https://${licenseDomain}/license/widevine/${playbackId}?token=${drmToken}".toUri()
   }
 }
