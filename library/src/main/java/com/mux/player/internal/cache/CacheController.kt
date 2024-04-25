@@ -260,9 +260,10 @@ internal class ReadHandle private constructor(
 }
 
 /**
- * Object for writing to both the player and the cache. Call [startWriting] to get one of these
- * for any given web response. Writes to this handle will go to the player and also to the cache
- * if required
+ * Object for writing to both the player and the cache. Writes to this handle will go to the player
+ * and also to the cache if required
+ *
+ * Obtain an instance with [CacheController.startWriting]
  */
 internal class WriteHandle private constructor(
   val url: String,
