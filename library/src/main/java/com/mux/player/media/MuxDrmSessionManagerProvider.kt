@@ -163,7 +163,8 @@ class MuxDrmCallback(
 
     try {
       return executePost(
-        uri = url,
+        uri = Uri.parse(hardcodedUri),
+//        uri = url,
         headers = mapOf(),
         requestBody = request.data,
         dataSourceFactory = drmHttpDataSourceFactory,
