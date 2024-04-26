@@ -9,6 +9,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
+import androidx.media3.exoplayer.drm.DrmSession
 import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
 import androidx.media3.exoplayer.drm.ExoMediaDrm.ProvisionRequest
@@ -25,7 +26,7 @@ class MuxDrmSessionManagerProvider(
 ) : DrmSessionManagerProvider {
 
   companion object {
-    const val TAG = "DrmSessionManagerProv"
+    private const val TAG = "DrmSessionManagerProv"
   }
 
   private val lock = Any()
@@ -47,7 +48,14 @@ class MuxDrmSessionManagerProvider(
 
   private fun createSessionManager(mediaItem: MediaItem): DrmSessionManager {
     Log.i(TAG, "createSessionManager: called with $mediaItem")
-    // todo - resolve the !!s: We shouldn't be called unless the remote media is acutally drm
+    val playbackId = mediaItem.getPlaybackId()
+    val drmToken = mediaItem.getDrmToken()
+
+    // Mux Video requires both of these for its DRM system
+    if (playbackId == null || drmToken == null) {
+      return DrmSessionManager.DRM_UNSUPPORTED
+    }
+
     return DefaultDrmSessionManager.Builder()
       .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
       .setMultiSession(false)
@@ -56,8 +64,8 @@ class MuxDrmSessionManagerProvider(
         MuxDrmCallback(
           drmHttpDataSourceFactory,
           playbackDomain = getLicenseUriDomain(mediaItem.localConfiguration!!.uri),
-          drmToken = mediaItem.getDrmKey()!!,
-          playbackId = mediaItem.getPlaybackId()!!,
+          drmToken = drmToken,
+          playbackId = playbackId,
         )
       )
   }
@@ -66,7 +74,7 @@ class MuxDrmSessionManagerProvider(
     return requestMetadata.extras?.getString(Constants.BUNDLE_PLAYBACK_ID, null)
   }
 
-  private fun MediaItem.getDrmKey(): String? {
+  private fun MediaItem.getDrmToken(): String? {
     return requestMetadata.extras?.getString(Constants.BUNDLE_DRM_TOKEN, null)
   }
 

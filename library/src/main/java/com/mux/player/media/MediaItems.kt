@@ -2,6 +2,7 @@ package com.mux.player.media
 
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import com.mux.player.internal.Constants
@@ -13,6 +14,8 @@ import com.mux.player.internal.Constants
  * TODO: Alternative spelling: MuxMediaItems
  */
 object MediaItems {
+
+  private const val TAG = "MediaItems"
 
   /**
    * Default domain + tld for Mux Video
@@ -104,7 +107,9 @@ object MediaItems {
     renditionOrder: RenditionOrder? = null,
     playbackToken: String? = null,
   ): String {
-    val base = Uri.parse("https://$subdomain.$domain/$playbackId.m3u8").buildUpon()
+    // todo - reinstate this
+    //val base = Uri.parse("https://$subdomain.$domain/$playbackId.m3u8").buildUpon()
+    val base = Uri.parse("https://stream.staging.mux.com/$playbackId.m3u8").buildUpon()
 
     minResolution?.let { base.appendQueryParameter("min_resolution", resolutionValue(it)) }
     maxResolution?.let { base.appendQueryParameter("max_resolution", resolutionValue(it)) }
@@ -114,6 +119,7 @@ object MediaItems {
     base.appendQueryParameter("redundant_streams", "true");
 
     return base.build().toString()
+      .also { Log.d(TAG, "playback URI is $it") }
   }
 
   private fun resolutionValue(renditionOrder: RenditionOrder): String {

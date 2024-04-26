@@ -22,7 +22,11 @@
             />
         <activity android:name=".examples.SmartCacheActivity"
             android:exported="false"
-            android:label="Max-Res Modifier"
+            android:label="Smart Caching Example"
+            />
+        <activity android:name=".examples.DrmPlaybackActivity"
+            android:exported="false"
+            android:label="DRM Playback Example"
             />
         <activity
             android:name=".MainActivity"
