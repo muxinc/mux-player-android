@@ -161,11 +161,15 @@ class MuxDrmCallback(
     Log.d(TAG, "HARDCODED URL is $hardcodedUri")
     // TODO: Actual implementation of this
 
+    val headers = mapOf(
+      Pair("Content-Type", listOf("application/octet-stream")),
+    )
+
     try {
       return executePost(
         uri = Uri.parse(hardcodedUri),
 //        uri = url,
-        headers = mapOf(),
+        headers = headers,
         requestBody = request.data,
         dataSourceFactory = drmHttpDataSourceFactory,
       )
