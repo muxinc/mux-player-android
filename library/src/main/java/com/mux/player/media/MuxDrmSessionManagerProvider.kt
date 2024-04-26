@@ -107,10 +107,11 @@ class MuxDrmCallback(
     uuid: UUID,
     request: ProvisionRequest
   ): ByteArray {
+    Log.i(TAG, "<><><>executeProvisionRequest: called")
     // todo - the request itself has a url too, would it be correct/does it come from the manifest?
     // todo - some headers and stuff required?
     Log.d(TAG, "executeProvisionRequest: Default URL is ${request.defaultUrl}")
-    val uri = createLicenseUri(playbackId, drmToken, playbackDomain, request)
+    val uri = createLicenseUri(playbackId, drmToken, playbackDomain)//, request)
     Log.d(TAG, "executeProvisionRequest: license URI is $uri")
 
     // todo - no need to try{} here unless debugging
@@ -152,15 +153,34 @@ class MuxDrmCallback(
       // todo - something narrower than IOException? As long as it's checked
       throw IOException("Mux player does not support scheme: $uuid")
     }
+    val url = createLicenseUri(playbackId, drmToken, playbackDomain)
+    Log.d(TAG, "Key Request URI is $url")
 
+    // todo - build this url from the licenseDomain, drmToken, and playbackId
+    val hardcodedUri = "https://license.gcp-us-west1-vos1.staging.mux.com/license/widevine/UHMpUMz4l00SmDcgAAQPd4Yk01200IDwD4uD7K24GPp01yg?token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJsIiwiZXhwIjoxNzIyNjE2OTE0LCJraWQiOiJFelE2SkI1ZkQwMmd5TmVxUmE4MDJYT2xnMDE0SzAxckxwdXNDbklRSjJobEtYbyIsInN1YiI6IlVITXBVTXo0bDAwU21EY2dBQVFQZDRZazAxMjAwSUR3RDR1RDdLMjRHUHAwMXlnIn0.tHmqMgHf3pY2adP9QVvx9VIUVZvaxzWZP8Qf4DSUBnT4Zxac-tRPBsHDtBlFIILhmPhjBa2IAmD2PdqgHopSxw_zDp9ktTl6QAKCGgw40ZUKt4GD4aZKubKzAyfPm5q0-7f8aW8oNDbejQ1VjN5QqIBb50ytyPc4NkIzwqJ3P3azrr4TSlo-NiXbXhwWuiMHGqspoNPk8BGBcXpSML7vghlncxwKWYAwbpPaz5q5AEMmN5sqKo7woSVsXBxoe78al6cfT2SRdDR6bu92kMf5zSZ9600boNSjmNn2Dx5IidFAZMYy9qVj22W1T-7rCthmc37c9OcUGK9g0unHEAFE6A"
+    Log.d(TAG, "HARDCODED URL is $hardcodedUri")
     // TODO: Actual implementation of this
 
-    return executePost(
-      uri = createKeyUri(playbackId, drmToken, playbackDomain),
-      headers = mapOf(),
-      requestBody = request.data,
-      dataSourceFactory = drmHttpDataSourceFactory,
-    )
+    try {
+      return executePost(
+        uri = url,
+        headers = mapOf(),
+        requestBody = request.data,
+        dataSourceFactory = drmHttpDataSourceFactory,
+      )
+    }  catch(e: InvalidResponseCodeException) {
+      Log.e(TAG, "KEY Request failed!", e)
+      Log.d(TAG, "Dumping data spec: ${e.dataSpec}")
+      Log.d(TAG, "Error Body Bytes: ${Base64.encodeToString(e.responseBody, Base64.NO_WRAP)}")
+      throw e
+    } catch(e: HttpDataSourceException) {
+      Log.e(TAG, "Key Request failed!", e)
+      Log.d(TAG, "Dumping data spec: ${e.dataSpec}")
+      throw e
+    } catch (e: Exception) {
+      Log.e(TAG, "KEY Request failed!", e)
+      throw e
+    }
   }
 
   /**
@@ -170,30 +190,32 @@ class MuxDrmCallback(
     playbackId: String,
     drmToken: String,
     licenseDomain: String,
-    request: ProvisionRequest
+    //request: ProvisionRequest
   ): Uri {
 
-    // todo - build this url from the licenseDomain, drmToken, and playbackId
-    val hardcodedUri = "https://license.gcp-us-west1-vos1.staging.mux.com/license/widevine/UHMpUMz4l00SmDcgAAQPd4Yk01200IDwD4uD7K24GPp01yg?token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJsIiwiZXhwIjoxNzIyNjE2OTE0LCJraWQiOiJFelE2SkI1ZkQwMmd5TmVxUmE4MDJYT2xnMDE0SzAxckxwdXNDbklRSjJobEtYbyIsInN1YiI6IlVITXBVTXo0bDAwU21EY2dBQVFQZDRZazAxMjAwSUR3RDR1RDdLMjRHUHAwMXlnIn0.tHmqMgHf3pY2adP9QVvx9VIUVZvaxzWZP8Qf4DSUBnT4Zxac-tRPBsHDtBlFIILhmPhjBa2IAmD2PdqgHopSxw_zDp9ktTl6QAKCGgw40ZUKt4GD4aZKubKzAyfPm5q0-7f8aW8oNDbejQ1VjN5QqIBb50ytyPc4NkIzwqJ3P3azrr4TSlo-NiXbXhwWuiMHGqspoNPk8BGBcXpSML7vghlncxwKWYAwbpPaz5q5AEMmN5sqKo7woSVsXBxoe78al6cfT2SRdDR6bu92kMf5zSZ9600boNSjmNn2Dx5IidFAZMYy9qVj22W1T-7rCthmc37c9OcUGK9g0unHEAFE6A"
-    if (true) {
-      return Uri.parse(hardcodedUri)
-    }
 
-    // NOT THE CORRECT URL
-    val provisionUri = Uri.parse(request.defaultUrl).buildUpon()
-//      .appendQueryParameter("token", drmToken)
-      .appendQueryParameter("signedRequest", Util.fromUtf8Bytes(request.data))
+    val uriPath = "https://$licenseDomain/license/widevine/$playbackId"
+
+    // POSSIBLY CORRECT
+    val provisionUri = Uri.Builder()
+      //.path(uriPath)
+      .encodedPath(uriPath)
+      .appendQueryParameter("token", drmToken)
+//      .appendQueryParameter("signedRequest", Util.fromUtf8Bytes(request.data))
       .build()
+    Log.d(TAG, "built provision uri: $provisionUri")
     if (true) {
       return provisionUri
     }
+
+    // NOT CORRECT
     Log.d(TAG, "Default URI: $provisionUri")
 
     return "https://${licenseDomain}/license/widevine/${playbackId}?token=${drmToken}".toUri()
   }
 
   private fun createKeyUri(playbackId: String, drmToken: String, licenseDomain: String): Uri {
-    // todo - assumption that the keys are at key.stream.mux.com (or whatever)
+    // todo - this is not the correct key url
     return "https://${licenseDomain}/license/widevine/${playbackId}?token=${drmToken}".toUri()
   }
 }
