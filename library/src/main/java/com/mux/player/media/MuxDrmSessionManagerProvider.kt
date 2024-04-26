@@ -144,22 +144,18 @@ class MuxDrmCallback(
     uuid: UUID,
     request: KeyRequest
   ): ByteArray {
-    // todo - some headers and stuff required?
-    // todo - the request itself has a url too, would it be correct to use it?
     Log.i(TAG, "<><><>executeKeyRequest: licenseServerUrl is ${request.licenseServerUrl}")
 
     val widevine = uuid == C.WIDEVINE_UUID;
     if (!widevine) {
-      // todo - something narrower than IOException? As long as it's checked
       throw IOException("Mux player does not support scheme: $uuid")
     }
+
     val url = createLicenseUri(playbackId, drmToken, playbackDomain)
     Log.d(TAG, "Key Request URI is $url")
 
-    // todo - build this url from the licenseDomain, drmToken, and playbackId
-    val hardcodedUri = "https://license.gcp-us-west1-vos1.staging.mux.com/license/widevine/UHMpUMz4l00SmDcgAAQPd4Yk01200IDwD4uD7K24GPp01yg?token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJsIiwiZXhwIjoxNzIyNjE2OTE0LCJraWQiOiJFelE2SkI1ZkQwMmd5TmVxUmE4MDJYT2xnMDE0SzAxckxwdXNDbklRSjJobEtYbyIsInN1YiI6IlVITXBVTXo0bDAwU21EY2dBQVFQZDRZazAxMjAwSUR3RDR1RDdLMjRHUHAwMXlnIn0.tHmqMgHf3pY2adP9QVvx9VIUVZvaxzWZP8Qf4DSUBnT4Zxac-tRPBsHDtBlFIILhmPhjBa2IAmD2PdqgHopSxw_zDp9ktTl6QAKCGgw40ZUKt4GD4aZKubKzAyfPm5q0-7f8aW8oNDbejQ1VjN5QqIBb50ytyPc4NkIzwqJ3P3azrr4TSlo-NiXbXhwWuiMHGqspoNPk8BGBcXpSML7vghlncxwKWYAwbpPaz5q5AEMmN5sqKo7woSVsXBxoe78al6cfT2SRdDR6bu92kMf5zSZ9600boNSjmNn2Dx5IidFAZMYy9qVj22W1T-7rCthmc37c9OcUGK9g0unHEAFE6A"
-    Log.d(TAG, "HARDCODED URL is $hardcodedUri")
-    // TODO: Actual implementation of this
+//    val hardcodedUri = "https://license.gcp-us-west1-vos1.staging.mux.com/license/widevine/UHMpUMz4l00SmDcgAAQPd4Yk01200IDwD4uD7K24GPp01yg?token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJsIiwiZXhwIjoxNzIyNjE2OTE0LCJraWQiOiJFelE2SkI1ZkQwMmd5TmVxUmE4MDJYT2xnMDE0SzAxckxwdXNDbklRSjJobEtYbyIsInN1YiI6IlVITXBVTXo0bDAwU21EY2dBQVFQZDRZazAxMjAwSUR3RDR1RDdLMjRHUHAwMXlnIn0.tHmqMgHf3pY2adP9QVvx9VIUVZvaxzWZP8Qf4DSUBnT4Zxac-tRPBsHDtBlFIILhmPhjBa2IAmD2PdqgHopSxw_zDp9ktTl6QAKCGgw40ZUKt4GD4aZKubKzAyfPm5q0-7f8aW8oNDbejQ1VjN5QqIBb50ytyPc4NkIzwqJ3P3azrr4TSlo-NiXbXhwWuiMHGqspoNPk8BGBcXpSML7vghlncxwKWYAwbpPaz5q5AEMmN5sqKo7woSVsXBxoe78al6cfT2SRdDR6bu92kMf5zSZ9600boNSjmNn2Dx5IidFAZMYy9qVj22W1T-7rCthmc37c9OcUGK9g0unHEAFE6A"
+//    Log.d(TAG, "HARDCODED URL is $hardcodedUri")
 
     val headers = mapOf(
       Pair("Content-Type", listOf("application/octet-stream")),
@@ -167,8 +163,7 @@ class MuxDrmCallback(
 
     try {
       return executePost(
-        uri = Uri.parse(hardcodedUri),
-//        uri = url,
+        uri = url,
         headers = headers,
         requestBody = request.data,
         dataSourceFactory = drmHttpDataSourceFactory,
