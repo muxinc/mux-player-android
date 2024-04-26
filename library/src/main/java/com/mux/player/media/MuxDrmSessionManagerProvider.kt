@@ -15,6 +15,7 @@ import androidx.media3.datasource.HttpDataSource.HttpDataSourceException
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSession
+import androidx.media3.exoplayer.drm.DrmSession.DrmSessionException
 import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
 import androidx.media3.exoplayer.drm.ExoMediaDrm.ProvisionRequest
@@ -23,6 +24,7 @@ import androidx.media3.exoplayer.drm.FrameworkMediaDrm
 import androidx.media3.exoplayer.drm.MediaDrmCallback
 import com.mux.player.internal.Constants
 import com.mux.player.internal.executePost
+import java.io.IOException
 import java.util.UUID
 
 @OptIn(UnstableApi::class)
@@ -143,7 +145,16 @@ class MuxDrmCallback(
   ): ByteArray {
     // todo - some headers and stuff required?
     // todo - the request itself has a url too, would it be correct to use it?
-    Log.d(TAG, "executeKeyRequest: licenseServerUrl is ${request.licenseServerUrl}")
+    Log.i(TAG, "<><><>executeKeyRequest: licenseServerUrl is ${request.licenseServerUrl}")
+
+    val widevine = uuid == C.WIDEVINE_UUID;
+    if (!widevine) {
+      // todo - something narrower than IOException? As long as it's checked
+      throw IOException("Mux player does not support scheme: $uuid")
+    }
+
+    // TODO: Actual implementation of this
+
     return executePost(
       uri = createKeyUri(playbackId, drmToken, playbackDomain),
       headers = mapOf(),
