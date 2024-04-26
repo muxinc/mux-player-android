@@ -8,6 +8,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.util.Util
 import androidx.media3.datasource.DataSourceException
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.HttpDataSource.HttpDataSourceException
@@ -110,13 +111,11 @@ class MuxDrmCallback(
     val uri = createLicenseUri(playbackId, drmToken, playbackDomain, request)
     Log.d(TAG, "executeProvisionRequest: license URI is $uri")
 
-    val hardcodedUri = "https://license.gcp-us-west1-vos1.staging.mux.com/license/widevine/UHMpUMz4l00SmDcgAAQPd4Yk01200IDwD4uD7K24GPp01yg?token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJsIiwiZXhwIjoxNzIyNjE2OTE0LCJraWQiOiJFelE2SkI1ZkQwMmd5TmVxUmE4MDJYT2xnMDE0SzAxckxwdXNDbklRSjJobEtYbyIsInN1YiI6IlVITXBVTXo0bDAwU21EY2dBQVFQZDRZazAxMjAwSUR3RDR1RDdLMjRHUHAwMXlnIn0.tHmqMgHf3pY2adP9QVvx9VIUVZvaxzWZP8Qf4DSUBnT4Zxac-tRPBsHDtBlFIILhmPhjBa2IAmD2PdqgHopSxw_zDp9ktTl6QAKCGgw40ZUKt4GD4aZKubKzAyfPm5q0-7f8aW8oNDbejQ1VjN5QqIBb50ytyPc4NkIzwqJ3P3azrr4TSlo-NiXbXhwWuiMHGqspoNPk8BGBcXpSML7vghlncxwKWYAwbpPaz5q5AEMmN5sqKo7woSVsXBxoe78al6cfT2SRdDR6bu92kMf5zSZ9600boNSjmNn2Dx5IidFAZMYy9qVj22W1T-7rCthmc37c9OcUGK9g0unHEAFE6A"
-
     // todo - no need to try{} here unless debugging
     try {
       return executePost(
-        Uri.parse(hardcodedUri),
-//        uri,
+//        Uri.parse(hardcodedUri),
+        uri,
         headers = mapOf(),
         requestBody = request.data,
         dataSourceFactory = drmHttpDataSourceFactory,
@@ -163,10 +162,21 @@ class MuxDrmCallback(
     request: ProvisionRequest
   ): Uri {
 
+    // todo - build this url from the licenseDomain, drmToken, and playbackId
+    val hardcodedUri = "https://license.gcp-us-west1-vos1.staging.mux.com/license/widevine/UHMpUMz4l00SmDcgAAQPd4Yk01200IDwD4uD7K24GPp01yg?token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJsIiwiZXhwIjoxNzIyNjE2OTE0LCJraWQiOiJFelE2SkI1ZkQwMmd5TmVxUmE4MDJYT2xnMDE0SzAxckxwdXNDbklRSjJobEtYbyIsInN1YiI6IlVITXBVTXo0bDAwU21EY2dBQVFQZDRZazAxMjAwSUR3RDR1RDdLMjRHUHAwMXlnIn0.tHmqMgHf3pY2adP9QVvx9VIUVZvaxzWZP8Qf4DSUBnT4Zxac-tRPBsHDtBlFIILhmPhjBa2IAmD2PdqgHopSxw_zDp9ktTl6QAKCGgw40ZUKt4GD4aZKubKzAyfPm5q0-7f8aW8oNDbejQ1VjN5QqIBb50ytyPc4NkIzwqJ3P3azrr4TSlo-NiXbXhwWuiMHGqspoNPk8BGBcXpSML7vghlncxwKWYAwbpPaz5q5AEMmN5sqKo7woSVsXBxoe78al6cfT2SRdDR6bu92kMf5zSZ9600boNSjmNn2Dx5IidFAZMYy9qVj22W1T-7rCthmc37c9OcUGK9g0unHEAFE6A"
+    if (true) {
+      return Uri.parse(hardcodedUri)
+    }
+
+    // NOT THE CORRECT URL
     val provisionUri = Uri.parse(request.defaultUrl).buildUpon()
-      .appendQueryParameter("token", drmToken)
+//      .appendQueryParameter("token", drmToken)
+      .appendQueryParameter("signedRequest", Util.fromUtf8Bytes(request.data))
       .build()
-    Log.d(TAG, "Default URI (not used): $provisionUri")
+    if (true) {
+      return provisionUri
+    }
+    Log.d(TAG, "Default URI: $provisionUri")
 
     return "https://${licenseDomain}/license/widevine/${playbackId}?token=${drmToken}".toUri()
   }
