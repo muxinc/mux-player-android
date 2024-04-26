@@ -110,20 +110,23 @@ class MuxDrmCallback(
     val uri = createLicenseUri(playbackId, drmToken, playbackDomain, request)
     Log.d(TAG, "executeProvisionRequest: license URI is $uri")
 
+    val hardcodedUri = "https://license.gcp-us-west1-vos1.staging.mux.com/license/widevine/UHMpUMz4l00SmDcgAAQPd4Yk01200IDwD4uD7K24GPp01yg?token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJsIiwiZXhwIjoxNzIyNjE2OTE0LCJraWQiOiJFelE2SkI1ZkQwMmd5TmVxUmE4MDJYT2xnMDE0SzAxckxwdXNDbklRSjJobEtYbyIsInN1YiI6IlVITXBVTXo0bDAwU21EY2dBQVFQZDRZazAxMjAwSUR3RDR1RDdLMjRHUHAwMXlnIn0.tHmqMgHf3pY2adP9QVvx9VIUVZvaxzWZP8Qf4DSUBnT4Zxac-tRPBsHDtBlFIILhmPhjBa2IAmD2PdqgHopSxw_zDp9ktTl6QAKCGgw40ZUKt4GD4aZKubKzAyfPm5q0-7f8aW8oNDbejQ1VjN5QqIBb50ytyPc4NkIzwqJ3P3azrr4TSlo-NiXbXhwWuiMHGqspoNPk8BGBcXpSML7vghlncxwKWYAwbpPaz5q5AEMmN5sqKo7woSVsXBxoe78al6cfT2SRdDR6bu92kMf5zSZ9600boNSjmNn2Dx5IidFAZMYy9qVj22W1T-7rCthmc37c9OcUGK9g0unHEAFE6A"
+
     // todo - no need to try{} here unless debugging
     try {
       return executePost(
-        uri,
+        Uri.parse(hardcodedUri),
+//        uri,
         headers = mapOf(),
         requestBody = request.data,
         dataSourceFactory = drmHttpDataSourceFactory,
       ).also {
-        Log.i(TAG, "License Response: ${Base64.encode(it, 0)}")
+        Log.i(TAG, "License Response: ${Base64.encodeToString(it, Base64.NO_WRAP)}")
       }
     } catch(e: InvalidResponseCodeException) {
       Log.e(TAG, "Provisioning/License Request failed!", e)
       Log.d(TAG, "Dumping data spec: ${e.dataSpec}")
-      Log.d(TAG, "Error Body Bytes: ${Base64.encode(e.responseBody, 0)}")
+      Log.d(TAG, "Error Body Bytes: ${Base64.encodeToString(e.responseBody, Base64.NO_WRAP)}")
       throw e
     } catch(e: HttpDataSourceException) {
       Log.e(TAG, "Provisioning/License Request failed!", e)
