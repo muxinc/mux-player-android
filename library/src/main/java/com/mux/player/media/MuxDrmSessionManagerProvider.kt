@@ -1,13 +1,17 @@
 package com.mux.player.media
 
 import android.net.Uri
+import android.util.Base64
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSourceException
 import androidx.media3.datasource.HttpDataSource
+import androidx.media3.datasource.HttpDataSource.HttpDataSourceException
+import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSession
 import androidx.media3.exoplayer.drm.DrmSessionManager
@@ -105,12 +109,30 @@ class MuxDrmCallback(
     Log.d(TAG, "executeProvisionRequest: Default URL is ${request.defaultUrl}")
     val uri = createLicenseUri(playbackId, drmToken, playbackDomain, request)
     Log.d(TAG, "executeProvisionRequest: license URI is $uri")
-    return executePost(
-      uri,
-      headers = mapOf(),
-      requestBody = request.data,
-      dataSourceFactory = drmHttpDataSourceFactory,
-    )
+
+    // todo - no need to try{} here unless debugging
+    try {
+      return executePost(
+        uri,
+        headers = mapOf(),
+        requestBody = request.data,
+        dataSourceFactory = drmHttpDataSourceFactory,
+      ).also {
+        Log.i(TAG, "License Response: ${Base64.encode(it, 0)}")
+      }
+    } catch(e: InvalidResponseCodeException) {
+      Log.e(TAG, "Provisioning/License Request failed!", e)
+      Log.d(TAG, "Dumping data spec: ${e.dataSpec}")
+      Log.d(TAG, "Error Body Bytes: ${Base64.encode(e.responseBody, 0)}")
+      throw e
+    } catch(e: HttpDataSourceException) {
+      Log.e(TAG, "Provisioning/License Request failed!", e)
+      Log.d(TAG, "Dumping data spec: ${e.dataSpec}")
+      throw e
+    } catch (e: Exception) {
+      Log.e(TAG, "Provisioning/License Request failed!", e)
+      throw e
+    }
   }
 
   override fun executeKeyRequest(

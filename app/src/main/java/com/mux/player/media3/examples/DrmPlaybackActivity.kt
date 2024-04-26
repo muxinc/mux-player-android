@@ -63,9 +63,13 @@ class DrmPlaybackActivity : AppCompatActivity() {
   }
 
   private fun playSomething() {
+    val INDEX = 0
+
     val player = createPlayer(this)
     val mediaItem = MediaItems.builderFromMuxPlaybackId(
-      PlaybackIds.TEARS_OF_STEEL,
+      playbackId = DRM_EXAMPLES[INDEX].playbackId,
+      playbackToken = DRM_EXAMPLES[INDEX].playbackToken,
+      drmToken = DRM_EXAMPLES[INDEX].drmToken
     )
       .setMediaMetadata(
         MediaMetadata.Builder()
