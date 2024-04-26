@@ -24,10 +24,10 @@ internal fun executePost(
     .build()
 
   val dataSource = dataSourceFactory.createDataSource()
-  try {
+  return try {
     dataSource.open(dataSpec)
     DataSourceInputStream(dataSource, dataSpec).use { bodyInputStream ->
-      return bodyInputStream.readBytes()
+      bodyInputStream.readBytes()
     }
   } finally {
     runCatching { dataSource.close() }
