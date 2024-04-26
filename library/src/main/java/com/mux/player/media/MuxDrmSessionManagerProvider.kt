@@ -11,7 +11,8 @@ import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
-import androidx.media3.exoplayer.drm.ExoMediaDrm
+import androidx.media3.exoplayer.drm.ExoMediaDrm.ProvisionRequest
+import androidx.media3.exoplayer.drm.ExoMediaDrm.KeyRequest
 import androidx.media3.exoplayer.drm.FrameworkMediaDrm
 import androidx.media3.exoplayer.drm.MediaDrmCallback
 import com.mux.player.internal.Constants
@@ -22,6 +23,10 @@ import java.util.UUID
 class MuxDrmSessionManagerProvider(
   val drmHttpDataSourceFactory: HttpDataSource.Factory,
 ) : DrmSessionManagerProvider {
+
+  companion object {
+    const val TAG = "DrmSessionManagerProv"
+  }
 
   private val lock = Any()
   private var mediaItem: MediaItem? = null
@@ -41,7 +46,8 @@ class MuxDrmSessionManagerProvider(
   }
 
   private fun createSessionManager(mediaItem: MediaItem): DrmSessionManager {
-    // todo - resolve the !!s
+    Log.i(TAG, "createSessionManager: called with $mediaItem")
+    // todo - resolve the !!s: We shouldn't be called unless the remote media is acutally drm
     return DefaultDrmSessionManager.Builder()
       .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
       .setMultiSession(false)
@@ -49,8 +55,8 @@ class MuxDrmSessionManagerProvider(
       .build(
         MuxDrmCallback(
           drmHttpDataSourceFactory,
-          domain = getUriDomain(mediaItem.localConfiguration!!.uri),
-          drmKey = mediaItem.getDrmKey()!!,
+          playbackDomain = getLicenseUriDomain(mediaItem.localConfiguration!!.uri),
+          drmToken = mediaItem.getDrmKey()!!,
           playbackId = mediaItem.getPlaybackId()!!,
         )
       )
@@ -64,17 +70,17 @@ class MuxDrmSessionManagerProvider(
     return requestMetadata.extras?.getString(Constants.BUNDLE_DRM_TOKEN, null)
   }
 
-  private fun getUriDomain(uri: Uri): String {
-    // todo - so like, license.stream.mux.com??
-    return uri.host!!
+  private fun getLicenseUriDomain(uri: Uri): String {
+    return "license.gcp-us-west1-vos1.staging.mux.com"
+    //return uri.host!!
   }
 }
 
 @OptIn(UnstableApi::class)
 class MuxDrmCallback(
   private val drmHttpDataSourceFactory: HttpDataSource.Factory,
-  private val domain: String,
-  private val drmKey: String,
+  private val playbackDomain: String, // eg, stream.mux.com or a custom domain (abc123.customer.com)
+  private val drmToken: String,
   private val playbackId: String,
 ) : MediaDrmCallback {
 
@@ -84,13 +90,15 @@ class MuxDrmCallback(
 
   override fun executeProvisionRequest(
     uuid: UUID,
-    request: ExoMediaDrm.ProvisionRequest
+    request: ProvisionRequest
   ): ByteArray {
     // todo - the request itself has a url too, would it be correct/does it come from the manifest?
     // todo - some headers and stuff required?
     Log.d(TAG, "executeProvisionRequest: Default URL is ${request.defaultUrl}")
+    val uri = createLicenseUri(playbackId, drmToken, playbackDomain, request)
+    Log.d(TAG, "executeProvisionRequest: license URI is $uri")
     return executePost(
-      uri = createLicenseUri(playbackId, drmKey, domain),
+      uri,
       headers = mapOf(),
       requestBody = request.data,
       dataSourceFactory = drmHttpDataSourceFactory,
@@ -99,13 +107,13 @@ class MuxDrmCallback(
 
   override fun executeKeyRequest(
     uuid: UUID,
-    request: ExoMediaDrm.KeyRequest
+    request: KeyRequest
   ): ByteArray {
     // todo - some headers and stuff required?
     // todo - the request itself has a url too, would it be correct to use it?
-    Log.d(TAG, "executeKeyRequest: license server url is ${request.licenseServerUrl}")
+    Log.d(TAG, "executeKeyRequest: licenseServerUrl is ${request.licenseServerUrl}")
     return executePost(
-      uri = createKeyUri(playbackId, drmKey, domain),
+      uri = createKeyUri(playbackId, drmToken, playbackDomain),
       headers = mapOf(),
       requestBody = request.data,
       dataSourceFactory = drmHttpDataSourceFactory,
@@ -115,7 +123,18 @@ class MuxDrmCallback(
   /**
    * @param licenseDomain The domain for the license server (eg, license.mux.com)
    */
-  private fun createLicenseUri(playbackId: String, drmToken: String, licenseDomain: String): Uri {
+  private fun createLicenseUri(
+    playbackId: String,
+    drmToken: String,
+    licenseDomain: String,
+    request: ProvisionRequest
+  ): Uri {
+
+    val provisionUri = Uri.parse(request.defaultUrl).buildUpon()
+      .appendQueryParameter("token", drmToken)
+      .build()
+    Log.d(TAG, "Default URI (not used): $provisionUri")
+
     return "https://${licenseDomain}/license/widevine/${playbackId}?token=${drmToken}".toUri()
   }
 
