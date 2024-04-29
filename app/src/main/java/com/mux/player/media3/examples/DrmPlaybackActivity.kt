@@ -20,6 +20,7 @@ import com.mux.player.media.MediaItems
 import com.mux.player.media.PlaybackResolution
 import com.mux.player.media3.PlaybackIds
 import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
+import com.mux.stats.sdk.core.model.CustomerPlayerData
 
 /**
  * A simple example that uses the normal media3 player UI to play a video in the foreground from
@@ -94,22 +95,12 @@ class DrmPlaybackActivity : AppCompatActivity() {
             viewSessionId = UUID.generateUUID()
           }
           customerVideoData = CustomerVideoData().apply {
-            videoSeries = "My Series"
+            videoTitle = "DRM Playback Example"
+            videoSeries = "Mux Player for Android"
             videoId = "abc1234zyxw"
-          }
-          customData = CustomData().apply {
-            customData1 = "my custom metadata field"
-            customData2 = "another custom metadata field"
-            customData10 = "up to 10 custom fields"
           }
         }
       )
-      .applyExoConfig {
-        // Call ExoPlayer.Builder methods here
-        setHandleAudioBecomingNoisy(true)
-        setSeekBackIncrementMs(10_000)
-        setSeekForwardIncrementMs(30_000)
-      }
       .build()
 
     out.addListener(object : Player.Listener {
@@ -126,6 +117,7 @@ class DrmPlaybackActivity : AppCompatActivity() {
     return out
   }
 
+  // todo - temporary object with hard-coded playbackIDs and tokens
   companion object {
     val TAG = DrmPlaybackActivity::class.simpleName
     val DRM_EXAMPLES = listOf(
