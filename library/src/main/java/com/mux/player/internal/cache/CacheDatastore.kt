@@ -4,7 +4,6 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Base64
-import android.util.Log
 import com.mux.player.internal.Constants
 import com.mux.player.oneOf
 import java.io.Closeable
@@ -120,8 +119,6 @@ internal class CacheDatastore(
         SQLiteDatabase.CONFLICT_REPLACE
       )
     }
-
-    Log.v(TAG, "Wrote to row $rowId")
 
     return if (rowId >= 0) {
       Result.success(Unit)
@@ -270,13 +267,11 @@ internal class CacheDatastore(
 
       // todo - remember to skip files that CacheController knows are already being read
       val candidates = doReadLeastRecentFiles(db)
-      Log.i(TAG, "About to evict ${candidates.map { it.relativePath }}")
       candidates.forEach { candidate ->
         File(fileCacheDir(), candidate.relativePath).delete()
       }
       // remove last so we don't leave orphans
       val deleteResult = doDeleteRecords(db, candidates)
-      Log.v(TAG, "deleted $deleteResult records")
 
       if (deleteResult.isSuccess) {
         db.setTransactionSuccessful()
@@ -400,12 +395,8 @@ internal class CacheDatastore(
       }
       return actualTask.get()
     } catch (e: Exception) {
-      // todo - get a Logger down here
-      Log.e("CacheDatastore", "failed to open cache", e)
-
       // subsequent calls can attempt again
       openTask.set(null)
-
       throw IOException(e)
     }
   }

@@ -119,9 +119,7 @@ internal object CacheController {
    */
   @JvmSynthetic
   internal fun onPlayerCreated() {
-    Log.d(TAG, "onPlayerCreated: called")
     val totalPlayersBefore = playersWithCache.getAndIncrement()
-    Log.d(TAG, "onPlayerCreated: had $totalPlayersBefore players")
     if (totalPlayersBefore == 0) {
       ioScope.launch { datastore.open() }
     }
@@ -229,7 +227,6 @@ internal class ReadHandle private constructor(
   init {
     // todo - Are we really doing relative paths here? We want to be
     cacheFile = File(datastore.fileCacheDir(), fileRecord.relativePath)
-    Log.v(TAG, "Reading from $cacheFile")
     fileInput = BufferedInputStream(FileInputStream(cacheFile))
   }
 
@@ -311,14 +308,11 @@ internal class WriteHandle private constructor(
       val eTag = responseHeaders.getETag()
       if (cacheControl != null && eTag != null) {
         val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
-        Log.d(TAG, "move to cache file with path ${cacheFile.path}")
 
         val nowUtc = nowUtc()
         val recordAge = responseHeaders.getAge()?.toLongOrNull()
         val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(cacheControl)
         val relativePath = cacheFile.toRelativeString(datastore.fileCacheDir())
-
-        Log.i(TAG, "Saving ${cacheFile.length()} to cache as: $relativePath")
 
         val record = FileRecord(
           url = url,
@@ -339,10 +333,6 @@ internal class WriteHandle private constructor(
         if (result.isSuccess) {
           datastore.evictByLru()
         }
-
-        // todo - return a fail or throw somerthing
-      } else {
-        // todo: need a logger
       }
     }
   }
