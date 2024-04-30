@@ -70,7 +70,8 @@ class DrmPlaybackActivity : AppCompatActivity() {
     val mediaItem = MediaItems.builderFromMuxPlaybackId(
       playbackId = DRM_EXAMPLES[INDEX].playbackId,
       playbackToken = DRM_EXAMPLES[INDEX].playbackToken,
-      drmToken = DRM_EXAMPLES[INDEX].drmToken
+      drmToken = DRM_EXAMPLES[INDEX].drmToken,
+      domain = "staging.mux.com",
     )
       .setMediaMetadata(
         MediaMetadata.Builder()

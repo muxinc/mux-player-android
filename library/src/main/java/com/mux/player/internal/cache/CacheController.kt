@@ -265,7 +265,7 @@ internal class WriteHandle internal constructor(
   private val controller: CacheController,
   private val datastore: CacheDatastore,
   private val tempFile: File?,
-): Closeable {
+) : Closeable {
 
   companion object {
     private const val TAG = "WriteHandle"

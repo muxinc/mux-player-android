@@ -107,9 +107,7 @@ object MediaItems {
     renditionOrder: RenditionOrder? = null,
     playbackToken: String? = null,
   ): String {
-    // todo - reinstate this
-    //val base = Uri.parse("https://$subdomain.$domain/$playbackId.m3u8").buildUpon()
-    val base = Uri.parse("https://stream.staging.mux.com/$playbackId.m3u8").buildUpon()
+    val base = Uri.parse("https://$subdomain.$domain/$playbackId.m3u8").buildUpon()
 
     minResolution?.let { base.appendQueryParameter("min_resolution", resolutionValue(it)) }
     maxResolution?.let { base.appendQueryParameter("max_resolution", resolutionValue(it)) }
