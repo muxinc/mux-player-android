@@ -91,10 +91,15 @@ class MuxDrmSessionManagerProvider(
   }
 
   private fun getLicenseUrlHost(customMuxDomain: String): String {
-    val toReturnWhenDrmOnProd = "license.${customMuxDomain}"
-    Log.v(TAG, "license domain should be: $toReturnWhenDrmOnProd")
-    // todo - return above value when endpoint becomes available
-    return "license.gcp-us-west1-vos1.staging.mux.com"
+    val host = "license.${customMuxDomain}"
+    Log.v(TAG, "license domain should be: $host")
+    // todo - this if-statement should not make it to prod, will eventually break drm against staging
+    return if (customMuxDomain == "staging.mux.com") {
+      "license.gcp-us-west1-vos1.staging.mux.com"
+    } else {
+      host
+    }
+    //return host
   }
 }
 
