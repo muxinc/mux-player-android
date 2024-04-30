@@ -23,8 +23,8 @@ object MediaItems {
   @Suppress("MemberVisibilityCanBePrivate")
   const val MUX_VIDEO_DEFAULT_DOMAIN = "mux.com"
 
-  private const val MUX_VIDEO_SUBDOMAIN = "stream"
-  private const val EXTRA_VIDEO_DATA = "com.mux.video.customerdata"
+  internal const val MUX_VIDEO_SUBDOMAIN = "stream"
+  internal const val EXTRA_VIDEO_DATA = "com.mux.video.customerdata"
 
   /**
    * Creates a new [MediaItem] that points to a given Mux Playback ID.
@@ -92,6 +92,7 @@ object MediaItems {
             Bundle().apply {
               putString(Constants.BUNDLE_DRM_TOKEN, drmToken)
               putString(Constants.BUNDLE_PLAYBACK_ID, playbackId)
+              putString(Constants.BUNDLE_PLAYBACK_DOMAIN, domain)
             }
           )
           .build()
