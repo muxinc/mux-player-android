@@ -5,10 +5,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 
 /**
- * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with
- * `MuxPlayer`
- *
- * TODO: Alternative spelling: MuxMediaItems
+ * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with MuxPlayer`.
  */
 object MediaItems {
 
@@ -136,7 +133,22 @@ enum class PlaybackResolution {
   FOUR_K_2160,
 }
 
+/**
+ * The order of preference for adaptive streaming.
+ *
+ * version will be tried first, switching toward higher ones. [Descending] means the opposite,
+ * that
+ */
 enum class RenditionOrder {
-  Ascending,
+  /**
+   * The highest-resolution renditions will be chosen first, adjusting downward if needed. This
+   * setting emphasizes video quality, but may lead to more interruptions on unfavorable networks
+   */
   Descending,
+
+  /**
+   * The highest-resolution renditions will be chosen first, adjusting downward if needed. This
+   * setting emphasizes video quality, but may lead to more interruptions on unfavorable networks
+   */
+  Ascending,
 }
