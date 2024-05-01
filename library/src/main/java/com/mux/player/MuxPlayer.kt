@@ -13,14 +13,27 @@ import com.mux.player.internal.Logger
 import com.mux.player.internal.createNoLogger
 import com.mux.player.media.MuxDataSource
 import com.mux.player.media.MuxMediaSourceFactory
+import com.mux.player.media.MediaItems
 import com.mux.stats.sdk.muxstats.ExoPlayerBinding
 import com.mux.stats.sdk.muxstats.INetworkRequest
 import com.mux.stats.sdk.muxstats.MuxDataSdk
 import com.mux.stats.sdk.muxstats.media3.BuildConfig as MuxDataBuildConfig
 
 /**
- * An [ExoPlayer] with a few extra APIs for interacting with Mux Video (TODO: link?)
- * This player also integrates transparently with Mux Data (TODO: link?)
+ * Mux player for native Android. An [ExoPlayer] with a few extra APIs for interacting with
+ * Mux Video. This player also integrates transparently with Mux Data when you play Mux Video Assets
+ *
+ * ### Basic Usage
+ * MuxPlayer is almost a direct drop-in replacement for [ExoPlayer]. To create instances of
+ * [MuxPlayer], use our [Builder]
+ *
+ * To play Mux Assets, you can create a MediaItem using [MediaItems.fromMuxPlaybackId], or
+ * [MediaItems.builderFromMuxPlaybackId]
+ *
+ * ### Customizing ExoPlayer
+ * The underlying [ExoPlayer.Builder] can be reached using [Builder.applyExoConfig] if you need to
+ * inject any custom objects into the underlying ExoPlayer. Please note that doing this may
+ * interfere with Mux Player's functionality.
  */
 class MuxPlayer private constructor(
   private val exoPlayer: ExoPlayer,
