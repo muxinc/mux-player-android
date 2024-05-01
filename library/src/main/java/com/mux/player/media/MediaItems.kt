@@ -13,7 +13,7 @@ object MediaItems {
    * Default domain + tld for Mux Video
    */
   @Suppress("MemberVisibilityCanBePrivate")
-  const val MUX_VIDEO_DEFAULT_DOMAIN = "mux.com"
+  internal const val MUX_VIDEO_DEFAULT_DOMAIN = "mux.com"
 
   private const val MUX_VIDEO_SUBDOMAIN = "stream"
   private const val EXTRA_VIDEO_DATA = "com.mux.video.customerdata"
@@ -22,7 +22,11 @@ object MediaItems {
    * Creates a new [MediaItem] that points to a given Mux Playback ID.
    *
    * @param playbackId A playback ID for a Mux Asset
+   * @param maxResolution The maximum resolution that should be requested over the network
+   * @param minResolution The minimum resolution that should be requested over the network
+   * @param renditionOrder [RenditionOrder.Descending] to emphasize quality, [RenditionOrder.Ascending] to emphasize performance
    * @param domain Optional custom domain for Mux Video. The default is [MUX_VIDEO_DEFAULT_DOMAIN]
+   * @param playbackToken Playback token for secure playback
    *
    * @see builderFromMuxPlaybackId
    */
@@ -49,6 +53,9 @@ object MediaItems {
    * additional configuration to the `MediaItem` before you build it
    *
    * @param playbackId A playback ID for a Mux Asset
+   * @param maxResolution The maximum resolution that should be requested over the network
+   * @param minResolution The minimum resolution that should be requested over the network
+   * @param renditionOrder [RenditionOrder.Descending] to emphasize quality, [RenditionOrder.Ascending] to emphasize performance
    * @param domain Optional custom domain for Mux Video. The default is [MUX_VIDEO_DEFAULT_DOMAIN]
    *
    * @see fromMuxPlaybackId
