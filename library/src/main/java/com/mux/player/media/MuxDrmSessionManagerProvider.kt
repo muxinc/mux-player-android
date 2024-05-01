@@ -102,14 +102,16 @@ class MuxDrmCallback(
     uuid: UUID,
     request: ProvisionRequest
   ): ByteArray {
-    Log.i(TAG, "executeProvisionRequest: called")
     val uri = createLicenseUri(playbackId, drmToken, licenseEndpointHost)
     Log.d(TAG, "executeProvisionRequest: license URI is $uri")
+    val headers = mapOf(
+      "Content-Type" to listOf("application/octet-stream")
+    )
 
     try {
       return executePost(
         uri,
-        headers = mapOf(),
+        headers = headers,
         requestBody = request.data,
         dataSourceFactory = drmHttpDataSourceFactory,
       ).also {
@@ -141,7 +143,7 @@ class MuxDrmCallback(
 
     val url = createLicenseUri(playbackId, drmToken, licenseEndpointHost)
     val headers = mapOf(
-      Pair("Content-Type", listOf("application/octet-stream")),
+      "Content-Type" to listOf("application/octet-stream")
     )
     Log.d(TAG, "Key Request URI is $url")
 

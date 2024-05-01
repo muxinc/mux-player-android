@@ -68,7 +68,6 @@ internal fun executePost(
     .encodedPath(uriPath)
     .appendQueryParameter("token", drmToken)
     .build()
-  Log.d(TAG, "built provision uri: $provisionUri")
   return provisionUri
 }
 
