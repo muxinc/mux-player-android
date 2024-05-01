@@ -121,6 +121,11 @@ class MuxPlayer private constructor(
    * Mux provides some specially-configured media3 factories such as [MuxMediaSourceFactory] that
    * you should prefer to use with this SDK.
    *
+   * ### Customizing ExoPlayer
+   * If you need to customize the underlying exoplayer, you can use [applyExoConfig]. Note that this
+   * may interfere with Mux Player's features. See [MuxMediaSourceFactory] for more details on what
+   * we do to configure exoplayer if you are having issues
+   *
    * @see build
    *
    * @see MuxMediaSourceFactory
