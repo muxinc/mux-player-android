@@ -57,11 +57,10 @@ class MuxDrmSessionManagerProvider(
     Log.i(TAG, "createSessionManager: called with $mediaItem")
     val playbackId = mediaItem.getPlaybackId()
     val drmToken = mediaItem.getDrmToken()
-    val customVideoDomain = mediaItem.playbackDomain()
 
     Log.v(TAG, "createSessionManager: for playbackId $playbackId")
     Log.v(TAG, "createSessionManager: for drm token $drmToken")
-    Log.v(TAG, "createSessionManager: for custom video domain $customVideoDomain")
+    Log.v(TAG, "createSessionManager: for custom video domain ${mediaItem.getPlaybackDomain()}")
 
     // Mux Video requires both of these for its DRM system
     if (playbackId == null || drmToken == null) {
@@ -74,7 +73,7 @@ class MuxDrmSessionManagerProvider(
       .build(
         MuxDrmCallback(
           drmHttpDataSourceFactory,
-          licenseHost = getLicenseUrlHost(customVideoDomain),
+          licenseEndpointHost = getLicenseUrlHost(mediaItem),
           drmToken = drmToken,
           playbackId = playbackId,
         )
@@ -89,18 +88,19 @@ class MuxDrmSessionManagerProvider(
     return requestMetadata.extras?.getString(Constants.BUNDLE_DRM_TOKEN, null)
   }
 
-  private fun MediaItem.playbackDomain(): String {
+  private fun MediaItem.getPlaybackDomain(): String {
     return requestMetadata.extras?.getString(
       Constants.BUNDLE_PLAYBACK_DOMAIN,
       MUX_VIDEO_DEFAULT_DOMAIN,
     )!! //!! safe by the contract of getString (ie, a default value is provided)
   }
 
-  private fun getLicenseUrlHost(customMuxDomain: String): String {
-    val host = "license.${customMuxDomain}"
+  private fun getLicenseUrlHost(mediaItem: MediaItem): String {
+    val customMuxVideoDomain = mediaItem.getPlaybackDomain()
+    val host = "license.${customMuxVideoDomain}"
     Log.v(TAG, "license domain should be: $host")
     // todo - this if-statement should not make it to prod, will eventually break drm against staging
-    return if (customMuxDomain == "staging.mux.com") {
+    return if (customMuxVideoDomain == "staging.mux.com") {
       "license.gcp-us-west1-vos1.staging.mux.com"
     } else {
       host
@@ -112,7 +112,7 @@ class MuxDrmSessionManagerProvider(
 @OptIn(UnstableApi::class)
 class MuxDrmCallback(
   private val drmHttpDataSourceFactory: HttpDataSource.Factory,
-  private val licenseHost: String, // eg, 'license.mux.com' or 'license.custom.abc1234.com'
+  private val licenseEndpointHost: String, // eg, 'license.mux.com' or 'license.custom.abc1234.com'
   private val drmToken: String,
   private val playbackId: String,
 ) : MediaDrmCallback {
@@ -126,7 +126,7 @@ class MuxDrmCallback(
     request: ProvisionRequest
   ): ByteArray {
     Log.i(TAG, "executeProvisionRequest: called")
-    val uri = createLicenseUri(playbackId, drmToken, licenseHost)
+    val uri = createLicenseUri(playbackId, drmToken, licenseEndpointHost)
     Log.d(TAG, "executeProvisionRequest: license URI is $uri")
 
     try {
@@ -162,7 +162,7 @@ class MuxDrmCallback(
       throw IOException("Mux player does not support scheme: $uuid")
     }
 
-    val url = createLicenseUri(playbackId, drmToken, licenseHost)
+    val url = createLicenseUri(playbackId, drmToken, licenseEndpointHost)
     Log.d(TAG, "Key Request URI is $url")
 
     val headers = mapOf(
