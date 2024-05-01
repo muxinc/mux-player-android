@@ -18,7 +18,12 @@ import androidx.media3.exoplayer.drm.ExoMediaDrm.KeyRequest
 import androidx.media3.exoplayer.drm.FrameworkMediaDrm
 import androidx.media3.exoplayer.drm.MediaDrmCallback
 import com.mux.player.internal.Constants
+import com.mux.player.internal.createLicenseUri
 import com.mux.player.internal.executePost
+import com.mux.player.internal.getDrmToken
+import com.mux.player.internal.getLicenseUrlHost
+import com.mux.player.internal.getPlaybackDomain
+import com.mux.player.internal.getPlaybackId
 import com.mux.player.media.MediaItems.MUX_VIDEO_DEFAULT_DOMAIN
 import java.io.IOException
 import java.util.UUID
@@ -73,39 +78,11 @@ class MuxDrmSessionManagerProvider(
       .build(
         MuxDrmCallback(
           drmHttpDataSourceFactory,
-          licenseEndpointHost = getLicenseUrlHost(mediaItem),
+          licenseEndpointHost = mediaItem.getLicenseUrlHost(),
           drmToken = drmToken,
           playbackId = playbackId,
         )
       )
-  }
-
-  private fun MediaItem.getPlaybackId(): String? {
-    return requestMetadata.extras?.getString(Constants.BUNDLE_PLAYBACK_ID, null)
-  }
-
-  private fun MediaItem.getDrmToken(): String? {
-    return requestMetadata.extras?.getString(Constants.BUNDLE_DRM_TOKEN, null)
-  }
-
-  private fun MediaItem.getPlaybackDomain(): String {
-    return requestMetadata.extras?.getString(
-      Constants.BUNDLE_PLAYBACK_DOMAIN,
-      MUX_VIDEO_DEFAULT_DOMAIN,
-    )!! //!! safe by the contract of getString (ie, a default value is provided)
-  }
-
-  private fun getLicenseUrlHost(mediaItem: MediaItem): String {
-    val customMuxVideoDomain = mediaItem.getPlaybackDomain()
-    val host = "license.${customMuxVideoDomain}"
-    Log.v(TAG, "license domain should be: $host")
-    // todo - this if-statement should not make it to prod, will eventually break drm against staging
-    return if (customMuxVideoDomain == "staging.mux.com") {
-      "license.gcp-us-west1-vos1.staging.mux.com"
-    } else {
-      host
-    }
-    //return host
   }
 }
 
@@ -163,11 +140,10 @@ class MuxDrmCallback(
     }
 
     val url = createLicenseUri(playbackId, drmToken, licenseEndpointHost)
-    Log.d(TAG, "Key Request URI is $url")
-
     val headers = mapOf(
       Pair("Content-Type", listOf("application/octet-stream")),
     )
+    Log.d(TAG, "Key Request URI is $url")
 
     try {
       return executePost(
@@ -186,22 +162,5 @@ class MuxDrmCallback(
       Log.e(TAG, "KEY Request failed!", e)
       throw e
     }
-  }
-
-  /**
-   * @param host The domain for the license server (eg, license.mux.com)
-   */
-  private fun createLicenseUri(
-    playbackId: String,
-    drmToken: String,
-    host: String,
-  ): Uri {
-    val uriPath = "https://$host/license/widevine/$playbackId"
-    val provisionUri = Uri.Builder()
-      .encodedPath(uriPath)
-      .appendQueryParameter("token", drmToken)
-      .build()
-    Log.d(TAG, "built provision uri: $provisionUri")
-    return provisionUri
   }
 }
