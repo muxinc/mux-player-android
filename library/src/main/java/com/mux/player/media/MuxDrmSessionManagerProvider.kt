@@ -33,7 +33,9 @@ class MuxDrmSessionManagerProvider(
   }
 
   private val lock = Any()
+  // NOTE - Guarded by `lock`
   private var mediaItem: MediaItem? = null
+  // NOTE - Guarded by `lock`
   private var sessionManager: DrmSessionManager? = null
 
   override fun get(mediaItem: MediaItem): DrmSessionManager {
@@ -42,7 +44,11 @@ class MuxDrmSessionManagerProvider(
       if (currentSessionManager != null && this.mediaItem == mediaItem) {
         return currentSessionManager
       } else {
-        return createSessionManager(mediaItem)
+        val sessionManager = createSessionManager(mediaItem)
+        this.sessionManager = sessionManager
+        this.mediaItem = mediaItem
+
+        return sessionManager
       }
     }
   }
