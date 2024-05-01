@@ -5,10 +5,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 
 /**
- * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with
- * `MuxPlayer`
- *
- * TODO: Alternative spelling: MuxMediaItems
+ * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with `MuxPlayer`.
  */
 object MediaItems {
 
