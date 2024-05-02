@@ -21,6 +21,17 @@ object MediaItems {
   /**
    * Creates a new [MediaItem] that points to a given Mux Playback ID.
    *
+   * ## Controlling resolution
+   * You can use the [maxResolution] and [minResolution] parameters to control the possible video
+   * resolutions that Mux Player can stream. You can use these parameters to control your overall
+   * playback experience and platform usage. Lower resolution generally means smoother playback
+   * experience and lower costs, higher resolution generally means nicer-looking videos that may
+   * take longer to start or stall on unfavorable networks.
+   *
+   * ## Custom domains
+   * If you are using Mux Video [custom domains](https://docs.mux.com/guides/use-a-custom-domain-for-streaming#use-your-own-domain-for-delivering-videos-and-images),
+   * you can configure your MediaItem with your custom domain using the [domain] parameter
+   *
    * @param playbackId A playback ID for a Mux Asset
    * @param maxResolution The maximum resolution that should be requested over the network
    * @param minResolution The minimum resolution that should be requested over the network
@@ -51,6 +62,17 @@ object MediaItems {
   /**
    * Creates a new [MediaItem.Builder] that points to a given Mux Playback ID. You can add
    * additional configuration to the `MediaItem` before you build it
+   *
+   * ## Controlling resolution
+   * You can use the [maxResolution] and [minResolution] parameters to control the possible video
+   * resolutions that Mux Player can stream. You can use these parameters to control your overall
+   * playback experience and platform usage. Lower resolution generally means smoother playback
+   * experience and lower costs, higher resolution generally means nicer-looking videos that may
+   * take longer to start or stall on unfavorable networks.
+   *
+   * ## Custom domains
+   * If you are using Mux Video [custom domains](https://docs.mux.com/guides/use-a-custom-domain-for-streaming#use-your-own-domain-for-delivering-videos-and-images),
+   * you can configure your MediaItem with your custom domain using the [domain] parameter
    *
    * @param playbackId A playback ID for a Mux Asset
    * @param maxResolution The maximum resolution that should be requested over the network
