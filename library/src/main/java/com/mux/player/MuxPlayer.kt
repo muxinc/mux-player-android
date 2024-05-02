@@ -282,9 +282,7 @@ class MuxPlayer private constructor(
     }
 
     /**
-     * Java callers can use this with [plusExoConfig]
-     *
-     * Kotlin callers don't need to worry about this
+     * Use with [plusExoConfig] to configure MuxPlayer's underlying [ExoPlayer]
      */
     fun interface PlusExoBuilder {
       fun apply(builder: ExoPlayer.Builder)
