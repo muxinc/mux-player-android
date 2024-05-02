@@ -37,7 +37,7 @@ object MediaItems {
     maxResolution: PlaybackResolution? = null,
     minResolution: PlaybackResolution? = null,
     renditionOrder: RenditionOrder? = null,
-    domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
+    domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
   ): MediaItem = builderFromMuxPlaybackId(
     playbackId,
@@ -67,14 +67,14 @@ object MediaItems {
     maxResolution: PlaybackResolution? = null,
     minResolution: PlaybackResolution? = null,
     renditionOrder: RenditionOrder? = null,
-    domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
+    domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
   ): MediaItem.Builder {
     return MediaItem.Builder()
       .setUri(
         createPlaybackUrl(
           playbackId = playbackId,
-          domain = domain,
+          domain = domain ?: MUX_VIDEO_DEFAULT_DOMAIN,
           maxResolution = maxResolution,
           minResolution = minResolution,
           renditionOrder = renditionOrder,
