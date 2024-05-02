@@ -221,8 +221,8 @@ class MuxPlayer private constructor(
      * @see MuxMediaSourceFactory
      */
     @Suppress("MemberVisibilityCanBePrivate")
-    fun plusExoConfig(provider: BuilderProvider): Builder {
-      provider.configureExoPlayerBuilder(playerBuilder)
+    fun plusExoConfig(plus: PlusExoBuilder): Builder {
+      plus.apply(playerBuilder)
       return this
     }
 
@@ -286,8 +286,8 @@ class MuxPlayer private constructor(
      *
      * Kotlin callers don't need to worry about this
      */
-    fun interface BuilderProvider {
-      fun configureExoPlayerBuilder(builder: ExoPlayer.Builder)
+    fun interface PlusExoBuilder {
+      fun apply(builder: ExoPlayer.Builder)
     }
   }
 }
