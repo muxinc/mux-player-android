@@ -41,15 +41,18 @@ internal fun executePost(
 }
 
 @JvmSynthetic internal fun MediaItem.getPlaybackId(): String? {
-  return requestMetadata.extras?.getString(Constants.BUNDLE_PLAYBACK_ID, null)
+  @Suppress("UNNECESSARY_SAFE_CALL") // it's necessary (calling java guarantee not met)
+  return requestMetadata?.extras?.getString(Constants.BUNDLE_PLAYBACK_ID, null)
 }
 
 @JvmSynthetic internal fun MediaItem.getDrmToken(): String? {
-  return requestMetadata.extras?.getString(Constants.BUNDLE_DRM_TOKEN, null)
+  @Suppress("UNNECESSARY_SAFE_CALL") // it's necessary (calling java guarantee not met)
+  return requestMetadata?.extras?.getString(Constants.BUNDLE_DRM_TOKEN, null)
 }
 
 @JvmSynthetic internal fun MediaItem.getPlaybackDomain(): String {
-  return requestMetadata.extras?.getString(
+  @Suppress("UNNECESSARY_SAFE_CALL") // it's necessary (calling java guarantee not met)
+  return requestMetadata?.extras?.getString(
     Constants.BUNDLE_PLAYBACK_DOMAIN,
     MUX_VIDEO_DEFAULT_DOMAIN,
   )!! //!! safe by the contract of getString (ie, a default value is provided)
