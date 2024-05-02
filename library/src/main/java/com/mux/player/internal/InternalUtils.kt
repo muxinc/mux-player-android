@@ -54,8 +54,8 @@ internal fun executePost(
   @Suppress("UNNECESSARY_SAFE_CALL") // it's necessary (calling java guarantee not met)
   return requestMetadata?.extras?.getString(
     Constants.BUNDLE_PLAYBACK_DOMAIN,
-    MUX_VIDEO_DEFAULT_DOMAIN,
-  )!! //!! safe by the contract of getString (ie, a default value is provided)
+    null
+  ) ?: MUX_VIDEO_DEFAULT_DOMAIN
 }
 
 /**
