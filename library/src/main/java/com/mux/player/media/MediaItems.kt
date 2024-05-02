@@ -71,11 +71,25 @@ object MediaItems {
 
 
   /**
-   * Creates a new [MediaItem.Builder] that points to a given Mux Playback ID. You can add
-   * additional configuration to the `MediaItem` before you build it
+   * Creates a new [MediaItem] that points to a given Mux Playback ID.
+   *
+   * ## DRM and Secure playback
+   * Mux player provides two types of playback security, signed playback and DRM playback. Signed
+   * playback protects your assets from being played by third parties by using a Playback Token
+   * you generate securely on your application backend. DRM playbacks adds additional system-level
+   * protections against unauthorized copying and recording of your media, but requires additional
+   * setup.
+   *
+   * ### Secure Playback
+   * To use secure playback, you must provide a valid [playbackToken]
+   *
+   * ### DRM Playback
+   * To use DRM playback, you must provide *both* a valid [playbackToken] and a valid [drmToken]
    *
    * @param playbackId A playback ID for a Mux Asset
    * @param domain Optional custom domain for Mux Video. The default is [MUX_VIDEO_DEFAULT_DOMAIN]
+   * @param playbackToken Playback Token required for Secure Video Playback and DRM Playback
+   * @param drmToken DRM Token required for DRM Playback. For DRM, you also need a [playbackToken]
    *
    * @see fromMuxPlaybackId
    */
