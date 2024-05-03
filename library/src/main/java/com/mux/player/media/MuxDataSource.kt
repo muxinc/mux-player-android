@@ -199,6 +199,8 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
   override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
     val readBytes = bodyInputSteam?.read(buffer, offset, length) ?: 0
 
+    bytesTransferred(readBytes)
+
     return if (readBytes == -1) {
       C.RESULT_END_OF_INPUT
     } else {
@@ -259,6 +261,7 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
         )
       }
 
+      transferStarted(dataSpec)
       this.bodyInputSteam = bodyStream
       this.open = true
       //return 0 // todo = bodyInputStream.available()? returning 0 all the time is technically ok tho
