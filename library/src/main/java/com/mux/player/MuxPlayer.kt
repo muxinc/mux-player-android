@@ -33,7 +33,8 @@ import com.mux.stats.sdk.muxstats.media3.BuildConfig as MuxDataBuildConfig
  * ### Customizing ExoPlayer
  * The underlying [ExoPlayer.Builder] can be reached using [Builder.applyExoConfig] (java callers
  * can use [Builder.plusExoConfig]). If you need to inject any custom objects into the underlying
- * ExoPlayer. Please note that doing this may interfere with Mux Player's functionality.
+ * ExoPlayer, you are able to do so this way. Please note that doing this may interfere with Mux
+ * Player's features.
  */
 class MuxPlayer private constructor(
   private val exoPlayer: ExoPlayer,
