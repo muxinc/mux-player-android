@@ -62,9 +62,9 @@ class MuxDrmSessionManagerProvider(
 
   private fun needNewSessionManager(incomingMediaItem: MediaItem): Boolean {
     return (
-        incomingMediaItem == this.mediaItem
-            && incomingMediaItem.getDrmToken() == this.mediaItem?.getDrmToken()
-            && incomingMediaItem.getPlaybackId() == this.mediaItem?.getPlaybackId()
+        incomingMediaItem != this.mediaItem
+            || incomingMediaItem.getDrmToken() != this.mediaItem?.getDrmToken()
+            || incomingMediaItem.getPlaybackId() != this.mediaItem?.getPlaybackId()
         )
   }
 
