@@ -1,10 +1,13 @@
 package com.mux.player.media
 
+import androidx.media3.exoplayer.drm.DrmSessionManager
 import com.mux.player.AbsRobolectricTest
 import io.mockk.mockk
 import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertFalse
 import org.junit.Assert
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MuxDrmSessionManagerProviderTests: AbsRobolectricTest() {
@@ -46,6 +49,31 @@ class MuxDrmSessionManagerProviderTests: AbsRobolectricTest() {
     assertEquals(
       "manager should not change if the media item is not different",
       manager2, manager2again
+    )
+  }
+
+  @Test
+  fun `DRM only supported with DRM token and Playback Token`() {
+    val mediaItemNoTokens = MediaItems.fromMuxPlaybackId("fake-playbackId")
+    val mediaItemYesTokens = MediaItems.fromMuxPlaybackId(
+      "fake-playbackId",
+      drmToken = "drm-token",
+      playbackToken = "playback-token",
+    )
+    val provider = MuxDrmSessionManagerProvider(
+      drmHttpDataSourceFactory = mockk(relaxed = true)
+    )
+
+    val sessionManagerNoTokens = provider.get(mediaItemNoTokens)
+    val sessionManagerYesTokens = provider.get(mediaItemYesTokens)
+
+    assertTrue(
+      "Without tokens, DRM is not supported",
+      sessionManagerNoTokens == DrmSessionManager.DRM_UNSUPPORTED
+    )
+    assertFalse(
+      "With tokens, DRM is supported",
+      sessionManagerYesTokens == DrmSessionManager.DRM_UNSUPPORTED
     )
   }
 }

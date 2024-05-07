@@ -38,10 +38,8 @@ class MuxDrmSessionManagerProvider(
   }
 
   private val lock = Any()
-
   // NOTE - Guarded by `lock`
   private var mediaItem: MediaItem? = null
-
   // NOTE - Guarded by `lock`
   private var sessionManager: DrmSessionManager? = null
 
@@ -112,6 +110,11 @@ class MuxDrmCallback(
     uuid: UUID,
     request: ProvisionRequest
   ): ByteArray {
+    val widevine = uuid == C.WIDEVINE_UUID;
+    if (!widevine) {
+      throw IOException("Mux player does not support scheme: $uuid")
+    }
+
     val uri = createLicenseUri(playbackId, drmToken, licenseEndpointHost)
     Log.d(TAG, "executeProvisionRequest: license URI is $uri")
     val headers = mapOf(
