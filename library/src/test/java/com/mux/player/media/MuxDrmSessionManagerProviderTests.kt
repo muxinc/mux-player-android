@@ -262,7 +262,7 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
       playbackId = fakePlaybackId
     )
 
-    val licenseData = drmCallback.executeKeyRequest(
+    val keyData = drmCallback.executeKeyRequest(
       uuid = C.WIDEVINE_UUID,
       request = mockProvisionRequest
     )
@@ -270,7 +270,7 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
     // Data to CDM
     assertEquals(
       "license data should be returned to caller",
-      fakeKeyData.contentToString(), licenseData.contentToString()
+      fakeKeyData.contentToString(), keyData.contentToString()
     )
 
     // Request to license proxy
@@ -286,5 +286,48 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
       "Request should be application/octet-stream",
       "application/octet-stream", capturedContentLen
     )
+  }
+
+  @Test
+  fun `executeKeyRequest request to license proxy fails`() {
+    val fakeEndpointHost = "license.fake.endpoint"
+    val fakeDrmToken = "fake-drm-token"
+    val fakePlaybackId = "fake-playback-id"
+    val fakeRequestData = "--init data".toByteArray() //as in, license request data
+    val fakeKeyData = "++key data".toByteArray()
+
+    val capturedKeyRequest = slot<DataSpec>()
+    val mockDataSourceFac = mockk<HttpDataSource.Factory> {
+      val bufferSlot = slot<ByteArray>()
+      val offsetSlot = slot<Int>()
+      val lengthSlot = slot<Int>()
+
+      every { createDataSource() } returns mockk(relaxed = true) {
+        every { open(capture(capturedKeyRequest)) } returns fakeKeyData.size.toLong()
+
+        every { read(capture(bufferSlot), capture(offsetSlot), capture(lengthSlot)) } answers {
+          throw IOException("failed")
+        }
+      }
+    }
+    val mockKeyRequest = mockk<KeyRequest> {
+      every { data } returns fakeRequestData
+    }
+    // object under test
+    val drmCallback = MuxDrmCallback(
+      drmHttpDataSourceFactory = mockDataSourceFac,
+      licenseEndpointHost = fakeEndpointHost,
+      drmToken = fakeDrmToken,
+      playbackId = fakePlaybackId
+    )
+
+    assertThrows(
+      IOException::class.java
+    ) {
+      drmCallback.executeKeyRequest(
+        uuid = C.WIDEVINE_UUID,
+        request = mockKeyRequest
+      )
+    }
   }
 }
