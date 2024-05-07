@@ -13,8 +13,10 @@ import io.mockk.slot
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.IOException
 import kotlin.math.min
 
 class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
@@ -163,6 +165,49 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
     )
   }
 
+  @Test
+  fun `executeProvisionRequest license request fails`() {
+    val fakeEndpointHost = "license.fake.endpoint"
+    val fakeDrmToken = "fake-drm-token"
+    val fakePlaybackId = "fake-playback-id"
+    val fakeRequestData = "--init data".toByteArray() //as in, license request data
+    val fakeLicenseData = "++license data".toByteArray()
+
+    val capturedLicenseReq = slot<DataSpec>()
+    val mockDataSourceFac = mockk<HttpDataSource.Factory> {
+      val bufferSlot = slot<ByteArray>()
+      val offsetSlot = slot<Int>()
+      val lengthSlot = slot<Int>()
+
+      every { createDataSource() } returns mockk(relaxed = true) {
+        every { open(capture(capturedLicenseReq)) } returns fakeLicenseData.size.toLong()
+
+        every { read(capture(bufferSlot), capture(offsetSlot), capture(lengthSlot)) } answers {
+          throw IOException("whoops")
+        }
+      }
+    }
+    val mockProvisionRequest = mockk<ProvisionRequest> {
+      every { data } returns fakeRequestData
+    }
+    // object under test
+    val drmCallback = MuxDrmCallback(
+      drmHttpDataSourceFactory = mockDataSourceFac,
+      licenseEndpointHost = fakeEndpointHost,
+      drmToken = fakeDrmToken,
+      playbackId = fakePlaybackId
+    )
+
+    // errors are all handled by rethrowing
+    assertThrows(
+      IOException::class.java
+    ) {
+      drmCallback.executeProvisionRequest(
+        uuid = C.WIDEVINE_UUID,
+        request = mockProvisionRequest
+      )
+    }
+  }
 
   @Test
   fun `executeKeyRequest happy path`() {
