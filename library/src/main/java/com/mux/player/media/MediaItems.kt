@@ -132,7 +132,6 @@ object MediaItems {
 
   private fun resolutionValue(renditionOrder: RenditionOrder): String {
     return when (renditionOrder) {
-      RenditionOrder.Ascending -> "asc"
       RenditionOrder.Descending -> "desc"
     }
   }
@@ -171,10 +170,4 @@ enum class RenditionOrder {
    * setting emphasizes video quality, but may lead to more interruptions on unfavorable networks
    */
   Descending,
-
-  /**
-   * The highest-resolution renditions will be chosen first, adjusting downward if needed. This
-   * setting emphasizes video quality, but may lead to more interruptions on unfavorable networks
-   */
-  Ascending,
 }
