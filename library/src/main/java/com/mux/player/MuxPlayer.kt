@@ -150,7 +150,7 @@ class MuxPlayer private constructor(
      *
      * The smart-cache API is experimental and may not yet be suitable for all playback situations.
      * Smart caching should be most effective for short-form content. Support for additional
-     * situations and use-cases is planned before 1.0 of Mux Player.
+     * situations and use-cases is planned before 1.0 of MuxMuxDataSource Player.
      */
     @Suppress("unused")
     fun enableSmartCache(enable: Boolean): Builder {

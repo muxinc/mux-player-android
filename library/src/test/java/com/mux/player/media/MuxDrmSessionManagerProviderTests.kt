@@ -1,11 +1,13 @@
 package com.mux.player.media
 
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.drm.DrmSessionManager
 import com.mux.player.AbsRobolectricTest
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
-import org.junit.Assert
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -75,5 +77,26 @@ class MuxDrmSessionManagerProviderTests: AbsRobolectricTest() {
       "With tokens, DRM is supported",
       sessionManagerYesTokens == DrmSessionManager.DRM_UNSUPPORTED
     )
+  }
+
+  @Test
+  fun `executeProvisionRequest POSTs correct content type and data`() {
+    val mockDataSourceFac = mockk<HttpDataSource.Factory> {
+      val data = "fake binary data".toByteArray()
+      val bufferSlot = slot<ByteArray>()
+      val offsetSlot = slot<Int>()
+      val lengthSlot = slot<Int>()
+
+      every { createDataSource() } returns mockk(relaxed = true) {
+        every { read(capture(bufferSlot), capture(offsetSlot), capture(lengthSlot)) } answers {
+          val buffer = bufferSlot.captured
+          val length = lengthSlot.captured
+          println("Asked for len $length")
+
+          data.copyInto(buffer) // hopefully less than requested, but maybe doesn't matter
+          data.size
+        }
+      }
+    }
   }
 }
