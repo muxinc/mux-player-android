@@ -11,6 +11,7 @@ import junit.framework.TestCase.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.max
 
 class MuxDrmSessionManagerProviderTests: AbsRobolectricTest() {
 
@@ -91,11 +92,12 @@ class MuxDrmSessionManagerProviderTests: AbsRobolectricTest() {
         every { read(capture(bufferSlot), capture(offsetSlot), capture(lengthSlot)) } answers {
           val buffer = bufferSlot.captured
           val length = lengthSlot.captured
+          val offset = offsetSlot.captured
           println("Asked for len $length")
 
-          // note that if the caller asked for a really low amount this might crash
-          data.copyInto(buffer)
-          data.size
+          val realLength = max(length, data.size)
+          data.copyInto(buffer, offset, realLength)
+          realLength
         }
       }
     }
