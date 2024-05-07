@@ -62,6 +62,47 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
   }
 
   @Test
+  fun `Only widevine should be supported`() {
+    val fakeDrmToken = "fake-drm-token"
+    val fakePlaybackId = "fake-playback-id"
+    val fakeEndpointHost = "mux.com"
+    val mockDataSourceFac = mockk<HttpDataSource.Factory>()
+
+    // object under test
+    val drmCallback = MuxDrmCallback(
+      drmHttpDataSourceFactory = mockDataSourceFac,
+      licenseEndpointHost = fakeEndpointHost,
+      drmToken = fakeDrmToken,
+      playbackId = fakePlaybackId
+    )
+
+    assertThrows(IOException::class.java) {
+      drmCallback.executeProvisionRequest(
+        uuid = C.PLAYREADY_UUID,
+        request = mockk()
+      )
+    }
+    assertThrows(IOException::class.java) {
+      drmCallback.executeKeyRequest(
+        uuid = C.PLAYREADY_UUID,
+        request = mockk()
+      )
+    }
+    assertThrows(IOException::class.java) {
+      drmCallback.executeProvisionRequest(
+        uuid = C.CLEARKEY_UUID,
+        request = mockk()
+      )
+    }
+    assertThrows(IOException::class.java) {
+      drmCallback.executeKeyRequest(
+        uuid = C.CLEARKEY_UUID,
+        request = mockk()
+      )
+    }
+  }
+
+  @Test
   fun `DRM only supported with DRM token and Playback Token`() {
     val mediaItemNoTokens = MediaItems.fromMuxPlaybackId("fake-playbackId")
     val mediaItemYesTokens = MediaItems.fromMuxPlaybackId(
