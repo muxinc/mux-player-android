@@ -106,7 +106,6 @@ object MediaItems {
 
   private fun resolutionValue(renditionOrder: RenditionOrder): String {
     return when (renditionOrder) {
-      RenditionOrder.Ascending -> "asc"
       RenditionOrder.Descending -> "desc"
     }
   }
@@ -137,6 +136,5 @@ enum class PlaybackResolution {
 }
 
 enum class RenditionOrder {
-  Ascending,
   Descending,
 }
