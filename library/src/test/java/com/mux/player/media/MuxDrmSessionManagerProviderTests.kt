@@ -93,7 +93,8 @@ class MuxDrmSessionManagerProviderTests: AbsRobolectricTest() {
           val length = lengthSlot.captured
           println("Asked for len $length")
 
-          data.copyInto(buffer) // hopefully less than requested, but maybe doesn't matter
+          // note that if the caller asked for a really low amount this might crash
+          data.copyInto(buffer)
           data.size
         }
       }
