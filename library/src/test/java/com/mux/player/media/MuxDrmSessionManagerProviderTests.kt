@@ -17,7 +17,7 @@ import org.junit.Test
 import kotlin.math.max
 import kotlin.math.min
 
-class MuxDrmSessionManagerProviderTests: AbsRobolectricTest() {
+class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
 
   @Test
   fun `get() returns new instances only when the mediaItem is changed`() {
@@ -25,7 +25,7 @@ class MuxDrmSessionManagerProviderTests: AbsRobolectricTest() {
       playbackId = "playback id 1",
       playbackToken = "playback token 1",
       drmToken = "drm token 1"
-      )
+    )
     val mediaItem2 = MediaItems.fromMuxPlaybackId(
       playbackId = "playback id 2",
       playbackToken = "playback token 2",
@@ -89,8 +89,10 @@ class MuxDrmSessionManagerProviderTests: AbsRobolectricTest() {
     val fakeEndpointHost = "license.fake.endpoint"
     val fakeDrmToken = "fake-drm-token"
     val fakePlaybackId = "fake-playback-id"
-    val fakeRequestData = "fake init data".repeat(4096).toByteArray() //as in, license request data
-    val fakeLicenseData = "fake license data".repeat(4096).toByteArray()
+//    val fakeRequestData = "fake init data".repeat(4096).toByteArray() //as in, license request data
+//    val fakeLicenseData = "fake license data".repeat(4096).toByteArray()
+    val fakeRequestData = "--init data".toByteArray() //as in, license request data
+    val fakeLicenseData = "++license data".toByteArray()
 
     val capturedLicenseReq = slot<DataSpec>()
     val mockDataSourceFac = mockk<HttpDataSource.Factory> {
@@ -137,9 +139,15 @@ class MuxDrmSessionManagerProviderTests: AbsRobolectricTest() {
       playbackId = fakePlaybackId
     )
 
-    drmCallback.executeProvisionRequest(
+    val licenseData = drmCallback.executeProvisionRequest(
       uuid = C.WIDEVINE_UUID,
       request = mockProvisionRequest
+    )
+
+    // Data to CDM
+    assertEquals(
+      "license data should be returned to caller",
+      fakeLicenseData.contentToString(), licenseData.contentToString()
     )
 
     // Request to license proxy
@@ -149,7 +157,8 @@ class MuxDrmSessionManagerProviderTests: AbsRobolectricTest() {
       "Request body from license request should come from provision request",
       fakeRequestData, capturedCertRequestBody
     )
-    val capturedContentLen = capturedCertRequestHeaders.mapKeys { it.key.lowercase() }["content-type"]
+    val capturedContentLen =
+      capturedCertRequestHeaders.mapKeys { it.key.lowercase() }["content-type"]
     assertEquals(
       "Request should be application/octet-stream",
       "application/octet-stream", capturedContentLen
