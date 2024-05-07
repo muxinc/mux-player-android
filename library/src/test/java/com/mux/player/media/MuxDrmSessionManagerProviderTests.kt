@@ -4,6 +4,7 @@ import androidx.media3.common.C
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.drm.DrmSessionManager
+import androidx.media3.exoplayer.drm.ExoMediaDrm.KeyRequest
 import androidx.media3.exoplayer.drm.ExoMediaDrm.ProvisionRequest
 import com.mux.player.AbsRobolectricTest
 import io.mockk.every
@@ -14,7 +15,6 @@ import junit.framework.TestCase.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.math.max
 import kotlin.math.min
 
 class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
@@ -89,8 +89,6 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
     val fakeEndpointHost = "license.fake.endpoint"
     val fakeDrmToken = "fake-drm-token"
     val fakePlaybackId = "fake-playback-id"
-//    val fakeRequestData = "fake init data".repeat(4096).toByteArray() //as in, license request data
-//    val fakeLicenseData = "fake license data".repeat(4096).toByteArray()
     val fakeRequestData = "--init data".toByteArray() //as in, license request data
     val fakeLicenseData = "++license data".toByteArray()
 
@@ -153,6 +151,86 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
     // Request to license proxy
     val capturedCertRequestBody = capturedLicenseReq.captured.httpBody
     val capturedCertRequestHeaders = capturedLicenseReq.captured.httpRequestHeaders
+    assertEquals(
+      "Request body from license request should come from provision request",
+      fakeRequestData, capturedCertRequestBody
+    )
+    val capturedContentLen =
+      capturedCertRequestHeaders.mapKeys { it.key.lowercase() }["content-type"]
+    assertEquals(
+      "Request should be application/octet-stream",
+      "application/octet-stream", capturedContentLen
+    )
+  }
+
+
+  @Test
+  fun `executeKeyRequest happy path`() {
+    val fakeEndpointHost = "license.fake.endpoint"
+    val fakeDrmToken = "fake-drm-token"
+    val fakePlaybackId = "fake-playback-id"
+    val fakeRequestData = "--init data".toByteArray() //as in, license request data
+    val fakeKeyData = "++key data".toByteArray()
+
+    val capturedKeyRequest = slot<DataSpec>()
+    val mockDataSourceFac = mockk<HttpDataSource.Factory> {
+      val bufferSlot = slot<ByteArray>()
+      val offsetSlot = slot<Int>()
+      val lengthSlot = slot<Int>()
+
+      every { createDataSource() } returns mockk(relaxed = true) {
+        every { open(capture(capturedKeyRequest)) } returns fakeKeyData.size.toLong()
+
+        var finished = false
+        every { read(capture(bufferSlot), capture(offsetSlot), capture(lengthSlot)) } answers {
+          val buffer = bufferSlot.captured
+          val length = lengthSlot.captured
+          val offset = offsetSlot.captured
+          println("Asked for len $length")
+
+          val realLength = min(length, fakeKeyData.size)
+          fakeKeyData.copyInto(
+            destination = buffer,
+            destinationOffset = offset,
+            startIndex = 0,
+            endIndex = realLength
+          )
+
+
+          if (finished) {
+            C.RESULT_END_OF_INPUT
+          } else {
+            finished = true
+            realLength
+          }
+        }
+      }
+    }
+    val mockProvisionRequest = mockk<KeyRequest> {
+      every { data } returns fakeRequestData
+    }
+    // object under test
+    val drmCallback = MuxDrmCallback(
+      drmHttpDataSourceFactory = mockDataSourceFac,
+      licenseEndpointHost = fakeEndpointHost,
+      drmToken = fakeDrmToken,
+      playbackId = fakePlaybackId
+    )
+
+    val licenseData = drmCallback.executeKeyRequest(
+      uuid = C.WIDEVINE_UUID,
+      request = mockProvisionRequest
+    )
+
+    // Data to CDM
+    assertEquals(
+      "license data should be returned to caller",
+      fakeKeyData.contentToString(), licenseData.contentToString()
+    )
+
+    // Request to license proxy
+    val capturedCertRequestBody = capturedKeyRequest.captured.httpBody
+    val capturedCertRequestHeaders = capturedKeyRequest.captured.httpRequestHeaders
     assertEquals(
       "Request body from license request should come from provision request",
       fakeRequestData, capturedCertRequestBody
