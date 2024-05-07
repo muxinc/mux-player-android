@@ -1,7 +1,9 @@
 package com.mux.player.media
 
+import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.drm.DrmSessionManager
+import androidx.media3.exoplayer.drm.ExoMediaDrm.ProvisionRequest
 import com.mux.player.AbsRobolectricTest
 import io.mockk.every
 import io.mockk.mockk
@@ -81,25 +83,43 @@ class MuxDrmSessionManagerProviderTests: AbsRobolectricTest() {
   }
 
   @Test
-  fun `executeProvisionRequest POSTs correct content type and data`() {
+  fun `executeProvisionRequest happy path`() {
+    val fakeEndpointHost = "license.fake.endpoint"
+    val fakeDrmToken = "fake-drm-token"
+    val fakePlaybackId = "fake-playback-id"
+    val fakeLicenseData = "fake binary data".toByteArray()
+
     val mockDataSourceFac = mockk<HttpDataSource.Factory> {
-      val data = "fake binary data".toByteArray()
       val bufferSlot = slot<ByteArray>()
       val offsetSlot = slot<Int>()
       val lengthSlot = slot<Int>()
 
+      val requestBodySlot = slot<DataSpec>()
       every { createDataSource() } returns mockk(relaxed = true) {
+        every { open(capture(requestBodySlot)) } returns fakeLicenseData.size.toLong()
+
         every { read(capture(bufferSlot), capture(offsetSlot), capture(lengthSlot)) } answers {
           val buffer = bufferSlot.captured
           val length = lengthSlot.captured
           val offset = offsetSlot.captured
           println("Asked for len $length")
 
-          val realLength = max(length, data.size)
-          data.copyInto(buffer, offset, realLength)
+          val realLength = max(length, fakeLicenseData.size)
+          fakeLicenseData.copyInto(buffer, offset, realLength)
           realLength
         }
       }
     }
+    val mockProvisionRequest = mockk<ProvisionRequest> {
+      every { data } returns fakeLicenseData
+    }
+
+    // drm callback
+    val drmCallback = MuxDrmCallback(
+      drmHttpDataSourceFactory = mockDataSourceFac,
+      licenseEndpointHost = fakeEndpointHost,
+      drmToken = fakeDrmToken,
+      playbackId = fakePlaybackId
+    )
   }
 }
