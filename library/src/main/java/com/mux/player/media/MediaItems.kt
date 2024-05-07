@@ -164,9 +164,6 @@ enum class PlaybackResolution {
 
 /**
  * The order of preference for adaptive streaming.
- *
- * version will be tried first, switching toward higher ones. [Descending] means the opposite,
- * that
  */
 enum class RenditionOrder {
   /**
