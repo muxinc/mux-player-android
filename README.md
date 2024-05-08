@@ -2,6 +2,10 @@
 
 The Mux Video Media3 SDK is a thin wrapper on top of Google's media3 player SDK with convenient tools for Mux Video users. This SDK is not required to use Mux Video, but it can help you do things like controlling your data and delivery usage, playing Mux assets by ID, automatically leveraging advanced player features like CMCD, and transparently tracking performance and engagement with [Mux Data](https://www.mux.com/data)
 
+### Mux Video DRM Beta
+
+This SDK support's Mux Video's DRM feature, which is currently in closed beta. If you are interested in using our DRM features, please sign up on our [beta page](https://www.mux.com/beta/drm)
+
 ## Adding the SDK
 
 ### Add our repository to your Gradle project
