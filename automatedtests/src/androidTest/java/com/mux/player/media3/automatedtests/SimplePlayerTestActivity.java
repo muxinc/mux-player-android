@@ -158,7 +158,6 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
           exoBuilder.setRenderersFactory(renderersFactory);
           exoBuilder.setMediaSourceFactory(mediaSourceFactory);
           exoBuilder.setTrackSelector(trackSelector);
-          return null;
         })
         .addMonitoringData(initMuxSats())
         .addExoPlayerBinding(pBinding)
