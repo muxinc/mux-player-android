@@ -214,16 +214,11 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
     val fakeRequestData = "--init data".toByteArray() //as in, license request data
     val fakeLicenseData = "++license data".toByteArray()
 
-    val capturedLicenseReq = slot<DataSpec>()
     val mockDataSourceFac = mockk<HttpDataSource.Factory> {
-      val bufferSlot = slot<ByteArray>()
-      val offsetSlot = slot<Int>()
-      val lengthSlot = slot<Int>()
-
       every { createDataSource() } returns mockk(relaxed = true) {
-        every { open(capture(capturedLicenseReq)) } returns fakeLicenseData.size.toLong()
+        every { open(any()) } returns fakeLicenseData.size.toLong()
 
-        every { read(capture(bufferSlot), capture(offsetSlot), capture(lengthSlot)) } answers {
+        every { read(any(), any(), any()) } answers {
           throw IOException("whoops")
         }
       }
@@ -337,16 +332,11 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
     val fakeRequestData = "--init data".toByteArray() //as in, license request data
     val fakeKeyData = "++key data".toByteArray()
 
-    val capturedKeyRequest = slot<DataSpec>()
     val mockDataSourceFac = mockk<HttpDataSource.Factory> {
-      val bufferSlot = slot<ByteArray>()
-      val offsetSlot = slot<Int>()
-      val lengthSlot = slot<Int>()
-
       every { createDataSource() } returns mockk(relaxed = true) {
-        every { open(capture(capturedKeyRequest)) } returns fakeKeyData.size.toLong()
+        every { open(any()) } returns fakeKeyData.size.toLong()
 
-        every { read(capture(bufferSlot), capture(offsetSlot), capture(lengthSlot)) } answers {
+        every { read(any(), any(), any()) } answers {
           throw IOException("failed")
         }
       }
