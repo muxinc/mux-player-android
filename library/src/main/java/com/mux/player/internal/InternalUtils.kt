@@ -77,12 +77,5 @@ internal fun executePost(
 @JvmSynthetic internal fun MediaItem.getLicenseUrlHost(): String {
   val customMuxVideoDomain = getPlaybackDomain()
   val host = "license.${customMuxVideoDomain}"
-  Log.w("MUX", "license domain should be: $host")
-  // todo - this if-statement should not make it to prod, will eventually break drm against staging
-  return if (customMuxVideoDomain == "staging.mux.com") {
-    "license.gcp-us-west1-vos1.staging.mux.com"
-  } else {
-    host
-  }
-  //return host
+  return host
 }
