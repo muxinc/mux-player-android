@@ -1,10 +1,14 @@
 package com.mux.player
 
 import android.content.Context
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player.Listener
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import com.mux.player.internal.cache.CacheController
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
@@ -110,7 +114,7 @@ class MuxPlayer private constructor(
         device = muxPlayerDevice,
         network = network,
         playerBinding = exoPlayerBinding,
-        )
+      )
     }
   }
 
@@ -268,10 +272,19 @@ class MuxPlayer private constructor(
       return this
     }
 
+    @OptIn(UnstableApi::class)
     private fun setUpMediaSourceFactory(builder: ExoPlayer.Builder) {
-      // todo - probably always use MuxMediaSource
       val mediaSourceFactory = if (enableSmartCache) {
-        MuxMediaSourceFactory(context, DefaultDataSource.Factory(context, MuxDataSource.Factory()))
+        MuxMediaSourceFactory(
+          context,
+          // Set up a DefaultDataSourceFactory delegates to Mux for http/https
+          dataSourceFactory = DefaultDataSource.Factory(
+            context,
+            /* baseDataSourceFactory = */ MuxDataSource.Factory(
+              bandwidthMeterProvider = { DefaultBandwidthMeter.getSingletonInstance(context) }
+            )
+          )
+        )
       } else {
         MuxMediaSourceFactory(context, DefaultDataSource.Factory(context))
       }

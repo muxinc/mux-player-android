@@ -1,7 +1,6 @@
 package com.mux.player.media
 
 import android.net.Uri
-import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
@@ -13,6 +12,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.HttpDataSource.HttpDataSourceException
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
+import androidx.media3.exoplayer.upstream.BandwidthMeter
 import com.google.common.net.HttpHeaders
 import com.mux.player.internal.cache.CacheController
 import com.mux.player.internal.cache.ReadHandle
@@ -25,7 +25,8 @@ import java.net.URL
 
 @OptIn(UnstableApi::class)
 class MuxDataSource private constructor(
-  val upstreamSrcFac: HttpDataSource.Factory,
+  private val upstreamSrcFac: HttpDataSource.Factory,
+  private val bandwidthMeterProvider: () -> BandwidthMeter // add to DataSources created in here
 ) : BaseDataSource(false) {
 
   /**
@@ -33,10 +34,11 @@ class MuxDataSource private constructor(
    * data that Mux's cache cannot provide
    */
   class Factory(
-    private val upstream: HttpDataSource.Factory = DefaultHttpDataSource.Factory()
+    private val upstream: HttpDataSource.Factory = DefaultHttpDataSource.Factory(),
+    private val bandwidthMeterProvider: () -> BandwidthMeter
   ) : DataSource.Factory {
     override fun createDataSource(): DataSource {
-      return MuxDataSource(upstream)
+      return MuxDataSource(upstream, bandwidthMeterProvider)
     }
   }
 
@@ -98,6 +100,13 @@ class MuxDataSource private constructor(
     upstream?.close()
   }
 
+  /**
+   * Opens a new [RevalidatingDataSource] to validate the cache entry associated with the ReadHandle
+   * The [RevalidatingDataSource] will report stats to the bandwidth meter provided by
+   * [bandwidthMeterProvider] *only* if a response body is downloaded
+   *
+   * [upstream] will be be assigned with the opened data source
+   */
   private fun openAndInitRevalidating(dataSpec: DataSpec, readHandle: ReadHandle): Long {
     val revalidateRequestHeaders = mutableMapOf<String, String>()
     revalidateRequestHeaders.putAll(dataSpec.httpRequestHeaders)
@@ -128,11 +137,19 @@ class MuxDataSource private constructor(
     }
   }
 
-  private fun openAndInitFromRemote(dataSpec: DataSpec, fac: HttpDataSource.Factory): Long {
+  /**
+   * Opens a new DataSource to a remote HTTP location, using the supplied HttpDataSource Factory.
+   * The data source will be attached to the BandwidthMeter provided by [bandwidthMeterProvider]
+   * and will report stats according to its implementation
+   *
+   * [upstream] will be be assigned with the opened data source
+   */
+  private fun openAndInitFromRemote(dataSpec: DataSpec, dataSrcFac: HttpDataSource.Factory): Long {
     respondingFromCache = false
-    val upstream = fac.createDataSource()
-
+    val upstream = dataSrcFac.createDataSource()
+    bandwidthMeterProvider().transferListener?.let { upstream.addTransferListener(it) }
     this.upstream = upstream
+
     val available = upstream.open(dataSpec)
     cacheWriter = CacheController.startWriting(
       dataSpec.uri.toString(),
@@ -182,6 +199,8 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
   override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
     val readBytes = bodyInputSteam?.read(buffer, offset, length) ?: 0
 
+    bytesTransferred(readBytes)
+
     return if (readBytes == -1) {
       C.RESULT_END_OF_INPUT
     } else {
@@ -191,6 +210,8 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
   }
 
   override fun open(dataSpec: DataSpec): Long {
+    transferInitializing(dataSpec)
+
     val conn = try {
       val hurlConn = createConnection(dataSpec, requestHeaders)
       this.responseCode = hurlConn.responseCode
@@ -207,10 +228,12 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
     val code = conn.responseCode
     val msg = conn.responseMessage
     if (code == HttpURLConnection.HTTP_NOT_MODIFIED) {
+      transferEnded()
       // not-modified, not an error, we don't have to download the body again
       runCatching { conn.disconnect() }
       return 0
     } else if (code < 200 || code > 299) {
+      transferEnded()
       // some kind of error
       val errorBody = conn.errorStream.use { errorBody -> errorBody.readBytes() }
       throw InvalidResponseCodeException(
@@ -228,6 +251,7 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
         transferStarted(dataSpec)
         stream
       } catch (e: IOException) {
+        transferEnded()
         closeConnection()
         throw HttpDataSourceException(
           e,
@@ -237,6 +261,7 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
         )
       }
 
+      transferStarted(dataSpec)
       this.bodyInputSteam = bodyStream
       this.open = true
       //return 0 // todo = bodyInputStream.available()? returning 0 all the time is technically ok tho
