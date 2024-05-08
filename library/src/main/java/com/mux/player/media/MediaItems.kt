@@ -122,7 +122,8 @@ object MediaItems {
 
     minResolution?.let { base.appendQueryParameter("min_resolution", resolutionValue(it)) }
     maxResolution?.let { base.appendQueryParameter("max_resolution", resolutionValue(it)) }
-    renditionOrder?.let { base.appendQueryParameter("rendition_order", resolutionValue(it)) }
+    renditionOrder?.takeIf { it != RenditionOrder.Default }
+      ?.let { base.appendQueryParameter("rendition_order", resolutionValue(it)) }
     playbackToken?.let { base.appendQueryParameter("token", it) }
 
     base.appendQueryParameter("redundant_streams", "true");
@@ -133,6 +134,7 @@ object MediaItems {
   private fun resolutionValue(renditionOrder: RenditionOrder): String {
     return when (renditionOrder) {
       RenditionOrder.Descending -> "desc"
+      else -> "" // should be avoided by createPlaybackUrl
     }
   }
 
@@ -170,4 +172,9 @@ enum class RenditionOrder {
    * setting emphasizes video quality, but may lead to more interruptions on unfavorable networks
    */
   Descending,
+
+  /**
+   * The default rendition order will be used, which may be optimized for delivery
+   */
+  Default,
 }
