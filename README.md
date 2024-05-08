@@ -4,7 +4,7 @@ The Mux Video Media3 SDK is a thin wrapper on top of Google's media3 player SDK 
 
 #### Mux Video DRM Beta
 
-This SDK support's Mux Video's DRM feature, which is currently in closed beta. If you are interested in using our DRM features, please let us know on our [beta page](https://www.mux.com/beta/drm)
+This SDK supports Mux Video's DRM feature, which is currently in closed beta. If you are interested in using our DRM features, please sign up on our [beta page](https://www.mux.com/beta/drm)
 
 ## Adding the SDK
 
