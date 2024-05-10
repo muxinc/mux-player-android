@@ -75,21 +75,17 @@ class MuxDataSource private constructor(
   override fun open(dataSpec: DataSpec): Long {
     this.dataSpec = dataSpec;
 
-    Log.i(TAG, "open(): Opening URI ${dataSpec.uri}")
     val readHandle = CacheController.tryRead(dataSpec.uri.toString())
     val nowUtc = nowUtc()
 
     return if (readHandle == null) {
       // cache miss
-      Log.d(TAG, "cache MISS on url ${dataSpec.uri}")
       openAndInitFromRemote(dataSpec, upstreamSrcFac)
     } else if (CacheController.revalidateRequired(nowUtc, readHandle.fileRecord)) {
       // need to revalidate
-      Log.d(TAG, "cache VALIDATING url ${dataSpec.uri}")
       openAndInitRevalidating(dataSpec, readHandle)
     } else {
       // cache hit
-      Log.d(TAG, "cache HIT on url ${dataSpec.uri}")
       openAndInitFromCache(readHandle)
     }
   }
@@ -115,24 +111,18 @@ class MuxDataSource private constructor(
     val upstreamBytes = openAndInitFromRemote(revalidateSpec, RevalidatingDataSource.Factory())
     val upstream = this.upstream!! // set by initAndOpenUpstream
 
-    Log.d(TAG, "revalidation: HTTP ${upstream.responseCode}. $upstreamBytes available")
     return if (upstream.responseCode != 304) {
       // Entry wasn't valid anymore, but we did a GET so the body's ready to read and we're done
-      Log.d(TAG, "revalidation: Entry was NOT valid, getting from network")
 
       // todo - we *could* delete the row here, but consider that stale items can be used if
       //  state-while-revalidate or stale-while-error or if we're disconnected (unless must-revalidate)..
-      //  Right now, we saved time by assuming state-while-error and *not* must-revalidate so we
-      //    would just wanna keep the stale entries around in case we can use them
+      //  For now, we saved time by assuming state-while-error and *not* must-revalidate & keep it
 
       upstreamBytes
     } else {
-      Log.d(TAG, "revalidation: Entry WAS still valid, getting from cache")
       // Entry was still valid, so read from cache instead
       upstream.close()
       this.upstream = null
-
-      // todo -
 
       openAndInitFromCache(readHandle)
     }
@@ -141,9 +131,10 @@ class MuxDataSource private constructor(
   private fun openAndInitFromRemote(dataSpec: DataSpec, fac: HttpDataSource.Factory): Long {
     respondingFromCache = false
     val upstream = fac.createDataSource()
+
     this.upstream = upstream
     val available = upstream.open(dataSpec)
-    cacheWriter = CacheController.downloadStarted(
+    cacheWriter = CacheController.startWriting(
       dataSpec.uri.toString(),
       upstream.responseHeaders,
     )
@@ -217,6 +208,7 @@ private class RevalidatingDataSource : BaseDataSource(true), HttpDataSource {
     val msg = conn.responseMessage
     if (code == HttpURLConnection.HTTP_NOT_MODIFIED) {
       // not-modified, not an error, we don't have to download the body again
+      runCatching { conn.disconnect() }
       return 0
     } else if (code < 200 || code > 299) {
       // some kind of error

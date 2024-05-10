@@ -31,7 +31,7 @@ import androidx.media3.exoplayer.upstream.CmcdConfiguration
 @OptIn(UnstableApi::class)
 class MuxMediaSourceFactory @JvmOverloads constructor(
   ctx: Context,
-  dataSourceFactory: DataSource.Factory = DefaultDataSource.Factory(ctx),
+  dataSourceFactory: DataSource.Factory,
   private val innerFactory: DefaultMediaSourceFactory = DefaultMediaSourceFactory(ctx),
 ) : MediaSource.Factory by innerFactory {
 
