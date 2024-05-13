@@ -61,7 +61,8 @@ class MuxMediaSourceFactory private constructor(
 
     // drm
     innerFactory.setDrmSessionManagerProvider(MuxDrmSessionManagerProvider(
-      drmHttpDataSourceFactory = DefaultHttpDataSource.Factory()
+      drmHttpDataSourceFactory = DefaultHttpDataSource.Factory(),
+      logger = logger
     ))
   }
 }

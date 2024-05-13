@@ -18,7 +18,9 @@ import androidx.media3.exoplayer.drm.ExoMediaDrm.KeyRequest
 import androidx.media3.exoplayer.drm.FrameworkMediaDrm
 import androidx.media3.exoplayer.drm.MediaDrmCallback
 import com.mux.player.internal.Constants
+import com.mux.player.internal.Logger
 import com.mux.player.internal.createLicenseUri
+import com.mux.player.internal.createNoLogger
 import com.mux.player.internal.executePost
 import com.mux.player.internal.getDrmToken
 import com.mux.player.internal.getLicenseUrlHost
@@ -31,6 +33,7 @@ import java.util.UUID
 @OptIn(UnstableApi::class)
 class MuxDrmSessionManagerProvider(
   val drmHttpDataSourceFactory: HttpDataSource.Factory,
+  val logger: Logger = createNoLogger(),
 ) : DrmSessionManagerProvider {
 
   companion object {

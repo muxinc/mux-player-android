@@ -6,7 +6,7 @@ import java.lang.Exception
 /**
  * An interface for logging events
  */
-internal interface Logger {
+interface Logger {
   fun e(tag: String, message: String, exception: Exception? = null)
   fun w(tag: String, message: String, exception: Exception? = null)
   fun d(tag: String, message: String, exception: Exception? = null)
