@@ -70,13 +70,13 @@ class MuxDrmSessionManagerProvider(
   }
 
   private fun createSessionManager(mediaItem: MediaItem): DrmSessionManager {
-    Log.i(TAG, "createSessionManager: called with $mediaItem")
+    logger.i(TAG, "createSessionManager: called with $mediaItem")
     val playbackId = mediaItem.getPlaybackId()
     val drmToken = mediaItem.getDrmToken()
 
-    Log.v(TAG, "createSessionManager: for playbackId $playbackId")
-    Log.v(TAG, "createSessionManager: for drm token $drmToken")
-    Log.v(TAG, "createSessionManager: for custom video domain ${mediaItem.getPlaybackDomain()}")
+    logger.v(TAG, "createSessionManager: for playbackId $playbackId")
+    logger.v(TAG, "createSessionManager: for drm token $drmToken")
+    logger.v(TAG, "createSessionManager: for custom video domain ${mediaItem.getPlaybackDomain()}")
 
     // Mux Video requires both of these for its DRM system
     if (playbackId == null || drmToken == null) {
@@ -92,6 +92,7 @@ class MuxDrmSessionManagerProvider(
           licenseEndpointHost = mediaItem.getLicenseUrlHost(),
           drmToken = drmToken,
           playbackId = playbackId,
+          logger = logger,
         )
       )
   }
@@ -103,6 +104,7 @@ class MuxDrmCallback(
   private val licenseEndpointHost: String, // eg, 'license.mux.com' or 'license.custom.abc1234.com'
   private val drmToken: String,
   private val playbackId: String,
+  private val logger: Logger = createNoLogger(),
 ) : MediaDrmCallback {
 
   companion object {
@@ -119,7 +121,7 @@ class MuxDrmCallback(
     }
 
     val uri = createLicenseUri(playbackId, drmToken, licenseEndpointHost)
-    Log.d(TAG, "executeProvisionRequest: license URI is $uri")
+    logger.d(TAG, "executeProvisionRequest: license URI is $uri")
     val headers = mapOf(
       "Content-Type" to listOf("application/octet-stream")
     )
@@ -131,19 +133,19 @@ class MuxDrmCallback(
         requestBody = request.data,
         dataSourceFactory = drmHttpDataSourceFactory,
       ).also {
-        Log.i(TAG, "License Response: ${Base64.encodeToString(it, Base64.NO_WRAP)}")
+        logger.i(TAG, "License Response: ${Base64.encodeToString(it, Base64.NO_WRAP)}")
       }
     } catch (e: InvalidResponseCodeException) {
-      Log.e(TAG, "Provisioning/License Request failed!", e)
-      Log.d(TAG, "Dumping data spec: ${e.dataSpec}")
-      Log.d(TAG, "Error Body Bytes: ${Base64.encodeToString(e.responseBody, Base64.NO_WRAP)}")
+      logger.e(TAG, "Provisioning/License Request failed!", e)
+      logger.d(TAG, "Dumping data spec: ${e.dataSpec}")
+      logger.d(TAG, "Error Body Bytes: ${Base64.encodeToString(e.responseBody, Base64.NO_WRAP)}")
       throw e
     } catch (e: HttpDataSourceException) {
-      Log.e(TAG, "Provisioning/License Request failed!", e)
-      Log.d(TAG, "Dumping data spec: ${e.dataSpec}")
+      logger.e(TAG, "Provisioning/License Request failed!", e)
+      logger.d(TAG, "Dumping data spec: ${e.dataSpec}")
       throw e
     } catch (e: Exception) {
-      Log.e(TAG, "Provisioning/License Request failed!", e)
+      logger.e(TAG, "Provisioning/License Request failed!", e)
       throw e
     }
   }
@@ -161,7 +163,7 @@ class MuxDrmCallback(
     val headers = mapOf(
       "Content-Type" to listOf("application/octet-stream")
     )
-    Log.d(TAG, "Key Request URI is $url")
+    logger.d(TAG, "Key Request URI is $url")
 
     try {
       return executePost(
@@ -171,13 +173,13 @@ class MuxDrmCallback(
         dataSourceFactory = drmHttpDataSourceFactory,
       )
     } catch (e: InvalidResponseCodeException) {
-      Log.e(TAG, "key request failed!", e)
+      logger.e(TAG, "key request failed!", e)
       throw e
     } catch (e: HttpDataSourceException) {
-      Log.e(TAG, "Key Request failed!", e)
+      logger.e(TAG, "Key Request failed!", e)
       throw e
     } catch (e: Exception) {
-      Log.e(TAG, "KEY Request failed!", e)
+      logger.e(TAG, "KEY Request failed!", e)
       throw e
     }
   }
