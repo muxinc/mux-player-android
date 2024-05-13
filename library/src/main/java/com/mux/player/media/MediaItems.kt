@@ -173,7 +173,6 @@ object MediaItems {
     base.appendQueryParameter("redundant_streams", "true");
 
     return base.build().toString()
-      .also { Log.d(TAG, "playback URI is $it") }
   }
 
   private fun resolutionValue(renditionOrder: RenditionOrder): String {
