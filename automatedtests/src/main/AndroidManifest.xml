@@ -19,5 +19,12 @@
             android:configChanges="keyboardHidden"
             android:exported="true"
             android:theme="@style/Theme.AppCompat" />
+        
+        <activity android:name="com.mux.player.CachePerfTestActivity"
+            android:configChanges="keyboardHidden"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat"
+            tools:ignore="LockedOrientationActivity" />
+
     </application>
 </manifest>

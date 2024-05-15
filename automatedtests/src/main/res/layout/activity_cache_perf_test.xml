@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.mux.player.CachePerfTestActivity">
+
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/player"
+        android:layout_width="match_parent"
+        android:layout_height="320dp"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- TODO: Also include drop-down(s) for running test scenarios without being in the tests -->
+
+    <TextView
+        android:id="@+id/stats_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/player"
+        android:layout_margin="8dp"
+        android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
+        android:text="Cache Stats"
+        />
+
+    <TextView
+        android:id="@+id/stats"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        app:layout_constraintTop_toBottomOf="@id/stats_header"
+        tools:text="STATS HERE"
+        />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
