@@ -3,11 +3,25 @@ package com.mux.player.media3.automatedtests
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import com.mux.player.CachePerfTestCase
+import com.mux.player.media.PlaybackResolution
+import org.junit.Test
 import org.junit.runner.RunWith
 
 @LargeTest
 @RunWith(AndroidJUnit4::class)
 class CacheLoopingTests {
+
+  @Test
+  fun testJustOneCase() {
+    val testCase = CachePerfTestCase(
+      playbackId = TestCases.VIDEO_1_ID,
+      assetName = "Video 1",
+      resolution = PlaybackResolution.FHD_1080,
+      loops = 5,
+    )
+
+  }
+
 
   object TestCases {
     val VIDEO_1_ID = "maVbJv2GSYNRgS02kPXOOGdJMWGU1mkA019ZUjYE7VU7k"

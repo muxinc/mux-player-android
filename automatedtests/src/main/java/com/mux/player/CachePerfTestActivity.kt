@@ -68,7 +68,10 @@ class CachePerfTestActivity : AppCompatActivity() {
   }
 
   @OptIn(UnstableApi::class)
-  private fun createPlayer(context: Context, testCase: CachePerfTestCase): MuxPlayer {
+  private fun createPlayer(
+    context: Context,
+    testCase: CachePerfTestCase
+  ): MuxPlayer {
     val out: MuxPlayer = MuxPlayer.Builder(context)
       .addMonitoringData(
         CustomerData().apply {
