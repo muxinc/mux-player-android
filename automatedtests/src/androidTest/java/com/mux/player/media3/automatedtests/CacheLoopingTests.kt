@@ -91,7 +91,6 @@ class CacheLoopingTests {
 
             Player.STATE_ENDED -> {
               Log.i(TAG, "player entered ENDED")
-              // todo - something other than this
               testThread.interrupt()
             }
           }
@@ -107,8 +106,8 @@ class CacheLoopingTests {
     }
 
     Log.i(TAG, "Test Complete.")
-    Log.i(TAG, "Test Complete. Requests to Upstream: ${Instrumentation.segmentReqsToUpstream}")
-    Log.i(TAG, "Test Complete. Requests to Cache: ${Instrumentation.segmentReqsToCache}")
+    Log.i(TAG, "Test Complete. Cache Misses: ${Instrumentation.segmentReqsToUpstream}")
+    Log.i(TAG, "Test Complete. Cache Hits: ${Instrumentation.segmentReqsToCache}")
   }
 
   object TestCases {

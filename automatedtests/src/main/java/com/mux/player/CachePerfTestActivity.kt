@@ -71,9 +71,6 @@ class CachePerfTestActivity : AppCompatActivity() {
             .setTitle(case.title())
             .build()
         ).build()
-        // note: but this isn't what strava is doing, they would be playing from different views,
-        //  making and preparing a new player each time. The same number of segments should be
-        //  fetched in that case though.
         player.addMediaItem(mediaItem)
       }
     }
