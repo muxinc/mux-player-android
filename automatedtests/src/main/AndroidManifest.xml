@@ -24,7 +24,14 @@
             android:configChanges="keyboardHidden"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat"
-            tools:ignore="LockedOrientationActivity" />
+            android:exported="true"
+            android:label="cache perf tests"
+            tools:ignore="LockedOrientationActivity" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
     </application>
 </manifest>

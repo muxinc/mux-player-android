@@ -6,6 +6,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -16,13 +17,20 @@ import com.mux.player.media3.databinding.ActivityCachePerfTestBinding
 import com.mux.stats.sdk.core.model.CustomData
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.core.model.CustomerVideoData
+import androidx.media3.exoplayer.util.EventLogger
+
+
 
 class CachePerfTestActivity : AppCompatActivity() {
+
+  val TEARS = "rojBpoQ8QkSRwvKMsS8FUuCbaANJDN02HRWqFXNBtjH00"
 
   private lateinit var binding: ActivityCachePerfTestBinding
   private val playerView get() = binding.player
 
-  private var player: MuxPlayer? = null
+  var player: MuxPlayer? = null
+    private set
+
   private var playerListener: Player.Listener? = null
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,6 +41,17 @@ class CachePerfTestActivity : AppCompatActivity() {
 
   override fun onStart() {
     super.onStart()
+    val testCase = LoopingTestCase(
+//      playbackId = TestCases.VIDEO_1_ID,
+      playbackId = "maVbJv2GSYNRgS02kPXOOGdJMWGU1mkA019ZUjYE7VU7k",
+      assetName = "Video 1",
+      resolution = PlaybackResolution.FHD_1080,
+      loops = 5,
+      cacheEnabled = true,
+    )
+//    playTestCase(testCase)
+
+//    this.player = createPlayer(this)
   }
 
   override fun onStop() {
@@ -51,12 +70,10 @@ class CachePerfTestActivity : AppCompatActivity() {
     this.playerListener = listener
   }
 
-  fun getPlayer(): MuxPlayer? {
-    return player
-  }
-
   fun playTestCase(case: LoopingTestCase) {
+//    val player = this.player!!
     val player = createPlayer(this, case)
+    Log.d("WHY", "createPlayer returned $player")
     val mediaItem = MediaItems.builderFromMuxPlaybackId(
       case.playbackId,
       maxResolution = case.resolution,
@@ -66,10 +83,13 @@ class CachePerfTestActivity : AppCompatActivity() {
         .setTitle(case.title())
         .build()
     ).build()
+    // MODE_ONE as in "one media item," not "one loop"
+    player.repeatMode = Player.REPEAT_MODE_ONE
     player.setMediaItem(mediaItem)
     player.prepare()
     player.playWhenReady = true
 
+    Log.d("WHY", "createPlayer: setting player $player on view $playerView")
     this.playerView.player = player
     this.player = player
   }
@@ -107,9 +127,29 @@ class CachePerfTestActivity : AppCompatActivity() {
           Toast.LENGTH_LONG
         ).show()
       }
+
+      override fun onPositionDiscontinuity(
+        oldPosition: Player.PositionInfo,
+        newPosition: Player.PositionInfo,
+        reason: Int
+      ) {
+        Log.i(
+          TAG,
+          "onPositionDiscontinuity: oldPosition=${oldPosition.positionMs}, " +
+              "newPosition=${newPosition.positionMs}, reason=$reason"
+        )
+      }
+
+      override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        Log.i(
+          TAG,
+          "onMediaItemTransition: mediaItem=$mediaItem, reason=$reason"
+        )
+      }
     })
 
     playerListener?.let { out.addListener(it) }
+    out.addAnalyticsListener(EventLogger("AAAA"))
 
     return out
   }

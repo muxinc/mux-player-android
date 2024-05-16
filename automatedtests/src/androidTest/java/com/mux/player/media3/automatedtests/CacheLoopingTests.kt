@@ -29,6 +29,7 @@ class CacheLoopingTests {
   fun testJustOneCase() {
     val testCase = LoopingTestCase(
       playbackId = TestCases.VIDEO_1_ID,
+//      playbackId = TestCases.TEARS,
       assetName = "Video 1",
       resolution = PlaybackResolution.FHD_1080,
       loops = 5,
@@ -36,28 +37,31 @@ class CacheLoopingTests {
     )
 
     val scenario = ActivityScenario.launch(CachePerfTestActivity::class.java)
-    scenario.moveToState(Lifecycle.State.CREATED)
-    scenario.moveToState(Lifecycle.State.STARTED)
+//    scenario.moveToState(Lifecycle.State.CREATED)
+//    scenario.moveToState(Lifecycle.State.STARTED)
     scenario.moveToState(Lifecycle.State.RESUMED)
+
+    val lock = ReentrantLock()
+    val testOver = lock.newCondition()
 
     scenario.onActivity { activity ->
       Log.d(TAG, "scenario.onActivity")
 
-      val lock = ReentrantLock()
-      val testOver = lock.newCondition()
-
-      activity.setPlayerListener(object: Player.Listener {
+      activity.setPlayerListener(object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
-          when(playbackState) {
+          when (playbackState) {
             Player.STATE_READY -> {
               Log.i(TAG, "player entered READY")
             }
+
             Player.STATE_BUFFERING -> {
               Log.i(TAG, "player entered BUFFERING")
             }
+
             Player.STATE_IDLE -> {
               Log.i(TAG, "player entered IDLE")
             }
+
             Player.STATE_ENDED -> {
               Log.i(TAG, "player entered ENDED")
               // todo - something other than this
@@ -68,11 +72,12 @@ class CacheLoopingTests {
       })
 
       activity.playTestCase(testCase)
-
-      lock.lock()
-      // todo - timeout or something
-      testOver.await()
     }
+
+    lock.lock()
+
+    // todo - timeout or something
+    testOver.await()
   }
 
 
@@ -81,6 +86,7 @@ class CacheLoopingTests {
     val VIDEO_2_ID = "23s11nz72DsoN657h4314PjKKjsF2JG33eBQQt6B95I"
     val VIDEO_3_ID = "gZh02tKCI015W6k2XdYSh4srGnksYvsoT1uHsYOlv4Blo"
     val VIDEO_4_ID = "VcmKA6aqzIzlg3MayLJDnbF55kX00mds028Z65QxvBYaA"
+    val TEARS = "rojBpoQ8QkSRwvKMsS8FUuCbaANJDN02HRWqFXNBtjH00"
   }
 
   companion object {
