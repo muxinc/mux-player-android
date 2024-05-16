@@ -1,7 +1,6 @@
 package com.mux.player.media
 
 import android.net.Uri
-import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
@@ -117,7 +116,7 @@ class MuxDataSource private constructor(
       // Entry wasn't valid anymore, but we did a GET so the body's ready to read and we're done
 
       // When revalidating, we are downloading, so count it for usage
-      Instrumentation.recordSegmentRequestToUpstream(dataSpec)
+      Instrumentation.recordSegmentCacheMiss(dataSpec)
 
       // todo - we *could* delete the row here, but consider that stale items can be used if
       //  state-while-revalidate or stale-while-error or if we're disconnected (unless must-revalidate)..
@@ -150,13 +149,13 @@ class MuxDataSource private constructor(
       dataSpec.uri.toString(),
       responseHeaders = upstream.responseHeaders,
     )) {
-      Instrumentation.recordSegmentRequestToUpstream(dataSpec)
+      Instrumentation.recordSegmentCacheMiss(dataSpec)
     }
     return available
   }
 
   private fun openAndInitFromCache(dataSpec: DataSpec, readHandle: ReadHandle): Long {
-    Instrumentation.recordSegmentRequestToCache(dataSpec)
+    Instrumentation.recordSegmentCacheHit(dataSpec)
 
     respondingFromCache = true
     this.cacheReader = readHandle

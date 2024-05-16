@@ -1,5 +1,6 @@
 package com.mux.player.internal
 
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
@@ -9,20 +10,23 @@ object Instrumentation {
 
   // todo - for more detailed data we can make a TransferListener & add to data src
 
-  var segmentReqsToUpstream: Int = 0
+  var segmentMisses: Int = 0
     private set
-  var segmentReqsToCache: Int = 0
+  var segmentHits: Int = 0
     private set
 
   @OptIn(UnstableApi::class)
-  fun recordSegmentRequestToUpstream(dataSpec: DataSpec) {
-
-    segmentReqsToUpstream ++
+  fun recordSegmentCacheMiss(dataSpec: DataSpec) {
+    Log.d(TAG, "cache miss: $dataSpec")
+    segmentMisses ++
   }
 
   @OptIn(UnstableApi::class)
-  fun recordSegmentRequestToCache(dataSpec: DataSpec) {
+  fun recordSegmentCacheHit(dataSpec: DataSpec) {
+    Log.d(TAG, "cache hit: $dataSpec")
     // only video segments
-    segmentReqsToCache ++
+    segmentHits ++
   }
+
+  const val TAG = "Instrumentation"
 }

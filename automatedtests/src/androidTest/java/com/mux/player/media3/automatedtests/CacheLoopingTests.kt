@@ -106,8 +106,8 @@ class CacheLoopingTests {
     }
 
     Log.i(TAG, "Test Complete.")
-    Log.i(TAG, "Test Complete. Cache Misses: ${Instrumentation.segmentReqsToUpstream}")
-    Log.i(TAG, "Test Complete. Cache Hits: ${Instrumentation.segmentReqsToCache}")
+    Log.i(TAG, "Test Complete. Cache Misses: ${Instrumentation.segmentMisses}")
+    Log.i(TAG, "Test Complete. Cache Hits: ${Instrumentation.segmentHits}")
   }
 
   object TestCases {
