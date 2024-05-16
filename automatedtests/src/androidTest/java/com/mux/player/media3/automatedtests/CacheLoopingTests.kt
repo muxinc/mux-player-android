@@ -18,16 +18,36 @@ import java.util.concurrent.locks.ReentrantLock
 @RunWith(AndroidJUnit4::class)
 class CacheLoopingTests {
 
-//  @Rule
-//  val activityRule = ActivityScenarioRule<CachePerfTestActivity>(
-//    Intent(
-//      ApplicationProvider.getApplicationContext(),
-//      CachePerfTestActivity::class.java
-//    )
-//  )
+  @Test
+  fun testLoop60s10Times() {
+    val testCase = LoopingTestCase(
+      playbackIds = listOf(
+        TestCases.VIDEO_4_ID,
+      ),
+      name = "Video4, 60s",
+      resolution = PlaybackResolution.FHD_1080,
+      loopsOverall = 10,
+      cacheEnabled = true,
+    )
+    runTestCase(testCase)
+  }
 
   @Test
-  fun testLoopAllTwice() {
+  fun testLoop30s10Times() {
+    val testCase = LoopingTestCase(
+      playbackIds = listOf(
+        TestCases.VIDEO_1_ID,
+      ),
+      name = "Video1, 30s",
+      resolution = PlaybackResolution.FHD_1080,
+      loopsOverall = 10,
+      cacheEnabled = true,
+    )
+    runTestCase(testCase)
+  }
+
+  @Test
+  fun testLoopAllThrice() {
     val testCase = LoopingTestCase(
       playbackIds = listOf(
         TestCases.VIDEO_1_ID,
@@ -35,13 +55,15 @@ class CacheLoopingTests {
         TestCases.VIDEO_3_ID,
         TestCases.VIDEO_4_ID,
       ),
-//      playbackId = TestCases.TEARS,
       name = "All Test Assets",
       resolution = PlaybackResolution.FHD_1080,
       loopsOverall = 3,
       cacheEnabled = true,
     )
+    runTestCase(testCase)
+  }
 
+  private fun runTestCase(testCase: LoopingTestCase) {
     val scenario = ActivityScenario.launch(CachePerfTestActivity::class.java)
     scenario.moveToState(Lifecycle.State.RESUMED)
 
@@ -89,13 +111,11 @@ class CacheLoopingTests {
     Log.i(TAG, "Test Complete. Requests to Cache: ${Instrumentation.segmentReqsToCache}")
   }
 
-
   object TestCases {
     val VIDEO_1_ID = "maVbJv2GSYNRgS02kPXOOGdJMWGU1mkA019ZUjYE7VU7k"
     val VIDEO_2_ID = "23s11nz72DsoN657h4314PjKKjsF2JG33eBQQt6B95I"
     val VIDEO_3_ID = "gZh02tKCI015W6k2XdYSh4srGnksYvsoT1uHsYOlv4Blo"
     val VIDEO_4_ID = "VcmKA6aqzIzlg3MayLJDnbF55kX00mds028Z65QxvBYaA"
-    val TEARS = "rojBpoQ8QkSRwvKMsS8FUuCbaANJDN02HRWqFXNBtjH00"
   }
 
   companion object {
