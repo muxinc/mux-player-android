@@ -55,7 +55,7 @@ class CachePerfTestActivity : AppCompatActivity() {
     return player
   }
 
-  fun playTestCase(case: CacheTestCase) {
+  fun playTestCase(case: LoopingTestCase) {
     val player = createPlayer(this, case)
     val mediaItem = MediaItems.builderFromMuxPlaybackId(
       case.playbackId,
@@ -77,7 +77,7 @@ class CachePerfTestActivity : AppCompatActivity() {
   @OptIn(UnstableApi::class)
   private fun createPlayer(
     context: Context,
-    testCase: CacheTestCase
+    testCase: LoopingTestCase
   ): MuxPlayer {
     val out: MuxPlayer = MuxPlayer.Builder(context)
       .addMonitoringData(
@@ -91,6 +91,7 @@ class CachePerfTestActivity : AppCompatActivity() {
             customData2 = testCase.assetName
             customData3 = testCase.resolution.name
             customData4 = "${testCase.loops} loops"
+            customData5 = "Cache? ${testCase.cacheEnabled}"
           }
         }
       )
@@ -108,6 +109,8 @@ class CachePerfTestActivity : AppCompatActivity() {
       }
     })
 
+    playerListener?.let { out.addListener(it) }
+
     return out
   }
 
@@ -116,12 +119,13 @@ class CachePerfTestActivity : AppCompatActivity() {
   }
 }
 
-data class CacheTestCase(
+data class LoopingTestCase(
   val playbackId: String,
   val assetName: String,
   val resolution: PlaybackResolution,
   val loops: Int,
   val cacheEnabled: Boolean,
 ) {
-  fun title(): String = "CacheTestCase | $assetName | at $resolution, $loops loops"
+  fun title(): String = "CacheTestCase | $assetName | at $resolution, $loops loops," +
+      " Cache? $cacheEnabled"
 }

@@ -7,10 +7,11 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import com.mux.player.CachePerfTestActivity
-import com.mux.player.CacheTestCase
+import com.mux.player.LoopingTestCase
 import com.mux.player.media.PlaybackResolution
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.locks.ReentrantLock
 
 @LargeTest
 @RunWith(AndroidJUnit4::class)
@@ -26,7 +27,7 @@ class CacheLoopingTests {
 
   @Test
   fun testJustOneCase() {
-    val testCase = CacheTestCase(
+    val testCase = LoopingTestCase(
       playbackId = TestCases.VIDEO_1_ID,
       assetName = "Video 1",
       resolution = PlaybackResolution.FHD_1080,
@@ -41,6 +42,10 @@ class CacheLoopingTests {
 
     scenario.onActivity { activity ->
       Log.d(TAG, "scenario.onActivity")
+
+      val lock = ReentrantLock()
+      val testOver = lock.newCondition()
+
       activity.setPlayerListener(object: Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
           when(playbackState) {
@@ -55,6 +60,8 @@ class CacheLoopingTests {
             }
             Player.STATE_ENDED -> {
               Log.i(TAG, "player entered ENDED")
+              // todo - something other than this
+              testOver.signal()
             }
           }
         }
@@ -62,15 +69,10 @@ class CacheLoopingTests {
 
       activity.playTestCase(testCase)
 
-      Thread.sleep(240 * 1000)
+      lock.lock()
+      // todo - timeout or something
+      testOver.await()
     }
-
-
-//    activityRule.scenario.onActivity { activity ->
-//      activity.playTestCase(testCase)
-//
-//      Thread.sleep(1000)
-//    }
   }
 
 
