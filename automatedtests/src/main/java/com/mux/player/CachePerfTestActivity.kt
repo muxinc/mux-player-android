@@ -71,6 +71,8 @@ class CachePerfTestActivity : AppCompatActivity() {
             .setTitle(case.title())
             .build()
         )
+        // todo but this isn't what strava is doing, they would be playing from different views,
+        //  making and preparing a new player each time.
         player.addMediaItem(mediaItem.build())
       }
     }
