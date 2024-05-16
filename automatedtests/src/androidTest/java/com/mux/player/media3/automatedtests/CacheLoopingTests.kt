@@ -26,14 +26,16 @@ class CacheLoopingTests {
 //  )
 
   @Test
-  fun testJustOneCase() {
+  fun testLoopAllTwice() {
     val testCase = LoopingTestCase(
       playbackIds = listOf(
         TestCases.VIDEO_1_ID,
         TestCases.VIDEO_2_ID,
+        TestCases.VIDEO_3_ID,
+        TestCases.VIDEO_4_ID,
       ),
 //      playbackId = TestCases.TEARS,
-      name = "Video 1",
+      name = "All Test Assets",
       resolution = PlaybackResolution.FHD_1080,
       loopsOverall = 2,
       cacheEnabled = true,
