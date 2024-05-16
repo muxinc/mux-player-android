@@ -23,8 +23,6 @@ import androidx.media3.exoplayer.util.EventLogger
 
 class CachePerfTestActivity : AppCompatActivity() {
 
-  val TEARS = "rojBpoQ8QkSRwvKMsS8FUuCbaANJDN02HRWqFXNBtjH00"
-
   private lateinit var binding: ActivityCachePerfTestBinding
   private val playerView get() = binding.player
 
@@ -41,22 +39,10 @@ class CachePerfTestActivity : AppCompatActivity() {
 
   override fun onStart() {
     super.onStart()
-    val testCase = LoopingTestCase(
-//      playbackId = TestCases.VIDEO_1_ID,
-      playbackId = "maVbJv2GSYNRgS02kPXOOGdJMWGU1mkA019ZUjYE7VU7k",
-      assetName = "Video 1",
-      resolution = PlaybackResolution.FHD_1080,
-      loops = 5,
-      cacheEnabled = true,
-    )
-//    playTestCase(testCase)
-
-//    this.player = createPlayer(this)
   }
 
   override fun onStop() {
     tearDownPlayer()
-
     super.onStop()
   }
 
@@ -71,7 +57,6 @@ class CachePerfTestActivity : AppCompatActivity() {
   }
 
   fun playTestCase(case: LoopingTestCase) {
-//    val player = this.player!!
     val player = createPlayer(this, case)
     Log.d("WHY", "createPlayer returned $player")
     val mediaItem = MediaItems.builderFromMuxPlaybackId(
@@ -82,10 +67,12 @@ class CachePerfTestActivity : AppCompatActivity() {
       MediaMetadata.Builder()
         .setTitle(case.title())
         .build()
-    ).build()
-    // MODE_ONE as in "one media item," not "one loop"
-    player.repeatMode = Player.REPEAT_MODE_ONE
-    player.setMediaItem(mediaItem)
+    )
+//      .build()
+//    player.setMediaItem(mediaItem)
+    repeat(case.loops) {
+      player.addMediaItem(mediaItem.build())
+    }
     player.prepare()
     player.playWhenReady = true
 

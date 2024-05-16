@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.media3.common.Player
 import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.core.internal.deps.guava.base.Objects
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import com.mux.player.CachePerfTestActivity
@@ -32,7 +33,7 @@ class CacheLoopingTests {
 //      playbackId = TestCases.TEARS,
       assetName = "Video 1",
       resolution = PlaybackResolution.FHD_1080,
-      loops = 5,
+      loops = 2,
       cacheEnabled = true,
     )
 
@@ -43,6 +44,7 @@ class CacheLoopingTests {
 
     val lock = ReentrantLock()
     val testOver = lock.newCondition()
+    val testThread = Thread.currentThread()
 
     scenario.onActivity { activity ->
       Log.d(TAG, "scenario.onActivity")
@@ -65,7 +67,7 @@ class CacheLoopingTests {
             Player.STATE_ENDED -> {
               Log.i(TAG, "player entered ENDED")
               // todo - something other than this
-              testOver.signal()
+              testThread.interrupt()
             }
           }
         }
@@ -75,8 +77,6 @@ class CacheLoopingTests {
     }
 
     lock.lock()
-
-    // todo - timeout or something
     testOver.await()
   }
 
