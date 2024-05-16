@@ -59,19 +59,20 @@ class CachePerfTestActivity : AppCompatActivity() {
   fun playTestCase(case: LoopingTestCase) {
     val player = createPlayer(this, case)
     Log.d("WHY", "createPlayer returned $player")
-    val mediaItem = MediaItems.builderFromMuxPlaybackId(
-      case.playbackId,
-      maxResolution = case.resolution,
-      minResolution = case.resolution,
-    ).setMediaMetadata(
-      MediaMetadata.Builder()
-        .setTitle(case.title())
-        .build()
-    )
-//      .build()
-//    player.setMediaItem(mediaItem)
-    repeat(case.loops) {
-      player.addMediaItem(mediaItem.build())
+
+    repeat(case.loopsOverall) {
+      for (playbackId in case.playbackIds) {
+        val mediaItem = MediaItems.builderFromMuxPlaybackId(
+          playbackId = playbackId,
+          maxResolution = case.resolution,
+          minResolution = case.resolution,
+        ).setMediaMetadata(
+          MediaMetadata.Builder()
+            .setTitle(case.title())
+            .build()
+        )
+        player.addMediaItem(mediaItem.build())
+      }
     }
     player.prepare()
     player.playWhenReady = true
@@ -94,10 +95,9 @@ class CachePerfTestActivity : AppCompatActivity() {
             videoTitle = testCase.title()
           }
           customData = CustomData().apply {
-            customData1 = testCase.playbackId
-            customData2 = testCase.assetName
-            customData3 = testCase.resolution.name
-            customData4 = "${testCase.loops} loops"
+            customData2 = "Suite: ${testCase.name}"
+            customData3 = "Chosen Res: ${testCase.resolution.name}"
+            customData4 = "${testCase.loopsOverall} loops"
             customData5 = "Cache? ${testCase.cacheEnabled}"
           }
         }
@@ -147,12 +147,13 @@ class CachePerfTestActivity : AppCompatActivity() {
 }
 
 data class LoopingTestCase(
-  val playbackId: String,
-  val assetName: String,
+  val playbackIds: List<String>,
+  val name: String,
   val resolution: PlaybackResolution,
-  val loops: Int,
+  val loopsOverall: Int,
+  // todo - loopsPerVideo
   val cacheEnabled: Boolean,
 ) {
-  fun title(): String = "CacheTestCase | $assetName | at $resolution, $loops loops," +
+  fun title(): String = "CacheTestCase | $name | at $resolution, $loopsOverall loops," +
       " Cache? $cacheEnabled"
 }

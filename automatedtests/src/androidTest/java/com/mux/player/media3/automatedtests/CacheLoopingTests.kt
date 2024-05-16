@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.media3.common.Player
 import androidx.test.core.app.ActivityScenario
-import androidx.test.espresso.core.internal.deps.guava.base.Objects
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import com.mux.player.CachePerfTestActivity
@@ -29,17 +28,18 @@ class CacheLoopingTests {
   @Test
   fun testJustOneCase() {
     val testCase = LoopingTestCase(
-      playbackId = TestCases.VIDEO_1_ID,
+      playbackIds = listOf(
+        TestCases.VIDEO_1_ID,
+        TestCases.VIDEO_2_ID,
+      ),
 //      playbackId = TestCases.TEARS,
-      assetName = "Video 1",
+      name = "Video 1",
       resolution = PlaybackResolution.FHD_1080,
-      loops = 2,
+      loopsOverall = 2,
       cacheEnabled = true,
     )
 
     val scenario = ActivityScenario.launch(CachePerfTestActivity::class.java)
-//    scenario.moveToState(Lifecycle.State.CREATED)
-//    scenario.moveToState(Lifecycle.State.STARTED)
     scenario.moveToState(Lifecycle.State.RESUMED)
 
     val lock = ReentrantLock()
@@ -76,8 +76,10 @@ class CacheLoopingTests {
       activity.playTestCase(testCase)
     }
 
-    lock.lock()
-    testOver.await()
+    runCatching {
+      lock.lock()
+      testOver.await()
+    }
   }
 
 
