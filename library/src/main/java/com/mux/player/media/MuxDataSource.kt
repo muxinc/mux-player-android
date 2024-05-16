@@ -14,6 +14,7 @@ import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.HttpDataSource.HttpDataSourceException
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
 import com.google.common.net.HttpHeaders
+import com.mux.player.internal.Instrumentation
 import com.mux.player.internal.cache.CacheController
 import com.mux.player.internal.cache.ReadHandle
 import com.mux.player.internal.cache.WriteHandle
@@ -80,13 +81,14 @@ class MuxDataSource private constructor(
 
     return if (readHandle == null) {
       // cache miss
+      //Instrumentation.recordSegmentRequestToUpstream(dataSpec)
       openAndInitFromRemote(dataSpec, upstreamSrcFac)
     } else if (CacheController.revalidateRequired(nowUtc, readHandle.fileRecord)) {
       // need to revalidate
       openAndInitRevalidating(dataSpec, readHandle)
     } else {
       // cache hit
-      openAndInitFromCache(readHandle)
+      openAndInitFromCache(dataSpec, readHandle)
     }
   }
 
@@ -114,6 +116,9 @@ class MuxDataSource private constructor(
     return if (upstream.responseCode != 304) {
       // Entry wasn't valid anymore, but we did a GET so the body's ready to read and we're done
 
+      // When revalidating, we are downloading, so count it for usage
+      Instrumentation.recordSegmentRequestToUpstream(dataSpec)
+
       // todo - we *could* delete the row here, but consider that stale items can be used if
       //  state-while-revalidate or stale-while-error or if we're disconnected (unless must-revalidate)..
       //  For now, we saved time by assuming state-while-error and *not* must-revalidate & keep it
@@ -124,7 +129,8 @@ class MuxDataSource private constructor(
       upstream.close()
       this.upstream = null
 
-      openAndInitFromCache(readHandle)
+
+      openAndInitFromCache(dataSpec, readHandle)
     }
   }
 
@@ -138,10 +144,20 @@ class MuxDataSource private constructor(
       dataSpec.uri.toString(),
       upstream.responseHeaders,
     )
+
+    // We only measure requests for video segments, since we are counting cache-able things
+    if (CacheController.shouldCacheResponse(
+      dataSpec.uri.toString(),
+      responseHeaders = upstream.responseHeaders,
+    )) {
+      Instrumentation.recordSegmentRequestToUpstream(dataSpec)
+    }
     return available
   }
 
-  private fun openAndInitFromCache(readHandle: ReadHandle): Long {
+  private fun openAndInitFromCache(dataSpec: DataSpec, readHandle: ReadHandle): Long {
+    Instrumentation.recordSegmentRequestToCache(dataSpec)
+
     respondingFromCache = true
     this.cacheReader = readHandle
     return readHandle.fileSize

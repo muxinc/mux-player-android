@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import com.mux.player.CachePerfTestActivity
 import com.mux.player.LoopingTestCase
+import com.mux.player.internal.Instrumentation
 import com.mux.player.media.PlaybackResolution
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -37,7 +38,7 @@ class CacheLoopingTests {
 //      playbackId = TestCases.TEARS,
       name = "All Test Assets",
       resolution = PlaybackResolution.FHD_1080,
-      loopsOverall = 2,
+      loopsOverall = 3,
       cacheEnabled = true,
     )
 
@@ -82,6 +83,10 @@ class CacheLoopingTests {
       lock.lock()
       testOver.await()
     }
+
+    Log.i(TAG, "Test Complete.")
+    Log.i(TAG, "Test Complete. Requests to Upstream: ${Instrumentation.segmentReqsToUpstream}")
+    Log.i(TAG, "Test Complete. Requests to Cache: ${Instrumentation.segmentReqsToCache}")
   }
 
 
