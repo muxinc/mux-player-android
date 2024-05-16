@@ -1,7 +1,6 @@
 package com.mux.player
 
 import android.content.Context
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -17,8 +16,6 @@ import com.mux.player.media3.databinding.ActivityCachePerfTestBinding
 import com.mux.stats.sdk.core.model.CustomData
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.core.model.CustomerVideoData
-import com.mux.stats.sdk.core.model.CustomerViewData
-import com.mux.stats.sdk.core.util.UUID
 
 class CachePerfTestActivity : AppCompatActivity() {
 
@@ -26,6 +23,7 @@ class CachePerfTestActivity : AppCompatActivity() {
   private val playerView get() = binding.player
 
   private var player: MuxPlayer? = null
+  private var playerListener: Player.Listener? = null
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -48,7 +46,16 @@ class CachePerfTestActivity : AppCompatActivity() {
     player?.release()
   }
 
-  fun playTestCase(case: CachePerfTestCase) {
+  // called by tests
+  fun setPlayerListener(listener: Player.Listener?) {
+    this.playerListener = listener
+  }
+
+  fun getPlayer(): MuxPlayer? {
+    return player
+  }
+
+  fun playTestCase(case: CacheTestCase) {
     val player = createPlayer(this, case)
     val mediaItem = MediaItems.builderFromMuxPlaybackId(
       case.playbackId,
@@ -70,7 +77,7 @@ class CachePerfTestActivity : AppCompatActivity() {
   @OptIn(UnstableApi::class)
   private fun createPlayer(
     context: Context,
-    testCase: CachePerfTestCase
+    testCase: CacheTestCase
   ): MuxPlayer {
     val out: MuxPlayer = MuxPlayer.Builder(context)
       .addMonitoringData(
@@ -82,11 +89,12 @@ class CachePerfTestActivity : AppCompatActivity() {
           customData = CustomData().apply {
             customData1 = testCase.playbackId
             customData2 = testCase.assetName
-            customData3 = testCase.resolution.toString()
-            customData4 = testCase.loops.toString()
+            customData3 = testCase.resolution.name
+            customData4 = "${testCase.loops} loops"
           }
         }
       )
+      .enableSmartCache(testCase.cacheEnabled)
       .build()
 
     out.addListener(object : Player.Listener {
@@ -108,11 +116,12 @@ class CachePerfTestActivity : AppCompatActivity() {
   }
 }
 
-data class CachePerfTestCase(
+data class CacheTestCase(
   val playbackId: String,
   val assetName: String,
   val resolution: PlaybackResolution,
   val loops: Int,
+  val cacheEnabled: Boolean,
 ) {
-  fun title(): String = "CachePerf | $assetName | at $resolution, $loops loops"
+  fun title(): String = "CacheTestCase | $assetName | at $resolution, $loops loops"
 }
