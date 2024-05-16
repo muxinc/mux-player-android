@@ -56,6 +56,10 @@ class MuxDataSource private constructor(
       // !! safe by contract
       val readBytes = cacheReader!!.read(buffer, offset, length)
 
+      if (readBytes != C.RESULT_END_OF_INPUT) {
+        Instrumentation.recordBytesFromCache(dataSpec!!, readBytes.toLong())
+      }
+
       readBytes
     } else {
       val writer = cacheWriter!!
@@ -64,6 +68,7 @@ class MuxDataSource private constructor(
 
       if (bytesFromUpstream > 0) {
         writer.write(buffer, offset, bytesFromUpstream)
+        Instrumentation.recordBytesFromUpstream(dataSpec!!, bytesFromUpstream.toLong())
       } else if (bytesFromUpstream == C.RESULT_END_OF_INPUT) {
         writer.finishedWriting()
       }

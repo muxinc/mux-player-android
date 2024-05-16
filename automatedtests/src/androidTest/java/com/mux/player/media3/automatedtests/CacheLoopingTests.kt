@@ -106,8 +106,12 @@ class CacheLoopingTests {
     }
 
     Log.i(TAG, "Test Complete.")
-    Log.i(TAG, "Test Complete. Cache Misses: ${Instrumentation.segmentMisses}")
-    Log.i(TAG, "Test Complete. Cache Hits: ${Instrumentation.segmentHits}")
+    Log.i(TAG, "\t Cache Misses: ${Instrumentation.segmentMisses}")
+    Log.i(TAG, "\t Cache Hits: ${Instrumentation.segmentHits}")
+    val hitRate = Instrumentation.segmentHits.toDouble() / (Instrumentation.segmentHits + Instrumentation.segmentMisses).toDouble()
+    Log.i(TAG, "\t Hit Rate: ${hitRate * 100}%")
+    Log.i(TAG, "\tUpstream Bytes (MB): ${Instrumentation.totalUpstreamBytes()/ 1024.0 / 1024.0}")
+    Log.i(TAG, "\tCache Bytes (MB): ${Instrumentation.totalCacheBytes()/ 1024.0 / 1024.0}")
   }
 
   object TestCases {

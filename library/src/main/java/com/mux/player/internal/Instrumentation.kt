@@ -8,12 +8,33 @@ import androidx.media3.datasource.DataSpec
 // todo - certainly not a final design
 object Instrumentation {
 
-  // todo - for more detailed data we can make a TransferListener & add to data src
+  //todo - report transfer stats when reading cache entries so we can use TransferListener
+
+  private val cacheBytesByUrl: MutableMap<String, Long> = mutableMapOf()
+  private val upstreamBytesByUrl: MutableMap<String, Long> = mutableMapOf()
 
   var segmentMisses: Int = 0
     private set
   var segmentHits: Int = 0
     private set
+
+  fun totalCacheBytes() = cacheBytesByUrl.values.sum()
+
+  fun totalUpstreamBytes() = upstreamBytesByUrl.values.sum()
+
+  @OptIn(UnstableApi::class)
+  @Synchronized
+  fun recordBytesFromUpstream(dataSpec: DataSpec, sentBytes: Long) {
+    val soFar = upstreamBytesByUrl[dataSpec.uri.toString()] ?: 0
+    upstreamBytesByUrl[dataSpec.uri.toString()] = soFar + sentBytes
+  }
+
+  @OptIn(UnstableApi::class)
+  @Synchronized
+  fun recordBytesFromCache(dataSpec: DataSpec, sentBytes: Long) {
+    val soFar = cacheBytesByUrl[dataSpec.uri.toString()] ?: 0
+    cacheBytesByUrl[dataSpec.uri.toString()] = soFar + sentBytes
+  }
 
   @OptIn(UnstableApi::class)
   fun recordSegmentCacheMiss(dataSpec: DataSpec) {
