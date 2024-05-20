@@ -1,13 +1,11 @@
-package com.mux.player.internal.cache
+package com.mux.player.internal
 
-internal object CacheConstants {
+internal object Constants {
   const val MIME_TS = "video/MP2T"
   const val MIME_M4S = "video/mp4"
   const val MIME_M4S_ALT = "video/iso.segment"
   const val EXT_M4S = "m4s"
   const val EXT_TS = "ts"
-
-  const val PROXY_PORT = 6000
 
   /**
    * Can be rooted in cache or files dir on either internal or external storage
