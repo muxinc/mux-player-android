@@ -57,6 +57,7 @@ object MediaItems {
    * @param domain Optional custom domain for Mux Video. The default is [MUX_VIDEO_DEFAULT_DOMAIN]
    * @param playbackToken Playback Token required for Secure Video Playback and DRM Playback
    * @param drmToken DRM Token required for DRM Playback. For DRM, you also need a [playbackToken]
+   * @param playbackToken Playback token for secure playback
    *
    * @see builderFromMuxPlaybackId
    */
@@ -107,6 +108,17 @@ object MediaItems {
    *
    * ### DRM Playback
    * To use DRM playback, you must provide *both* a valid [playbackToken] and a valid [drmToken]
+   *
+   * ## Controlling resolution
+   * You can use the [maxResolution] and [minResolution] parameters to control the possible video
+   * resolutions that Mux Player can stream. You can use these parameters to control your overall
+   * playback experience and platform usage. Lower resolution generally means smoother playback
+   * experience and lower costs, higher resolution generally means nicer-looking videos that may
+   * take longer to start or stall on unfavorable networks.
+   *
+   * ## Custom domains
+   * If you are using Mux Video [custom domains](https://docs.mux.com/guides/use-a-custom-domain-for-streaming#use-your-own-domain-for-delivering-videos-and-images),
+   * you can configure your MediaItem with your custom domain using the [domain] parameter
    *
    * @param playbackId A playback ID for a Mux Asset
    * @param maxResolution The maximum resolution that should be requested over the network
