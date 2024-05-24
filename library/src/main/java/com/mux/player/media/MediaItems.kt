@@ -8,10 +8,7 @@ import androidx.media3.common.MediaItem.RequestMetadata
 import com.mux.player.internal.Constants
 
 /**
- * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with
- * `MuxPlayer`
- *
- * TODO: Alternative spelling: MuxMediaItems
+ * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with MuxPlayer`.
  */
 object MediaItems {
 
@@ -21,13 +18,24 @@ object MediaItems {
    * Default domain + tld for Mux Video
    */
   @Suppress("MemberVisibilityCanBePrivate")
-  const val MUX_VIDEO_DEFAULT_DOMAIN = "mux.com"
+  internal const val MUX_VIDEO_DEFAULT_DOMAIN = "mux.com"
 
   internal const val MUX_VIDEO_SUBDOMAIN = "stream"
   internal const val EXTRA_VIDEO_DATA = "com.mux.video.customerdata"
 
   /**
    * Creates a new [MediaItem] that points to a given Mux Playback ID.
+   *
+   * ## Controlling resolution
+   * You can use the [maxResolution] and [minResolution] parameters to control the possible video
+   * resolutions that Mux Player can stream. You can use these parameters to control your overall
+   * playback experience and platform usage. Lower resolution generally means smoother playback
+   * experience and lower costs, higher resolution generally means nicer-looking videos that may
+   * take longer to start or stall on unfavorable networks.
+   *
+   * ## Custom domains
+   * If you are using Mux Video [custom domains](https://docs.mux.com/guides/use-a-custom-domain-for-streaming#use-your-own-domain-for-delivering-videos-and-images),
+   * you can configure your MediaItem with your custom domain using the [domain] parameter
    *
    * ## DRM and Secure playback
    * Mux player provides two types of playback security, signed playback and DRM playback. Signed
@@ -43,9 +51,13 @@ object MediaItems {
    * To use DRM playback, you must provide *both* a valid [playbackToken] and a valid [drmToken]
    *
    * @param playbackId A playback ID for a Mux Asset
+   * @param maxResolution The maximum resolution that should be requested over the network
+   * @param minResolution The minimum resolution that should be requested over the network
+   * @param renditionOrder [RenditionOrder.Descending] to emphasize quality, [RenditionOrder.Ascending] to emphasize performance
    * @param domain Optional custom domain for Mux Video. The default is [MUX_VIDEO_DEFAULT_DOMAIN]
    * @param playbackToken Playback Token required for Secure Video Playback and DRM Playback
    * @param drmToken DRM Token required for DRM Playback. For DRM, you also need a [playbackToken]
+   * @param playbackToken Playback token for secure playback
    *
    * @see builderFromMuxPlaybackId
    */
@@ -56,7 +68,7 @@ object MediaItems {
     maxResolution: PlaybackResolution? = null,
     minResolution: PlaybackResolution? = null,
     renditionOrder: RenditionOrder? = null,
-    domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
+    domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
     drmToken: String? = null,
   ): MediaItem = builderFromMuxPlaybackId(
@@ -73,6 +85,17 @@ object MediaItems {
   /**
    * Creates a new [MediaItem] that points to a given Mux Playback ID.
    *
+   * ## Controlling resolution
+   * You can use the [maxResolution] and [minResolution] parameters to control the possible video
+   * resolutions that Mux Player can stream. You can use these parameters to control your overall
+   * playback experience and platform usage. Lower resolution generally means smoother playback
+   * experience and lower costs, higher resolution generally means nicer-looking videos that may
+   * take longer to start or stall on unfavorable networks.
+   *
+   * ## Custom domains
+   * If you are using Mux Video [custom domains](https://docs.mux.com/guides/use-a-custom-domain-for-streaming#use-your-own-domain-for-delivering-videos-and-images),
+   * you can configure your MediaItem with your custom domain using the [domain] parameter
+   *
    * ## DRM and Secure playback
    * Mux player provides two types of playback security, signed playback and DRM playback. Signed
    * playback protects your assets from being played by third parties by using a Playback Token
@@ -86,12 +109,26 @@ object MediaItems {
    * ### DRM Playback
    * To use DRM playback, you must provide *both* a valid [playbackToken] and a valid [drmToken]
    *
+   * ## Controlling resolution
+   * You can use the [maxResolution] and [minResolution] parameters to control the possible video
+   * resolutions that Mux Player can stream. You can use these parameters to control your overall
+   * playback experience and platform usage. Lower resolution generally means smoother playback
+   * experience and lower costs, higher resolution generally means nicer-looking videos that may
+   * take longer to start or stall on unfavorable networks.
+   *
+   * ## Custom domains
+   * If you are using Mux Video [custom domains](https://docs.mux.com/guides/use-a-custom-domain-for-streaming#use-your-own-domain-for-delivering-videos-and-images),
+   * you can configure your MediaItem with your custom domain using the [domain] parameter
+   *
    * @param playbackId A playback ID for a Mux Asset
+   * @param maxResolution The maximum resolution that should be requested over the network
+   * @param minResolution The minimum resolution that should be requested over the network
+   * @param renditionOrder [RenditionOrder.Descending] to emphasize quality, [RenditionOrder.Ascending] to emphasize performance
    * @param domain Optional custom domain for Mux Video. The default is [MUX_VIDEO_DEFAULT_DOMAIN]
    * @param playbackToken Playback Token required for Secure Video Playback and DRM Playback
    * @param drmToken DRM Token required for DRM Playback. For DRM, you also need a [playbackToken]
    *
-   * @see fromMuxPlaybackId
+   * @see builderFromMuxPlaybackId
    */
   @JvmStatic
   @JvmOverloads
@@ -100,7 +137,7 @@ object MediaItems {
     maxResolution: PlaybackResolution? = null,
     minResolution: PlaybackResolution? = null,
     renditionOrder: RenditionOrder? = null,
-    domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
+    domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
     drmToken: String? = null,
   ): MediaItem.Builder {
@@ -108,7 +145,7 @@ object MediaItems {
       .setUri(
         createPlaybackUrl(
           playbackId = playbackId,
-          domain = domain,
+          domain = domain ?: MUX_VIDEO_DEFAULT_DOMAIN,
           maxResolution = maxResolution,
           minResolution = minResolution,
           renditionOrder = renditionOrder,
@@ -141,19 +178,19 @@ object MediaItems {
 
     minResolution?.let { base.appendQueryParameter("min_resolution", resolutionValue(it)) }
     maxResolution?.let { base.appendQueryParameter("max_resolution", resolutionValue(it)) }
-    renditionOrder?.let { base.appendQueryParameter("rendition_order", resolutionValue(it)) }
+    renditionOrder?.takeIf { it != RenditionOrder.Default }
+      ?.let { base.appendQueryParameter("rendition_order", resolutionValue(it)) }
     playbackToken?.let { base.appendQueryParameter("token", it) }
 
     base.appendQueryParameter("redundant_streams", "true");
 
     return base.build().toString()
-      .also { Log.d(TAG, "playback URI is $it") }
   }
 
   private fun resolutionValue(renditionOrder: RenditionOrder): String {
     return when (renditionOrder) {
-      RenditionOrder.Ascending -> "asc"
       RenditionOrder.Descending -> "desc"
+      else -> "" // should be avoided by createPlaybackUrl
     }
   }
 
@@ -182,7 +219,18 @@ enum class PlaybackResolution {
   FOUR_K_2160,
 }
 
+/**
+ * The order of preference for adaptive streaming.
+ */
 enum class RenditionOrder {
-  Ascending,
+  /**
+   * The highest-resolution renditions will be chosen first, adjusting downward if needed. This
+   * setting emphasizes video quality, but may lead to more interruptions on unfavorable networks
+   */
   Descending,
+
+  /**
+   * The default rendition order will be used, which may be optimized for delivery
+   */
+  Default,
 }

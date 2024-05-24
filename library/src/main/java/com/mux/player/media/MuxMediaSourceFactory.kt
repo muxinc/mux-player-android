@@ -12,6 +12,8 @@ import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.CmcdConfiguration
+import com.mux.player.internal.Logger
+import com.mux.player.internal.createNoLogger
 
 /**
  * A [MediaSource.Factory] configured to work best with Mux Video.
@@ -29,11 +31,28 @@ import androidx.media3.exoplayer.upstream.CmcdConfiguration
  * [innerFactory]
  */
 @OptIn(UnstableApi::class)
-class MuxMediaSourceFactory @JvmOverloads constructor(
+class MuxMediaSourceFactory private constructor(
   ctx: Context,
-  dataSourceFactory: DataSource.Factory = DefaultDataSource.Factory(ctx),
+  dataSourceFactory: DataSource.Factory,
   private val innerFactory: DefaultMediaSourceFactory = DefaultMediaSourceFactory(ctx),
+  private val logger: Logger,
 ) : MediaSource.Factory by innerFactory {
+
+  companion object {
+    @JvmSynthetic internal fun create(
+      ctx: Context,
+      dataSourceFactory: DataSource.Factory,
+      innerFactory: DefaultMediaSourceFactory = DefaultMediaSourceFactory(ctx),
+      logger: Logger,
+    ): MuxMediaSourceFactory = MuxMediaSourceFactory(ctx, dataSourceFactory, innerFactory, logger)
+  }
+
+  @JvmOverloads
+  constructor(
+    ctx: Context,
+    dataSourceFactory: DataSource.Factory,
+    innerFactory: DefaultMediaSourceFactory = DefaultMediaSourceFactory(ctx),
+  ) : this (ctx, dataSourceFactory, innerFactory, createNoLogger())
 
   init {
     // basics
@@ -42,7 +61,8 @@ class MuxMediaSourceFactory @JvmOverloads constructor(
 
     // drm
     innerFactory.setDrmSessionManagerProvider(MuxDrmSessionManagerProvider(
-      drmHttpDataSourceFactory = DefaultHttpDataSource.Factory()
+      drmHttpDataSourceFactory = DefaultHttpDataSource.Factory(),
+      logger = logger
     ))
   }
 }

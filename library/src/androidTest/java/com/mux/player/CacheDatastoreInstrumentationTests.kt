@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.mux.player.internal.cache.CacheConstants
+import com.mux.player.internal.Constants
 import com.mux.player.internal.cache.CacheDatastore
 import com.mux.player.internal.cache.FileRecord
 import com.mux.player.internal.cache.filesDirNoBackupCompat
@@ -356,11 +356,11 @@ class CacheDatastoreInstrumentationTests {
   }
 
   private fun expectedFileTempDir(context: Context): File =
-    File(context.cacheDir, CacheConstants.TEMP_FILE_DIR)
+    File(context.cacheDir, Constants.TEMP_FILE_DIR)
 
   private fun expectedFileCacheDir(context: Context): File =
-    File(context.cacheDir, CacheConstants.CACHE_FILES_DIR)
+    File(context.cacheDir, Constants.CACHE_FILES_DIR)
 
   private fun expectedIndexDbDir(context: Context): File =
-    File(context.filesDirNoBackupCompat, CacheConstants.CACHE_BASE_DIR)
+    File(context.filesDirNoBackupCompat, Constants.CACHE_BASE_DIR)
 }

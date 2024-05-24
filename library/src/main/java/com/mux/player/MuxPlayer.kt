@@ -13,14 +13,28 @@ import com.mux.player.internal.Logger
 import com.mux.player.internal.createNoLogger
 import com.mux.player.media.MuxDataSource
 import com.mux.player.media.MuxMediaSourceFactory
+import com.mux.player.media.MediaItems
 import com.mux.stats.sdk.muxstats.ExoPlayerBinding
 import com.mux.stats.sdk.muxstats.INetworkRequest
 import com.mux.stats.sdk.muxstats.MuxDataSdk
 import com.mux.stats.sdk.muxstats.media3.BuildConfig as MuxDataBuildConfig
 
 /**
- * An [ExoPlayer] with a few extra APIs for interacting with Mux Video (TODO: link?)
- * This player also integrates transparently with Mux Data (TODO: link?)
+ * Mux player for native Android. An [ExoPlayer] with a few extra APIs for interacting with
+ * Mux Video. This player also integrates transparently with Mux Data when you play Mux Video Assets
+ *
+ * ### Basic Usage
+ * MuxPlayer is almost a direct drop-in replacement for [ExoPlayer]. To create instances of
+ * [MuxPlayer], use our [Builder]
+ *
+ * To play Mux Assets, you can create a MediaItem using [MediaItems.fromMuxPlaybackId], or
+ * [MediaItems.builderFromMuxPlaybackId]
+ *
+ * ### Customizing ExoPlayer
+ * The underlying [ExoPlayer.Builder] can be reached using [Builder.applyExoConfig] (java callers
+ * can use [Builder.plusExoConfig]). If you need to inject any custom objects into the underlying
+ * ExoPlayer, you are able to do so this way. Please note that doing this may interfere with Mux
+ * Player's features.
  */
 class MuxPlayer private constructor(
   private val exoPlayer: ExoPlayer,
@@ -96,7 +110,7 @@ class MuxPlayer private constructor(
         device = muxPlayerDevice,
         network = network,
         playerBinding = exoPlayerBinding,
-        )
+      )
     }
   }
 
@@ -107,6 +121,11 @@ class MuxPlayer private constructor(
    *
    * Mux provides some specially-configured media3 factories such as [MuxMediaSourceFactory] that
    * you should prefer to use with this SDK.
+   *
+   * ### Customizing ExoPlayer
+   * If you need to customize the underlying exoplayer, you can use [applyExoConfig]. Note that this
+   * may interfere with Mux Player's features. See [MuxMediaSourceFactory] for more details on what
+   * we do to configure exoplayer if you are having issues
    *
    * @see build
    *
@@ -203,8 +222,8 @@ class MuxPlayer private constructor(
      * @see MuxMediaSourceFactory
      */
     @Suppress("MemberVisibilityCanBePrivate")
-    fun plusExoConfig(block: (ExoPlayer.Builder) -> Void): Builder {
-      block(playerBuilder)
+    fun plusExoConfig(plus: PlusExoBuilder): Builder {
+      plus.apply(playerBuilder)
       return this
     }
 
@@ -230,6 +249,7 @@ class MuxPlayer private constructor(
         context = context,
         exoPlayer = this.playerBuilder.build(),
         muxDataKey = this.dataEnvKey,
+        muxCacheEnabled = enableSmartCache,
         logger = logger ?: createNoLogger(),
         initialCustomerData = customerData,
         network = network,
@@ -249,16 +269,32 @@ class MuxPlayer private constructor(
     }
 
     private fun setUpMediaSourceFactory(builder: ExoPlayer.Builder) {
+      // For now, the only time to use MuxDataSource is when caching is enabled so do this check
       val mediaSourceFactory = if (enableSmartCache) {
-        MuxMediaSourceFactory(context, MuxDataSource.Factory())
+        MuxMediaSourceFactory.create(
+          ctx = context,
+          logger = this.logger ?: createNoLogger(),
+          dataSourceFactory = DefaultDataSource.Factory(context, MuxDataSource.Factory()),
+        )
       } else {
-        MuxMediaSourceFactory(context, DefaultDataSource.Factory(context))
+        MuxMediaSourceFactory.create(
+          ctx = context,
+          logger = this.logger ?: createNoLogger(),
+          dataSourceFactory = DefaultDataSource.Factory(context),
+        )
       }
       builder.setMediaSourceFactory(mediaSourceFactory)
     }
 
     init {
       setUpMediaSourceFactory(playerBuilder)
+    }
+
+    /**
+     * Use with [plusExoConfig] to configure MuxPlayer's underlying [ExoPlayer]
+     */
+    fun interface PlusExoBuilder {
+      fun apply(builder: ExoPlayer.Builder)
     }
   }
 }

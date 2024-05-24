@@ -20,6 +20,7 @@ import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.Player;
+import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.RenderersFactory;
@@ -144,7 +145,7 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
     DefaultTrackSelector.Parameters trackSelectorParameters = builder
         .build();
 
-    mediaSourceFactory = new MuxMediaSourceFactory(this);
+    mediaSourceFactory = new MuxMediaSourceFactory(this, new DefaultDataSource.Factory(this));
     trackSelector = new DefaultTrackSelector(/* context= */ this, trackSelectionFactory);
     trackSelector.setParameters(trackSelectorParameters);
     RenderersFactory renderersFactory = new DefaultRenderersFactory(/* context= */ this);
@@ -157,7 +158,6 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
           exoBuilder.setRenderersFactory(renderersFactory);
           exoBuilder.setMediaSourceFactory(mediaSourceFactory);
           exoBuilder.setTrackSelector(trackSelector);
-          return null;
         })
         .addMonitoringData(initMuxSats())
         .addExoPlayerBinding(pBinding)

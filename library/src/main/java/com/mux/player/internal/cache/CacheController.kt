@@ -5,7 +5,7 @@ import android.annotation.TargetApi
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import com.mux.player.internal.cache.CacheController.downloadStarted
+import com.mux.player.internal.cache.CacheController.startWriting
 import com.mux.player.internal.cache.CacheController.setup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -73,7 +73,7 @@ internal object CacheController {
     return if (fileRecord == null) {
       null
     } else {
-      ReadHandle(
+      ReadHandle.create(
         url = requestUrl,
         fileRecord = fileRecord,
         datastore = datastore,
@@ -84,16 +84,18 @@ internal object CacheController {
 
   /**
    * Call when you are about to download the body of a response. This method returns an object you
-   * can use to write your data. See [WriteHandle] for more information
+   * can use to write your data. When you are done writing, call [WriteHandle.finishedWriting].
+   *
+   * @see [WriteHandle]
    */
-  fun downloadStarted(
+  fun startWriting(
     requestUrl: String,
     responseHeaders: Map<String, List<String>>,
   ): WriteHandle {
     return if (shouldCacheResponse(requestUrl, responseHeaders)) {
       val tempFile = datastore.createTempDownloadFile(URL(requestUrl))
 
-      WriteHandle(
+      WriteHandle.create(
         controller = this,
         tempFile = tempFile,
         responseHeaders = responseHeaders,
@@ -102,7 +104,7 @@ internal object CacheController {
       )
     } else {
       // not supposed to cache, so the WriteHandle just writes to the player
-      WriteHandle(
+      WriteHandle.create(
         controller = this,
         tempFile = null,
         url = requestUrl,
@@ -117,9 +119,7 @@ internal object CacheController {
    */
   @JvmSynthetic
   internal fun onPlayerCreated() {
-    Log.d(TAG, "onPlayerCreated: called")
     val totalPlayersBefore = playersWithCache.getAndIncrement()
-    Log.d(TAG, "onPlayerCreated: had $totalPlayersBefore players")
     if (totalPlayersBefore == 0) {
       ioScope.launch { datastore.open() }
     }
@@ -189,12 +189,8 @@ internal object CacheController {
       return false
     }
 
-    // todo - Need to specifically only cache segments. Check content-type first then url
-
     // todo - additional logic here:
     //  * check disk space against Content-Length?
-    //  * check for headers like Age?
-    //  * make sure the entry is not already expired by like a second or whatever (edge case)
 
     return true
   }
@@ -204,9 +200,9 @@ internal object CacheController {
  * Object for reading from the Cache. The methods on this object will read bytes from a cache copy
  * of the remote resource.
  *
- * Use [readAllInto] to read the entire file into an OutputStream.
+ * Obtain an instance via [CacheController.tryRead]
  */
-internal class ReadHandle internal constructor(
+internal class ReadHandle private constructor(
   val url: String,
   val fileRecord: FileRecord,
   datastore: CacheDatastore,
@@ -216,6 +212,13 @@ internal class ReadHandle internal constructor(
   companion object {
     const val READ_SIZE = 32 * 1024
     private const val TAG = "ReadHandle"
+
+    @JvmSynthetic internal fun create(
+      url: String,
+      fileRecord: FileRecord,
+      datastore: CacheDatastore,
+      directory: File,
+    ): ReadHandle = ReadHandle(url, fileRecord, datastore, directory)
   }
 
   private val cacheFile: File
@@ -224,7 +227,6 @@ internal class ReadHandle internal constructor(
   init {
     // todo - Are we really doing relative paths here? We want to be
     cacheFile = File(datastore.fileCacheDir(), fileRecord.relativePath)
-    Log.v(TAG, "Reading from $cacheFile")
     fileInput = BufferedInputStream(FileInputStream(cacheFile))
   }
 
@@ -255,11 +257,12 @@ internal class ReadHandle internal constructor(
 }
 
 /**
- * Object for writing to both the player and the cache. Call [downloadStarted] to get one of these
- * for any given web response. Writes to this handle will go to the player and also to the cache
- * if required
+ * Object for writing to both the player and the cache. Writes to this handle will go to the player
+ * and also to the cache if required
+ *
+ * Obtain an instance with [CacheController.startWriting]
  */
-internal class WriteHandle internal constructor(
+internal class WriteHandle private constructor(
   val url: String,
   val responseHeaders: Map<String, List<String>>,
   private val controller: CacheController,
@@ -269,6 +272,14 @@ internal class WriteHandle internal constructor(
 
   companion object {
     private const val TAG = "WriteHandle"
+
+    @JvmSynthetic internal fun create(
+      url: String,
+      responseHeaders: Map<String, List<String>>,
+      controller: CacheController,
+      datastore: CacheDatastore,
+      tempFile: File?,
+    ): WriteHandle = WriteHandle(url, responseHeaders, controller, datastore, tempFile)
   }
 
   private val fileOutputStream = tempFile?.let { BufferedOutputStream(FileOutputStream(it)) }
@@ -297,14 +308,11 @@ internal class WriteHandle internal constructor(
       val eTag = responseHeaders.getETag()
       if (cacheControl != null && eTag != null) {
         val cacheFile = datastore.moveFromTempFile(tempFile, URL(url))
-        Log.d(TAG, "move to cache file with path ${cacheFile.path}")
 
         val nowUtc = nowUtc()
         val recordAge = responseHeaders.getAge()?.toLongOrNull()
         val maxAge = parseMaxAge(cacheControl) ?: parseSMaxAge(cacheControl)
         val relativePath = cacheFile.toRelativeString(datastore.fileCacheDir())
-
-        Log.i(TAG, "Saving ${cacheFile.length()} to cache as: $relativePath")
 
         val record = FileRecord(
           url = url,
@@ -325,10 +333,6 @@ internal class WriteHandle internal constructor(
         if (result.isSuccess) {
           datastore.evictByLru()
         }
-
-        // todo - return a fail or throw somerthing
-      } else {
-        // todo: need a logger
       }
     }
   }
