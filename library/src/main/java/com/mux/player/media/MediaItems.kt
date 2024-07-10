@@ -134,7 +134,7 @@ object MediaItems {
    * @param playbackToken Playback Token required for Secure Video Playback and DRM Playback
    * @param drmToken DRM Token required for DRM Playback. For DRM, you also need a [playbackToken]
    *
-   * @see builderFromMuxPlaybackId
+   * @see fromMuxPlaybackId
    */
   @JvmStatic
   @JvmOverloads
