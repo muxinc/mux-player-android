@@ -70,7 +70,7 @@ class DrmPlaybackActivity : AppCompatActivity() {
     )
       .setMediaMetadata(
         MediaMetadata.Builder()
-          .setTitle("Basic MuxPlayer Example")
+          .setTitle("DRM Playback Example")
           .build()
       )
       .build()
