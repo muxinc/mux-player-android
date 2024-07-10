@@ -75,6 +75,7 @@ public abstract class TestBase {
   protected int bandwidthLimitInBitsPerSecond = 1500000;
   protected int sampleFileBitrate = 1083904;
   protected String urlToPlay = "http://localhost:5000/vod.mp4";
+  protected boolean enableSmartCache = false;
 //  protected String urlToPlay = "https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears.mpd";
   // UTC timestamp whenlow network bandwidth was triggered
   long startedJammingTheNetworkAt;
@@ -130,6 +131,7 @@ public abstract class TestBase {
     }
     testActivityFinished = false;
     testActivity.runOnUiThread(() -> {
+      testActivity.setSmartCache(enableSmartCache);
       testActivity.setVideoTitle(BuildConfig.FLAVOR + "-" + currentTestName.getMethodName());
       testActivity.setUrlToPlay(urlToPlay);
       testActivity.setPlayWhenReady(playWhenReady);

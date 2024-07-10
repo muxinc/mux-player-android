@@ -44,6 +44,7 @@ public class ConnectionSender extends Thread {
   SegmentStatistics segmentStat;
   HashMap<String, String> additionalHeaders = new HashMap<>();
   String requestUuid;
+  long lastPacketSentAt = -1;
 
 
   public ConnectionSender(ConnectionListener listener, OutputStream httpOut, int bandwidthLimit,
@@ -65,6 +66,10 @@ public class ConnectionSender extends Thread {
     isPaused = true;
     segmentStat = new SegmentStatistics();
     start();
+  }
+
+  public boolean isDataServedInPastMs(long periodMs) {
+    return System.currentTimeMillis() - lastPacketSentAt < periodMs;
   }
 
   public void setNetworkDelay(long delay) {
@@ -330,6 +335,7 @@ public class ConnectionSender extends Thread {
     }
     if (bytesRead > 0) {
       httpOut.write(transferBuffer, 0, bytesRead);
+      lastPacketSentAt = System.currentTimeMillis();
       sleep(10);
     }
   }

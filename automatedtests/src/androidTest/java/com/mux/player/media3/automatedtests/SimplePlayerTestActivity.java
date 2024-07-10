@@ -75,6 +75,7 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
   public MediaSessionCompat mediaSessionCompat;
   //  public MediaSessionConnector mediaSessionConnector;
   public long playbackStartPosition = 0;
+  public boolean enableSmartCache = false;
 
   TestEventListener eventListener;
   public Lock activityLock = new ReentrantLock();
@@ -162,6 +163,7 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
         .addMonitoringData(initMuxSats())
         .addExoPlayerBinding(pBinding)
         .addNetwork(mockNetwork)
+        .enableSmartCache(enableSmartCache)
         .build();
 
     player.addAnalyticsListener(this);
@@ -192,6 +194,10 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
 
   public void setVideoTitle(String title) {
     videoTitle = title;
+  }
+
+  public void setSmartCache(boolean enabled) {
+    this.enableSmartCache = enabled;
   }
 
   public void setAdTag(String tag) {

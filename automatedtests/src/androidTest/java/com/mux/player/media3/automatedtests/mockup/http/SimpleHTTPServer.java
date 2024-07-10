@@ -51,6 +51,15 @@ public class SimpleHTTPServer extends Thread implements ConnectionListener {
     start();
   }
 
+  public boolean isServingData() {
+    for (ConnectionWorker worker : workers) {
+      if (worker.isServingData()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   // Used in automated tests
   public boolean waitForNextSegmentToLoad(long timeoutInMs) {
     try {
@@ -69,6 +78,14 @@ public class SimpleHTTPServer extends Thread implements ConnectionListener {
    */
   public void setSeekLatency(int latency) {
     seekLatency = latency;
+  }
+
+  public HashMap<String, SegmentStatistics> getServedSegments() {
+    HashMap<String, SegmentStatistics> result = new HashMap<String, SegmentStatistics>();
+    for (String uuid: segmentsServed.keySet()) {
+      result.put(uuid, segmentsServed.get(uuid));
+    }
+    return result;
   }
 
   public SegmentStatistics getSegmentStatistics(String segmentUuid) {
