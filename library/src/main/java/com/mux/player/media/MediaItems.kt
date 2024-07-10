@@ -50,6 +50,9 @@ object MediaItems {
    * ### DRM Playback
    * To use DRM playback, you must provide *both* a valid [playbackToken] and a valid [drmToken]
    *
+   * DRM is currently in beta. If you are interested in participating, or have questions, please
+   * email support@mux.com
+   *
    * @param playbackId A playback ID for a Mux Asset
    * @param maxResolution The maximum resolution that should be requested over the network
    * @param minResolution The minimum resolution that should be requested over the network
@@ -107,7 +110,10 @@ object MediaItems {
    * To use secure playback, you must provide a valid [playbackToken]
    *
    * ### DRM Playback
-   * To use DRM playback, you must provide *both* a valid [playbackToken] and a valid [drmToken]
+   * To use DRM playback, you must provide *both* a valid [playbackToken] and a valid [drmToken].
+   *
+   * DRM is currently in beta. If you are interested in participating, or have questions, please
+   * email support@mux.com
    *
    * ## Controlling resolution
    * You can use the [maxResolution] and [minResolution] parameters to control the possible video
