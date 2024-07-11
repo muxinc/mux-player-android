@@ -110,7 +110,7 @@ class MuxPlayer private constructor(
         device = muxPlayerDevice,
         network = network,
         playerBinding = exoPlayerBinding,
-        )
+      )
     }
   }
 
@@ -269,11 +269,19 @@ class MuxPlayer private constructor(
     }
 
     private fun setUpMediaSourceFactory(builder: ExoPlayer.Builder) {
-      // todo - probably always use MuxMediaSource
+      // For now, the only time to use MuxDataSource is when caching is enabled so do this check
       val mediaSourceFactory = if (enableSmartCache) {
-        MuxMediaSourceFactory(context, DefaultDataSource.Factory(context, MuxDataSource.Factory()))
+        MuxMediaSourceFactory.create(
+          ctx = context,
+          logger = this.logger ?: createNoLogger(),
+          dataSourceFactory = DefaultDataSource.Factory(context, MuxDataSource.Factory()),
+        )
       } else {
-        MuxMediaSourceFactory(context, DefaultDataSource.Factory(context))
+        MuxMediaSourceFactory.create(
+          ctx = context,
+          logger = this.logger ?: createNoLogger(),
+          dataSourceFactory = DefaultDataSource.Factory(context),
+        )
       }
       builder.setMediaSourceFactory(mediaSourceFactory)
     }

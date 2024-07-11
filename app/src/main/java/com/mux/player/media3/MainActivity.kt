@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.mux.player.media3.databinding.ActivityMainBinding
 import com.mux.player.media3.databinding.ListitemExampleBinding
 import com.mux.player.media3.examples.BasicPlayerActivity
+import com.mux.player.media3.examples.DrmPlaybackActivity
 import com.mux.player.media3.examples.MaxResActivity
 import com.mux.player.media3.examples.SmartCacheActivity
 
@@ -50,6 +51,10 @@ class MainActivity : AppCompatActivity() {
     Example(
       title = "Smart Caching",
       destination = Intent(this@MainActivity, SmartCacheActivity::class.java)
+    ),
+    Example(
+      title = "DRM Playback",
+      destination = Intent(this@MainActivity, DrmPlaybackActivity::class.java)
     )
   )
 }

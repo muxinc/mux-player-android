@@ -1,6 +1,11 @@
 package com.mux.player.internal
 
 internal object Constants {
+
+  const val BUNDLE_DRM_TOKEN = "drm token"
+  const val BUNDLE_PLAYBACK_ID = "playback id"
+  const val BUNDLE_PLAYBACK_DOMAIN  = "playback domain"
+
   const val MIME_TS = "video/MP2T"
   const val MIME_M4S = "video/mp4"
   const val MIME_M4S_ALT = "video/iso.segment"

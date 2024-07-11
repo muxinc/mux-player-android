@@ -1,13 +1,18 @@
 package com.mux.player.media
 
 import android.net.Uri
+import android.os.Bundle
+import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
+import com.mux.player.internal.Constants
 
 /**
  * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with MuxPlayer`.
  */
 object MediaItems {
+
+  private const val TAG = "MediaItems"
 
   /**
    * Default domain + tld for Mux Video
@@ -15,8 +20,8 @@ object MediaItems {
   @Suppress("MemberVisibilityCanBePrivate")
   internal const val MUX_VIDEO_DEFAULT_DOMAIN = "mux.com"
 
-  private const val MUX_VIDEO_SUBDOMAIN = "stream"
-  private const val EXTRA_VIDEO_DATA = "com.mux.video.customerdata"
+  internal const val MUX_VIDEO_SUBDOMAIN = "stream"
+  internal const val EXTRA_VIDEO_DATA = "com.mux.video.customerdata"
 
   /**
    * Creates a new [MediaItem] that points to a given Mux Playback ID.
@@ -32,11 +37,29 @@ object MediaItems {
    * If you are using Mux Video [custom domains](https://docs.mux.com/guides/use-a-custom-domain-for-streaming#use-your-own-domain-for-delivering-videos-and-images),
    * you can configure your MediaItem with your custom domain using the [domain] parameter
    *
+   * ## DRM and Secure playback
+   * Mux player provides two types of playback security, signed playback and DRM playback. Signed
+   * playback protects your assets from being played by third parties by using a Playback Token
+   * you generate securely on your application backend. DRM playbacks adds additional system-level
+   * protections against unauthorized copying and recording of your media, but requires additional
+   * setup.
+   *
+   * ### Secure Playback
+   * To use secure playback, you must provide a valid [playbackToken]
+   *
+   * ### DRM Playback
+   * To use DRM playback, you must provide *both* a valid [playbackToken] and a valid [drmToken]
+   *
+   * DRM is currently in beta. If you are interested in participating, or have questions, please
+   * email support@mux.com
+   *
    * @param playbackId A playback ID for a Mux Asset
    * @param maxResolution The maximum resolution that should be requested over the network
    * @param minResolution The minimum resolution that should be requested over the network
    * @param renditionOrder [RenditionOrder.Descending] to emphasize quality, [RenditionOrder.Ascending] to emphasize performance
    * @param domain Optional custom domain for Mux Video. The default is [MUX_VIDEO_DEFAULT_DOMAIN]
+   * @param playbackToken Playback Token required for Secure Video Playback and DRM Playback
+   * @param drmToken DRM Token required for DRM Playback. For DRM, you also need a [playbackToken]
    * @param playbackToken Playback token for secure playback
    *
    * @see builderFromMuxPlaybackId
@@ -50,6 +73,7 @@ object MediaItems {
     renditionOrder: RenditionOrder? = null,
     domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
+    drmToken: String? = null,
   ): MediaItem = builderFromMuxPlaybackId(
     playbackId,
     maxResolution,
@@ -57,11 +81,39 @@ object MediaItems {
     renditionOrder,
     domain,
     playbackToken,
+    drmToken
   ).build()
 
+
   /**
-   * Creates a new [MediaItem.Builder] that points to a given Mux Playback ID. You can add
-   * additional configuration to the `MediaItem` before you build it
+   * Creates a new [MediaItem] that points to a given Mux Playback ID.
+   *
+   * ## Controlling resolution
+   * You can use the [maxResolution] and [minResolution] parameters to control the possible video
+   * resolutions that Mux Player can stream. You can use these parameters to control your overall
+   * playback experience and platform usage. Lower resolution generally means smoother playback
+   * experience and lower costs, higher resolution generally means nicer-looking videos that may
+   * take longer to start or stall on unfavorable networks.
+   *
+   * ## Custom domains
+   * If you are using Mux Video [custom domains](https://docs.mux.com/guides/use-a-custom-domain-for-streaming#use-your-own-domain-for-delivering-videos-and-images),
+   * you can configure your MediaItem with your custom domain using the [domain] parameter
+   *
+   * ## DRM and Secure playback
+   * Mux player provides two types of playback security, signed playback and DRM playback. Signed
+   * playback protects your assets from being played by third parties by using a Playback Token
+   * you generate securely on your application backend. DRM playbacks adds additional system-level
+   * protections against unauthorized copying and recording of your media, but requires additional
+   * setup.
+   *
+   * ### Secure Playback
+   * To use secure playback, you must provide a valid [playbackToken]
+   *
+   * ### DRM Playback
+   * To use DRM playback, you must provide *both* a valid [playbackToken] and a valid [drmToken].
+   *
+   * DRM is currently in beta. If you are interested in participating, or have questions, please
+   * email support@mux.com
    *
    * ## Controlling resolution
    * You can use the [maxResolution] and [minResolution] parameters to control the possible video
@@ -79,6 +131,8 @@ object MediaItems {
    * @param minResolution The minimum resolution that should be requested over the network
    * @param renditionOrder [RenditionOrder.Descending] to emphasize quality, [RenditionOrder.Ascending] to emphasize performance
    * @param domain Optional custom domain for Mux Video. The default is [MUX_VIDEO_DEFAULT_DOMAIN]
+   * @param playbackToken Playback Token required for Secure Video Playback and DRM Playback
+   * @param drmToken DRM Token required for DRM Playback. For DRM, you also need a [playbackToken]
    *
    * @see fromMuxPlaybackId
    */
@@ -91,6 +145,7 @@ object MediaItems {
     renditionOrder: RenditionOrder? = null,
     domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
+    drmToken: String? = null,
   ): MediaItem.Builder {
     return MediaItem.Builder()
       .setUri(
@@ -105,6 +160,13 @@ object MediaItems {
       )
       .setRequestMetadata(
         RequestMetadata.Builder()
+          .setExtras(
+            Bundle().apply {
+              putString(Constants.BUNDLE_DRM_TOKEN, drmToken)
+              putString(Constants.BUNDLE_PLAYBACK_ID, playbackId)
+              putString(Constants.BUNDLE_PLAYBACK_DOMAIN, domain)
+            }
+          )
           .build()
       )
   }
