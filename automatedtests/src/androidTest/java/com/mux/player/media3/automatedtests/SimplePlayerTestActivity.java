@@ -75,6 +75,7 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
   public MediaSessionCompat mediaSessionCompat;
   //  public MediaSessionConnector mediaSessionConnector;
   public long playbackStartPosition = 0;
+  public boolean enableSmartCache = false;
 
   TestEventListener eventListener;
   public Lock activityLock = new ReentrantLock();
@@ -97,12 +98,6 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
 
     playerView = findViewById(R.id.player_view);
 
-    initExoPlayer();
-    playerView.setPlayer(player);
-
-    // Do not hide controlls
-    playerView.setControllerShowTimeoutMs(0);
-    playerView.setControllerHideOnTouch(false);
 
     // Setup notification and media session.
     initAudioSession();
@@ -132,7 +127,7 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
     }
   }
 
-  public void initExoPlayer() {
+  public void iniPlayer() {
     // Hopfully this will not channge the track selection set programmatically
     ExoTrackSelection.Factory trackSelectionFactory = new AdaptiveTrackSelection.Factory(
         AdaptiveTrackSelection.DEFAULT_MIN_DURATION_FOR_QUALITY_INCREASE_MS * 10,
@@ -145,6 +140,7 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
     DefaultTrackSelector.Parameters trackSelectorParameters = builder
         .build();
 
+    // TODO: if this is used somwhere obtaine it from mux player.
     mediaSourceFactory = new MuxMediaSourceFactory(this, new DefaultDataSource.Factory(this));
     trackSelector = new DefaultTrackSelector(/* context= */ this, trackSelectionFactory);
     trackSelector.setParameters(trackSelectorParameters);
@@ -156,16 +152,22 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
     player = new MuxPlayer.Builder(this)
         .plusExoConfig((ExoPlayer.Builder exoBuilder) -> {
           exoBuilder.setRenderersFactory(renderersFactory);
-          exoBuilder.setMediaSourceFactory(mediaSourceFactory);
+//          exoBuilder.setMediaSourceFactory(mediaSourceFactory);
           exoBuilder.setTrackSelector(trackSelector);
         })
         .addMonitoringData(initMuxSats())
         .addExoPlayerBinding(pBinding)
         .addNetwork(mockNetwork)
+        .enableSmartCache(enableSmartCache)
+        .enableLogcat(true)
         .build();
 
     player.addAnalyticsListener(this);
     playerView.setPlayer(player);
+
+    // Do not hide controlls
+    playerView.setControllerShowTimeoutMs(0);
+    playerView.setControllerHideOnTouch(false);
   }
 
   public void initAudioSession() {
@@ -192,6 +194,10 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
 
   public void setVideoTitle(String title) {
     videoTitle = title;
+  }
+
+  public void setSmartCache(boolean enabled) {
+    this.enableSmartCache = enabled;
   }
 
   public void setAdTag(String tag) {

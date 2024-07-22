@@ -36,6 +36,10 @@ public class ConnectionWorker extends Thread implements ConnectionListener {
     start();
   }
 
+  public boolean isServingData() {
+    return sender.isDataServedInPastMs(500);
+  }
+
   public void jamNetwork(long jamPeriod, int jamFactor, boolean constantJam) {
     sender.jamNetwork(jamPeriod, jamFactor, constantJam);
   }
