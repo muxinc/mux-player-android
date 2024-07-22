@@ -28,7 +28,7 @@ public class CacheingTest extends TestBase {
         urlToPlay = "http://localhost:5000/hls/google_glass/playlist.m3u8";
         // These video have larger bitrate, make sure we do not cause any
         // rebuffering due to low bandwith
-        bandwidthLimitInBitsPerSecond = 12000000;
+        bandwidthLimitInBitsPerSecond = 10000000;
         enableSmartCache = true;
         super.init();
     }
@@ -40,7 +40,7 @@ public class CacheingTest extends TestBase {
                 fail("Playback did not start in " + waitForPlaybackToStartInMS + " milliseconds !!!");
             }
             // wait for server to serve first 5 segment.
-            waitForNSegments(4);
+            waitForNSegments(8);
             // Seek to beginning
             boolean serverServingData = httpServer.isServingData();
             if (!serverServingData) {
@@ -55,6 +55,7 @@ public class CacheingTest extends TestBase {
                 }
             });
             waitForSeekToFinish();
+            Thread.sleep(1000);
             HashMap<String, SegmentStatistics> segmentsAfterSeek = httpServer.getServedSegments();
             for (int i = 0; i < 4; i ++) {
                 Thread.sleep(1000);

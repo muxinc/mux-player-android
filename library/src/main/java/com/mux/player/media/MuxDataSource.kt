@@ -75,7 +75,7 @@ class MuxDataSource private constructor(
   override fun open(dataSpec: DataSpec): Long {
     this.dataSpec = dataSpec;
 
-    val readHandle = CacheController.tryRead(dataSpec.uri.toString())
+    val   readHandle = CacheController.tryRead(dataSpec.uri.toString())
     val nowUtc = nowUtc()
 
     return if (readHandle == null) {

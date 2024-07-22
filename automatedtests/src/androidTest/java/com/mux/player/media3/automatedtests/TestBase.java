@@ -136,6 +136,7 @@ public abstract class TestBase {
       testActivity.setUrlToPlay(urlToPlay);
       testActivity.setPlayWhenReady(playWhenReady);
       testActivity.setPlaybackStartPosition(playbackStartPosition);
+      testActivity.iniPlayer();
       testActivity.startPlayback();
       pView = testActivity.getPlayerView();
       testMediaSource = testActivity.getTestMediaSource();
