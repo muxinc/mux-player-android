@@ -3,7 +3,7 @@ plugins {
   id("com.android.application") version "8.1.3" apply false
   id("org.jetbrains.kotlin.android") version "1.8.0" apply false
   id("com.android.library") version "8.1.3" apply false
-  id("com.mux.gradle.android.mux-android-distribution") version "1.1.2" apply false
+  id("com.mux.gradle.android.mux-android-distribution") version "1.2.1" apply false
 }
 
 allprojects {
