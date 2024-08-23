@@ -370,9 +370,8 @@ internal class CacheDatastore(
   @Throws(IOException::class)
   private fun awaitDbHelper(): DbHelper {
     // inner function closes db if the calling thread was interrupted
-    fun closeAndCancelIfInterrupted(dbHelper: DbHelper?) {
+    fun cancelIfInterrupted() {
       if (Thread.interrupted()) {
-        dbHelper?.close()
         throw CancellationException("open interrupted")
       }
     }
@@ -381,20 +380,21 @@ internal class CacheDatastore(
     fun doOpen(): DbHelper {
       // todo - we should also consider getting our cacheQuota here, that will take a long time
       //  so maybe do it async & only consider the cache quota once we have it(..?)
-      closeAndCancelIfInterrupted(null)
+
+      cancelIfInterrupted()
       clearTempFiles()
-      closeAndCancelIfInterrupted(null)
+      cancelIfInterrupted()
       ensureDirs()
 
       val helper = DbHelper(context, indexDbDir())
-      closeAndCancelIfInterrupted(helper)
+      cancelIfInterrupted()
 
       // Do some db maintenance when we start up, in case shutdown wasn't clean
       helper.writableDatabase.use { db ->
         doEvictByLru(db)
       }
 
-      closeAndCancelIfInterrupted(helper)
+      cancelIfInterrupted()
       return helper
     }
 
