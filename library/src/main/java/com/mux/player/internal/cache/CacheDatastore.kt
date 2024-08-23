@@ -30,6 +30,7 @@ internal class CacheDatastore(
 ) : Closeable {
 
   companion object {
+    @Suppress("unused")
     private const val TAG = "CacheDatastore"
     private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
 
@@ -38,6 +39,7 @@ internal class CacheDatastore(
   }
 
   private val dbHelper: DbHelper get() = awaitDbHelper()
+  private val dbHelperLock = Object()
 
   /**
    * Opens the datastore, blocking until it is ready to use
@@ -68,21 +70,19 @@ internal class CacheDatastore(
    * state. You can reopen it by calling [open] again.
    */
   override fun close() {
-    // em - it's definitely all copacetic to call close() to handle errors from open(), or to
-    // close() during opening. if you immediately call open() after close(), your second open() may
-    // fail intermittently. But maybe that's just a theoretical risk, so todo - test cranking this
-    //  (and maybe don't worry about it overly much)
-    val openFuture = openTask.get()
-    try {
-      if (openFuture != null) {
-        val openDbHelper = if (openFuture.isDone) openFuture.get() else null
-        openFuture.cancel(true)
-        openDbHelper?.close()
+    synchronized(dbHelperLock) {
+      val openFuture = openTask.get()
+      try {
+        if (openFuture != null) {
+          val openDbHelper = if (openFuture.isDone) openFuture.get() else null
+          openFuture.cancel(true)
+          openDbHelper?.close()
+        }
+      } catch (_: Exception) {
+      } finally {
+        // calls made to open() start failing after cancel() and keep failing until after this line
+        openTask.compareAndSet(openFuture, null)
       }
-    } catch (_: Exception) {
-    } finally {
-      // calls made to open() start failing after cancel() and keep failing until after this line
-      openTask.compareAndSet(openFuture, null)
     }
   }
 
@@ -334,10 +334,10 @@ internal class CacheDatastore(
     }
   }
   private fun doReadLeastRecentFiles(db: SQLiteDatabase): List<FileRecord> {
-    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
-      return doReadLeastRecentFilesNoWindowFunc(db)
+    return if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+      doReadLeastRecentFilesNoWindowFunc(db)
     } else {
-      return doReadLeastRecentFilesWithWindowFunc(db)
+      doReadLeastRecentFilesWithWindowFunc(db)
     }
   }
 
@@ -392,44 +392,48 @@ internal class CacheDatastore(
   // If the db failed to open, this method will throw. Opening can be re-attempted after resolving
   @Throws(IOException::class)
   private fun awaitDbHelper(): DbHelper {
-    fun closeIfInterrupted(dbHelper: DbHelper?) {
+    // inner function closes db if the calling thread was interrupted
+    fun closeAndCancelIfInterrupted(dbHelper: DbHelper?) {
       if (Thread.interrupted()) {
         dbHelper?.close()
         throw CancellationException("open interrupted")
       }
     }
 
+    // inner function prepares the database & cache dir + opens the DB
     fun doOpen(): DbHelper {
       // todo - we should also consider getting our cacheQuota here, that will take a long time
       //  so maybe do it async & only consider the cache quota once we have it(..?)
-      closeIfInterrupted(null)
+      closeAndCancelIfInterrupted(null)
       clearTempFiles()
-      closeIfInterrupted(null)
+      closeAndCancelIfInterrupted(null)
       ensureDirs()
 
       val helper = DbHelper(context, indexDbDir())
-      closeIfInterrupted(helper)
+      closeAndCancelIfInterrupted(helper)
 
       // Do some db maintenance when we start up, in case shutdown wasn't clean
       helper.writableDatabase.use { db ->
         doEvictByLru(db)
       }
 
-      closeIfInterrupted(helper)
-      return helper;
+      closeAndCancelIfInterrupted(helper)
+      return helper
     }
 
-    val needToStart = openTask.compareAndSet(null, FutureTask { doOpen() })
-    try {
-      val actualTask = openTask.get()!!
-      if (needToStart) {
-        actualTask.run()
+    synchronized(dbHelperLock) {
+      val needToStart = openTask.compareAndSet(null, FutureTask { doOpen() })
+      try {
+        val actualTask = openTask.get()!!
+        if (needToStart) {
+          actualTask.run()
+        }
+        return actualTask.get()
+      } catch (e: Exception) {
+        // subsequent calls can attempt again
+        openTask.set(null)
+        throw IOException(e)
       }
-      return actualTask.get()
-    } catch (e: Exception) {
-      // subsequent calls can attempt again
-      openTask.set(null)
-      throw IOException(e)
     }
   }
 }
