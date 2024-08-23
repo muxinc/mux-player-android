@@ -7,7 +7,6 @@ import android.os.Build
 import android.util.Base64
 import com.mux.player.internal.Constants
 import com.mux.player.oneOf
-import java.io.Closeable
 import java.io.File
 import java.io.IOException
 import java.net.URL
@@ -27,7 +26,7 @@ import java.util.concurrent.atomic.AtomicReference
 internal class CacheDatastore(
   val context: Context,
   val maxDiskSize: Long = 256 * 1024 * 1024,
-) : Closeable {
+) {
 
   companion object {
     @Suppress("unused")
@@ -39,7 +38,6 @@ internal class CacheDatastore(
   }
 
   private val dbHelper: DbHelper get() = awaitDbHelper()
-  private val dbHelperLock = Object()
 
   /**
    * Opens the datastore, blocking until it is ready to use
@@ -62,27 +60,6 @@ internal class CacheDatastore(
       awaitDbHelper()
     } catch (_: CancellationException) {
       // swallow cancellation errors, they are not that important
-    }
-  }
-
-  /**
-   * Closes the datastore. This will close the index database and revert the datastore to a closed
-   * state. You can reopen it by calling [open] again.
-   */
-  override fun close() {
-    synchronized(dbHelperLock) {
-      val openFuture = openTask.get()
-      try {
-        if (openFuture != null) {
-          val openDbHelper = if (openFuture.isDone) openFuture.get() else null
-          openFuture.cancel(true)
-          openDbHelper?.close()
-        }
-      } catch (_: Exception) {
-      } finally {
-        // calls made to open() start failing after cancel() and keep failing until after this line
-        openTask.compareAndSet(openFuture, null)
-      }
     }
   }
 
@@ -421,19 +398,17 @@ internal class CacheDatastore(
       return helper
     }
 
-    synchronized(dbHelperLock) {
-      val needToStart = openTask.compareAndSet(null, FutureTask { doOpen() })
-      try {
-        val actualTask = openTask.get()!!
-        if (needToStart) {
-          actualTask.run()
-        }
-        return actualTask.get()
-      } catch (e: Exception) {
-        // subsequent calls can attempt again
-        openTask.set(null)
-        throw IOException(e)
+    val needToStart = openTask.compareAndSet(null, FutureTask { doOpen() })
+    try {
+      val actualTask = openTask.get()!!
+      if (needToStart) {
+        actualTask.run()
       }
+      return actualTask.get()
+    } catch (e: Exception) {
+      // subsequent calls can attempt again
+      openTask.set(null)
+      throw IOException(e)
     }
   }
 }
