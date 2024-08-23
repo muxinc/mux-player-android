@@ -37,7 +37,6 @@ internal class CacheDatastore(
       Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
   }
 
-
   private val dbHelper: DbHelper get() = awaitDbHelper()
 
   /**
