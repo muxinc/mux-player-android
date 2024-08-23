@@ -37,7 +37,7 @@ muxDistribution {
   releaseVersion versionFromTag()
   artifactIds just("android")
   groupIds just("com.mux.player")
-  publicReleaseIf releaseOnTag()
+  publicReleaseIf releaseIfCmdFlag("publicRelease")
 
   // TODO: This is kinda clumsy, packageJavadocs should be a function not a property probably
   packageJavadocs = releaseOnTag().call()
