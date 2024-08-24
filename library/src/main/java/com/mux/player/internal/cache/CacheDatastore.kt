@@ -7,7 +7,6 @@ import android.os.Build
 import android.util.Base64
 import com.mux.player.internal.Constants
 import com.mux.player.oneOf
-import java.io.Closeable
 import java.io.File
 import java.io.IOException
 import java.net.URL
@@ -27,16 +26,16 @@ import java.util.concurrent.atomic.AtomicReference
 internal class CacheDatastore(
   val context: Context,
   val maxDiskSize: Long = 256 * 1024 * 1024,
-) : Closeable {
+) {
 
   companion object {
+    @Suppress("unused")
     private const val TAG = "CacheDatastore"
     private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
 
     val RX_CHUNK_URL =
       Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
   }
-
 
   private val dbHelper: DbHelper get() = awaitDbHelper()
 
@@ -61,29 +60,6 @@ internal class CacheDatastore(
       awaitDbHelper()
     } catch (_: CancellationException) {
       // swallow cancellation errors, they are not that important
-    }
-  }
-
-  /**
-   * Closes the datastore. This will close the index database and revert the datastore to a closed
-   * state. You can reopen it by calling [open] again.
-   */
-  override fun close() {
-    // em - it's definitely all copacetic to call close() to handle errors from open(), or to
-    // close() during opening. if you immediately call open() after close(), your second open() may
-    // fail intermittently. But maybe that's just a theoretical risk, so todo - test cranking this
-    //  (and maybe don't worry about it overly much)
-    val openFuture = openTask.get()
-    try {
-      if (openFuture != null) {
-        val openDbHelper = if (openFuture.isDone) openFuture.get() else null
-        openFuture.cancel(true)
-        openDbHelper?.close()
-      }
-    } catch (_: Exception) {
-    } finally {
-      // calls made to open() start failing after cancel() and keep failing until after this line
-      openTask.compareAndSet(openFuture, null)
     }
   }
 
@@ -335,10 +311,10 @@ internal class CacheDatastore(
     }
   }
   private fun doReadLeastRecentFiles(db: SQLiteDatabase): List<FileRecord> {
-    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
-      return doReadLeastRecentFilesNoWindowFunc(db)
+    return if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+      doReadLeastRecentFilesNoWindowFunc(db)
     } else {
-      return doReadLeastRecentFilesWithWindowFunc(db)
+      doReadLeastRecentFilesWithWindowFunc(db)
     }
   }
 
@@ -393,31 +369,33 @@ internal class CacheDatastore(
   // If the db failed to open, this method will throw. Opening can be re-attempted after resolving
   @Throws(IOException::class)
   private fun awaitDbHelper(): DbHelper {
-    fun closeIfInterrupted(dbHelper: DbHelper?) {
+    // inner function closes db if the calling thread was interrupted
+    fun cancelIfInterrupted() {
       if (Thread.interrupted()) {
-        dbHelper?.close()
         throw CancellationException("open interrupted")
       }
     }
 
+    // inner function prepares the database & cache dir + opens the DB
     fun doOpen(): DbHelper {
       // todo - we should also consider getting our cacheQuota here, that will take a long time
       //  so maybe do it async & only consider the cache quota once we have it(..?)
-      closeIfInterrupted(null)
+
+      cancelIfInterrupted()
       clearTempFiles()
-      closeIfInterrupted(null)
+      cancelIfInterrupted()
       ensureDirs()
 
       val helper = DbHelper(context, indexDbDir())
-      closeIfInterrupted(helper)
+      cancelIfInterrupted()
 
       // Do some db maintenance when we start up, in case shutdown wasn't clean
       helper.writableDatabase.use { db ->
         doEvictByLru(db)
       }
 
-      closeIfInterrupted(helper)
-      return helper;
+      cancelIfInterrupted()
+      return helper
     }
 
     val needToStart = openTask.compareAndSet(null, FutureTask { doOpen() })
