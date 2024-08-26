@@ -57,13 +57,6 @@ class MuxPlayer private constructor(
     // exoPlayer can handle multiple calls itself, not our deal
     exoPlayer.release()
 
-    // our own cleanup should only happen once
-    if (!released) {
-      if (muxCacheEnabled) {
-        CacheController.onPlayerReleased()
-      }
-    }
-
     released = true
   }
 
