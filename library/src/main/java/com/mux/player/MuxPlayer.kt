@@ -74,6 +74,8 @@ class MuxPlayer private constructor(
         // Check if a DRM token is set, set View Drm Type if it is
         // TODO: escape hatch TBA
         CustomerViewData viewData = CustomerViewData()
+        // Assumes only widevine DRM playback is supported
+        // If playready support is added in future, update to select between widevine and playready
         viewData.viewDrmType = "widevine" // TODO: make this a constant
         if (mediaItem.requestMetadata.extras.getString(Constants.BUNDLE_DRM_TOKEN)) {
           // TODO: Confirm this doesn't overwrite other keys like view session ID to null
