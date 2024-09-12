@@ -80,6 +80,7 @@ class MuxPlayer private constructor(
           viewData.viewDrmType = "widevine" // TODO: make this a constant
 
           // TODO: Confirm this doesn't overwrite other keys like view session ID to null
+          // TODO: This is deprecated. Confirm the most current API to use.
           muxStats?.updateCustomerData(
             null, null, viewData
           )
