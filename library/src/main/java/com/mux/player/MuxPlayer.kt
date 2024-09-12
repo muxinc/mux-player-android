@@ -71,7 +71,16 @@ class MuxPlayer private constructor(
     exoPlayer.addListener(object : Listener {
       // more listener methods here if required
       override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-        //muxStats?.videoChange(CustomerVideoData())
+        // Check if a DRM token is set, set View Drm Type if it is
+        // TODO: escape hatch TBA
+        CustomerViewData viewData = CustomerViewData()
+        viewData.viewDrmType = "widevine" // TODO: make this a constant
+        if (mediaItem.requestMetadata.extras.getString(Constants.BUNDLE_DRM_TOKEN)) {
+          // TODO: Confirm this doesn't overwrite other keys like view session ID to null
+          muxStats?.updateCustomerData(
+            null, null, viewData
+          )
+        }
       }
     })
 
