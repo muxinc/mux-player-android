@@ -73,7 +73,7 @@ class MuxPlayer private constructor(
       override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         // Check if a DRM token is set, set View Drm Type if it is
         // TODO: escape hatch TBA
-        if (mediaItem.requestMetadata.extras.getString(Constants.BUNDLE_DRM_TOKEN)) {
+        if (mediaItem.requestMetadata.extras.getString(Constants.BUNDLE_DRM_TOKEN) != nil) {
           val viewData = CustomerViewData()
           // Assumes only widevine DRM playback is supported
           // If playready support is added in future, update to select between widevine and playready
