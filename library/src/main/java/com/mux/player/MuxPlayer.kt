@@ -77,7 +77,7 @@ class MuxPlayer private constructor(
           val viewData = CustomerViewData()
           // Assumes only widevine DRM playback is supported
           // If playready support is added in future, update to select between widevine and playready
-          viewData.viewDrmType = "widevine" // TODO: make this a constant
+          viewData.viewDrmType = Constants.VIEW_DRM_TYPE_WIDEVINE
 
           // TODO: Confirm this doesn't overwrite other keys like view session ID to null
           // TODO: This is deprecated. Confirm the most current API to use.
