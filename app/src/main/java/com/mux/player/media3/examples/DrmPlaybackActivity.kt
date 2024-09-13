@@ -20,6 +20,7 @@ import com.mux.player.media.MediaItems
 import com.mux.player.media.PlaybackResolution
 import com.mux.player.media3.PlaybackIds
 import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
+import com.mux.player.internal.Constants
 import com.mux.stats.sdk.core.model.CustomerPlayerData
 
 /**
