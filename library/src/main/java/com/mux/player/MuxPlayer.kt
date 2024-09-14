@@ -7,10 +7,12 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import com.mux.player.internal.cache.CacheController
 import com.mux.stats.sdk.core.model.CustomerData
+import com.mux.stats.sdk.core.model.CustomerViewData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.Logger
 import com.mux.player.internal.createNoLogger
+import com.mux.player.internal.Constants
 import com.mux.player.media.MuxDataSource
 import com.mux.player.media.MuxMediaSourceFactory
 import com.mux.player.media.MediaItems
@@ -73,17 +75,16 @@ class MuxPlayer private constructor(
       override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         // Check if a DRM token is set, set View Drm Type if it is
         // TODO: escape hatch TBA
-        if (mediaItem.requestMetadata.extras.getString(Constants.BUNDLE_DRM_TOKEN) != nil) {
+        if (mediaItem?.requestMetadata?.extras?.getString(Constants.BUNDLE_DRM_TOKEN) != null) {
           val viewData = CustomerViewData()
           // Assumes only widevine DRM playback is supported
           // If playready support is added in future, update to select between widevine and playready
           viewData.viewDrmType = Constants.VIEW_DRM_TYPE_WIDEVINE
 
-          // TODO: Confirm this doesn't overwrite other keys like view session ID to null
-          // TODO: This is deprecated. Confirm the most current API to use.
-          muxStats?.updateCustomerData(
-            null, null, viewData
-          )
+          // This doesn't overwrite other keys like view session ID to null
+          val customerData = CustomerData()
+          customerData.customerViewData = viewData
+          muxStats?.updateCustomerData(customerData)
         }
       }
     })
