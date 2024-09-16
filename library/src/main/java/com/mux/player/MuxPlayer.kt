@@ -43,6 +43,7 @@ class MuxPlayer private constructor(
   private val muxDataKey: String?,
   private val logger: Logger,
   private val muxCacheEnabled: Boolean = true,
+  private val didAddMonitoringData: Boolean = false,
   context: Context,
   initialCustomerData: CustomerData,
   network: INetworkRequest? = null,
@@ -75,7 +76,7 @@ class MuxPlayer private constructor(
       override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         // Check if a DRM token is set, set View Drm Type if it is
         // TODO: escape hatch TBA
-        if (mediaItem?.requestMetadata?.extras?.getString(Constants.BUNDLE_DRM_TOKEN) != null) {
+        if (mediaItem?.requestMetadata?.extras?.getString(Constants.BUNDLE_DRM_TOKEN) != null && !didAddMonitoringData) {
           val viewData = CustomerViewData()
           // Assumes only widevine DRM playback is supported
           // If playready support is added in future, update to select between widevine and playready
@@ -152,6 +153,7 @@ class MuxPlayer private constructor(
     private var enableSmartCache: Boolean = false
     private var logger: Logger? = null
     private var customerData: CustomerData = CustomerData()
+    private var didAddMonitoringData: Boolean = false
     private var exoPlayerBinding: ExoPlayerBinding? = null
     private var network: INetworkRequest? = null
 
@@ -205,6 +207,7 @@ class MuxPlayer private constructor(
     @Suppress("unused")
     fun addMonitoringData(customerData: CustomerData): Builder {
       this.customerData.update(customerData)
+      this.didAddMonitoringData = true
       return this
     }
 
@@ -257,6 +260,7 @@ class MuxPlayer private constructor(
         exoPlayer = this.playerBuilder.build(),
         muxDataKey = this.dataEnvKey,
         muxCacheEnabled = enableSmartCache,
+        didAddMonitoringData = this.didAddMonitoringData,
         logger = logger ?: createNoLogger(),
         initialCustomerData = customerData,
         network = network,
