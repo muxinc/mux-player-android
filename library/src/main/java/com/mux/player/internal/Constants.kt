@@ -12,6 +12,8 @@ internal object Constants {
   const val EXT_M4S = "m4s"
   const val EXT_TS = "ts"
 
+  const val VIEW_DRM_TYPE_WIDEVINE = "widevine"
+
   /**
    * Can be rooted in cache or files dir on either internal or external storage
    */

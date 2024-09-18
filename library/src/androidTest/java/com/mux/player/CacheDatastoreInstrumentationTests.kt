@@ -68,7 +68,7 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testBasicInitialization() {
     val datastore = CacheDatastore(appContext)
-    datastore.use { it.open() }
+    datastore.also { it.open() }
 
     Assert.assertTrue(
       "cache files dir should exist after open()",
@@ -92,7 +92,7 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testCreateTempDownloadFile() {
     val datastore = CacheDatastore(appContext)
-    datastore.use {
+    datastore.also {
       it.open()
 
       val url = URL("https://some.host.com/path1/path2/basename.ts")
@@ -115,7 +115,7 @@ class CacheDatastoreInstrumentationTests {
 
     val datastore = CacheDatastore(appContext)
     datastore.open()
-    datastore.use {
+    datastore.also {
       // Write one file...
       val oldTempFile = datastore.createTempDownloadFile(url)
       BufferedOutputStream(FileOutputStream(oldTempFile)).use { it.write(oldFileData) }
@@ -144,7 +144,7 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testWriteRecordReplacesOnKey() {
     val datastore = CacheDatastore(appContext)
-    datastore.use {
+    datastore.also {
       val originalRecord = FileRecord(
         url = "url",
         etag = "etag1",
@@ -192,7 +192,7 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testReadRecord() {
     fun testTheCase(url: String) {
-      CacheDatastore(appContext).use { datastore ->
+      CacheDatastore(appContext).also { datastore ->
         val originalRecord = FileRecord(
           url = url,
           etag = "etag1",
@@ -223,7 +223,7 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testReadLeastRecentFiles() {
     val maxCacheSize = 5L
-    CacheDatastore(appContext, maxDiskSize = maxCacheSize).use { datastore ->
+    CacheDatastore(appContext, maxDiskSize = maxCacheSize).also { datastore ->
       datastore.open()
       // For this test, size "units" are like one digit.
       //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
@@ -286,7 +286,7 @@ class CacheDatastoreInstrumentationTests {
     val maxCacheSize = 5500L
     val dummyFileSize = 1000L
 
-    CacheDatastore(appContext, maxDiskSize = maxCacheSize).use { datastore ->
+    CacheDatastore(appContext, maxDiskSize = maxCacheSize).also { datastore ->
       datastore.open()
       //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
       var fakeLastAccess = 200L // increment by some amount when you need to

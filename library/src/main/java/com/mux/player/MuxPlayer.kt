@@ -7,10 +7,12 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import com.mux.player.internal.cache.CacheController
 import com.mux.stats.sdk.core.model.CustomerData
+import com.mux.stats.sdk.core.model.CustomerViewData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.Logger
 import com.mux.player.internal.createNoLogger
+import com.mux.player.internal.Constants
 import com.mux.player.media.MuxDataSource
 import com.mux.player.media.MuxMediaSourceFactory
 import com.mux.player.media.MediaItems
@@ -41,6 +43,7 @@ class MuxPlayer private constructor(
   private val muxDataKey: String?,
   private val logger: Logger,
   private val muxCacheEnabled: Boolean = true,
+  private val didAddMonitoringData: Boolean = false,
   context: Context,
   initialCustomerData: CustomerData,
   network: INetworkRequest? = null,
@@ -71,7 +74,18 @@ class MuxPlayer private constructor(
     exoPlayer.addListener(object : Listener {
       // more listener methods here if required
       override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-        //muxStats?.videoChange(CustomerVideoData())
+        // Check if a DRM token is set, set View Drm Type if it is
+        if (mediaItem?.requestMetadata?.extras?.getString(Constants.BUNDLE_DRM_TOKEN) != null && !didAddMonitoringData) {
+          val viewData = CustomerViewData()
+          // Assumes only widevine DRM playback is supported
+          // If playready support is added in future, update to select between widevine and playready
+          viewData.viewDrmType = Constants.VIEW_DRM_TYPE_WIDEVINE
+
+          // This doesn't overwrite other keys like view session ID to null
+          val customerData = CustomerData()
+          customerData.customerViewData = viewData
+          muxStats?.updateCustomerData(customerData)
+        }
       }
     })
 
@@ -138,6 +152,7 @@ class MuxPlayer private constructor(
     private var enableSmartCache: Boolean = false
     private var logger: Logger? = null
     private var customerData: CustomerData = CustomerData()
+    private var didAddMonitoringData: Boolean = false
     private var exoPlayerBinding: ExoPlayerBinding? = null
     private var network: INetworkRequest? = null
 
@@ -191,6 +206,7 @@ class MuxPlayer private constructor(
     @Suppress("unused")
     fun addMonitoringData(customerData: CustomerData): Builder {
       this.customerData.update(customerData)
+      this.didAddMonitoringData = true
       return this
     }
 
@@ -243,6 +259,7 @@ class MuxPlayer private constructor(
         exoPlayer = this.playerBuilder.build(),
         muxDataKey = this.dataEnvKey,
         muxCacheEnabled = enableSmartCache,
+        didAddMonitoringData = this.didAddMonitoringData,
         logger = logger ?: createNoLogger(),
         initialCustomerData = customerData,
         network = network,
