@@ -6,19 +6,19 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.mux.player.media3.R
+import com.mux.player.media3.databinding.ActivityPlayerCarouselBinding
 
+/**
+ * Shows a Carousel of list items backed by players
+ */
 class PlayerCarouselActivity : AppCompatActivity() {
 
-  val c: Caro
+  lateinit var viewBinding: ActivityPlayerCarouselBinding
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    enableEdgeToEdge()
-    setContentView(R.layout.activity_player_carousel)
-    ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-      val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-      v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-      insets
-    }
+
+    viewBinding = ActivityPlayerCarouselBinding.inflate(layoutInflater)
+    setContentView(viewBinding.root)
   }
 }
