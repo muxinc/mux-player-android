@@ -90,7 +90,8 @@ class PlayerCarouselActivity : AppCompatActivity() {
     return listOf(
       CarouselItem(
         title = "Tears of Steel",
-        description = "A cautionary tale about pursuing relationships with engineers",
+        description = "A time travel story with really cool high-quality CGI and some truly" +
+            " powerful dialogue writing",
         mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.TEARS_OF_STEEL),
       ),
       CarouselItem(
@@ -111,13 +112,16 @@ class PlayerCarouselActivity : AppCompatActivity() {
       ),
       CarouselItem(
         title = "Big Buck Bunny",
-        description = "A large rabbit perpetuates a cycle of violence",
+        description = "A rabbit gets harassed by a bunch of punk squirrels.",
         mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.BIG_BUCK_BUNNY),
       ),
       CarouselItem(
         title = "Mux Marketing Video",
         description = "We make video for the internet. I mean we don't make *videos* we make " +
-            "video infrastructure. Although we did make this video, so I guess we do make videos.",
+            "video infrastructure. Although we did make _this_ video, so I guess we do make videos." +
+            "Come to think of it we actually make a lot of videos. Every time we ship we do, plus" +
+            " we have tutorials and other stuff on our youtube channel. I didn't have to mention " +
+            "that, but I want this to be more than 5 lines to I can see how the scrim looks",
         mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.MUX_MARKETING_VIDEO),
       ),
       CarouselItem(
@@ -128,8 +132,8 @@ class PlayerCarouselActivity : AppCompatActivity() {
       ),
       CarouselItem(
         title = "Elephant's Dream",
-        description = "A surreal fantasy action thing. I think it's like about VR, I dunno I have" +
-            "really never watched it the whole way through. It kinda looks neat tho",
+        description = "A surreal fantasy action movie. The first Open Movie Project movie. It's " +
+            "old but kinda trippy",
         mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.ELEPHANTS_DREAM),
       ),
       CarouselItem(

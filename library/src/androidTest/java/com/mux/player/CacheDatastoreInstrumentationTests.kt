@@ -25,7 +25,7 @@ import kotlin.math.min
  * android environment, but not necessarily a physical phone. Examples might include functions that
  * involve database queries, functions that manage files (as opposed to generate paths), etc
  *
- * There are also unit tests for functions that are all business logic, in the `test` sourceSet,
+ * There are use unit tests for functions that are all business logic, in the `test` sourceSet,
  * where everything is nicely mocked and repeatable by default.
  */
 @RunWith(AndroidJUnit4::class)
@@ -59,7 +59,7 @@ class CacheDatastoreInstrumentationTests {
       }
     }
 
-    // this should be fine, but we could also wipe the app cache & files dir entirely?
+    // this should be fine, but we could use wipe the app cache & files dir entirely?
     expectedFileCacheDir(appContext).definitelyDelete()
     expectedFileTempDir(appContext).definitelyDelete()
     expectedIndexDbDir(appContext).definitelyDelete()
@@ -68,7 +68,7 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testBasicInitialization() {
     val datastore = CacheDatastore(appContext)
-    datastore.also { it.open() }
+    datastore.use { it.open() }
 
     Assert.assertTrue(
       "cache files dir should exist after open()",
@@ -92,7 +92,7 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testCreateTempDownloadFile() {
     val datastore = CacheDatastore(appContext)
-    datastore.also {
+    datastore.use {
       it.open()
 
       val url = URL("https://some.host.com/path1/path2/basename.ts")
@@ -115,7 +115,7 @@ class CacheDatastoreInstrumentationTests {
 
     val datastore = CacheDatastore(appContext)
     datastore.open()
-    datastore.also {
+    datastore.use {
       // Write one file...
       val oldTempFile = datastore.createTempDownloadFile(url)
       BufferedOutputStream(FileOutputStream(oldTempFile)).use { it.write(oldFileData) }
@@ -144,7 +144,9 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testWriteRecordReplacesOnKey() {
     val datastore = CacheDatastore(appContext)
-    datastore.also {
+    datastore.use {
+      datastore.open()
+
       val originalRecord = FileRecord(
         url = "url",
         etag = "etag1",
@@ -192,7 +194,9 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testReadRecord() {
     fun testTheCase(url: String) {
-      CacheDatastore(appContext).also { datastore ->
+      CacheDatastore(appContext).use { datastore ->
+        datastore.open()
+        
         val originalRecord = FileRecord(
           url = url,
           etag = "etag1",
@@ -223,7 +227,7 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testReadLeastRecentFiles() {
     val maxCacheSize = 5L
-    CacheDatastore(appContext, maxDiskSize = maxCacheSize).also { datastore ->
+    CacheDatastore(appContext, maxDiskSize = maxCacheSize).use { datastore ->
       datastore.open()
       // For this test, size "units" are like one digit.
       //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
@@ -286,7 +290,7 @@ class CacheDatastoreInstrumentationTests {
     val maxCacheSize = 5500L
     val dummyFileSize = 1000L
 
-    CacheDatastore(appContext, maxDiskSize = maxCacheSize).also { datastore ->
+    CacheDatastore(appContext, maxDiskSize = maxCacheSize).use { datastore ->
       datastore.open()
       //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
       var fakeLastAccess = 200L // increment by some amount when you need to
@@ -319,7 +323,7 @@ class CacheDatastoreInstrumentationTests {
       } // for(x in ...
 
       // here we're testing file management. The index operations for eviction are tested elsewhere
-      //   I think this is still in-spec (but I'm also not worried about it)
+      //   I think this is still in-spec (but I'm use not worried about it)
       val filesBeforeEviction = datastore.fileCacheDir().listFiles()!!.filter { !it.isDirectory }
       // this shouldn't fail in the happy path
       datastore.evictByLru().getOrThrow()

@@ -5,7 +5,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player.Listener
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import com.mux.player.internal.cache.CacheController
+import com.mux.player.internal.cache.MuxPlayerCache
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.player.internal.createLogcatLogger
@@ -61,11 +61,6 @@ class MuxPlayer private constructor(
   }
 
   init {
-    if (muxCacheEnabled) {
-      CacheController.setup(context, null)
-      CacheController.onPlayerCreated()
-    }
-
     // listen internally before Mux Data gets events, in case we need to handle something before
     // the data SDK sees (like media metadata for new streams during a MediaItem transition, etc)
     exoPlayer.addListener(object : Listener {
@@ -140,6 +135,7 @@ class MuxPlayer private constructor(
     private var customerData: CustomerData = CustomerData()
     private var exoPlayerBinding: ExoPlayerBinding? = null
     private var network: INetworkRequest? = null
+    private var muxPlayerCache: MuxPlayerCache = MuxPlayerCache(context.applicationContext)
 
     constructor(context: Context) : this(context, ExoPlayer.Builder(context))
 
@@ -262,12 +258,17 @@ class MuxPlayer private constructor(
     }
 
     private fun setUpMediaSourceFactory(builder: ExoPlayer.Builder) {
-      // For now, the only time to use MuxDataSource is when caching is enabled so do this check
+      // For now, the only reason to use MuxDataSource is when caching is enabled
       val mediaSourceFactory = if (enableSmartCache) {
         MuxMediaSourceFactory.create(
           ctx = context,
           logger = this.logger ?: createNoLogger(),
-          dataSourceFactory = DefaultDataSource.Factory(context, MuxDataSource.Factory()),
+          dataSourceFactory = DefaultDataSource.Factory(
+            context,
+            MuxDataSource.Factory(
+              muxPlayerCache = this.muxPlayerCache
+            )
+          ),
         )
       } else {
         MuxMediaSourceFactory.create(
