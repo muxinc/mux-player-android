@@ -15,6 +15,7 @@ import com.mux.player.media3.examples.BasicPlayerActivity
 import com.mux.player.media3.examples.DrmPlaybackActivity
 import com.mux.player.media3.examples.MaxResActivity
 import com.mux.player.media3.examples.SmartCacheActivity
+import com.mux.player.media3.examples.carousel.PlayerCarouselActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -43,6 +44,10 @@ class MainActivity : AppCompatActivity() {
     Example(
       title = "Basic Foreground Player",
       destination = Intent(this@MainActivity, BasicPlayerActivity::class.java)
+    ),
+    Example(
+      title = "Fullscreen Carousel (like reels)",
+      destination = Intent(this@MainActivity, PlayerCarouselActivity::class.java),
     ),
     Example(
       title = "Max-Resolution Modifier",
