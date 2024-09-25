@@ -245,6 +245,7 @@ class MuxPlayer private constructor(
         logger = logger ?: createNoLogger(),
         initialCustomerData = customerData,
         network = network,
+        cache = muxPlayerCache,
         exoPlayerBinding = exoPlayerBinding,
       )
     }
