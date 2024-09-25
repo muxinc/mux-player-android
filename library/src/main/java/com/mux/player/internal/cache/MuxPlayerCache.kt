@@ -1,8 +1,6 @@
 package com.mux.player.internal.cache
 
 import android.content.Context
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.Closeable
@@ -15,11 +13,17 @@ import java.io.OutputStream
 import java.net.URL
 import java.util.concurrent.TimeUnit
 
+/**
+ * Manages Mux Player's cache. Has methods for controlling the cache and enforcing cache-control
+ *
+ * Customers don't need to interact with this class directly. Just enable smart caching and benefit
+ * from caching transparently. See `MuxPlayer.Builder.enableSmartCache()`
+ */
 class MuxPlayerCache private constructor(
   private val datastore: CacheDatastore,
 ) {
 
-  private constructor(appContext: Context) : this(CacheDatastore(appContext.applicationContext))
+  constructor(appContext: Context) : this(CacheDatastore(appContext.applicationContext))
 
   companion object {
     private const val TAG = "CacheController"
