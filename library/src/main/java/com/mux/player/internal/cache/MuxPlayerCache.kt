@@ -35,8 +35,6 @@ class MuxPlayerCache private constructor(
     internal fun create(datastore: CacheDatastore) = MuxPlayerCache(datastore)
   }
 
-  private val ioScope = CoroutineScope(Dispatchers.IO)
-
   /**
    * Tries to read from the cache. If there's a hit, this method will return a [ReadHandle] for
    * reading the file. The [ReadHandle] has methods for reading, and also info about the original
