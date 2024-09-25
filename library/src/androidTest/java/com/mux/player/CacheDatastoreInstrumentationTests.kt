@@ -37,17 +37,6 @@ class CacheDatastoreInstrumentationTests {
 
   private val appContext get() = InstrumentationRegistry.getInstrumentation().targetContext
 
-  // todo - more test cases once more of the Datastore is done
-  //  writeRecord: Returns successful if a new row
-  //    does eviction pass after writing
-  //  readRecord: Works for segments (written data == read data)
-  //    Works for not-segments (written data == read data)
-  //    Misses gracefully if the file underneath is deleted
-  //    (after eviction) Misses & evicts if entry is eviction candidate
-  //  evictionPass: Evicts according to max-age (including Age)
-  //    Evicts according to cache max size
-  //    Evicts according to cache quota if we are constrained (ie, if cache quota is under max)
-
   @Before
   fun setUp() {
     // clear the cache files
