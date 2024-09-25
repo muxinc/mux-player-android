@@ -5,7 +5,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -25,7 +24,9 @@ import com.mux.player.media3.R
 import com.mux.player.media3.databinding.ActivityPlayerCarouselBinding
 
 /**
- * Shows a Carousel of list items that play video (like reels)
+ * Shows a Carousel of list items that play videos (like reels)
+ *
+ * Each item shares a single player, which it reuses when the user swipes to a new list item.
  *
  * The carousel is a RecyclerView with a [CarouselLayoutManager].
  */
@@ -44,10 +45,6 @@ class PlayerCarouselActivity : AppCompatActivity() {
     setContentView(viewBinding.root)
 
     carousel.adapter = adapter
-    setUpRecyclerView(carousel)
-  }
-
-  private fun setUpRecyclerView(rv: RecyclerView) {
     val layoutManager = CarouselLayoutManager(FullScreenCarouselStrategy())
     layoutManager.orientation = VERTICAL
     val snapHelper = PlayerSnapHelper(
@@ -56,7 +53,7 @@ class PlayerCarouselActivity : AppCompatActivity() {
       adapter = { adapter }
     )
 
-    rv.addOnChildAttachStateChangeListener(object : RecyclerView.OnChildAttachStateChangeListener {
+    carousel.addOnChildAttachStateChangeListener(object : RecyclerView.OnChildAttachStateChangeListener {
       override fun onChildViewAttachedToWindow(view: View) {
         // If the player is idle when we bind, the UI is initializing and we should autoplay
         if (viewModel.player.playbackState == Player.STATE_IDLE
@@ -73,8 +70,8 @@ class PlayerCarouselActivity : AppCompatActivity() {
       }
     })
 
-    rv.layoutManager = layoutManager
-    snapHelper.attachToRecyclerView(rv)
+    carousel.layoutManager = layoutManager
+    snapHelper.attachToRecyclerView(carousel)
   }
 
   private fun createAdapter(listItems: List<CarouselItem> = listOf()): VideoCarouselAdapter {
