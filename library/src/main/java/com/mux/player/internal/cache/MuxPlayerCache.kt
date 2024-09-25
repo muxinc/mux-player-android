@@ -1,6 +1,5 @@
 package com.mux.player.internal.cache
 
-import android.annotation.SuppressLint
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,13 +15,6 @@ import java.io.OutputStream
 import java.net.URL
 import java.util.concurrent.TimeUnit
 
-/**
- * Controls access to Mux Player's cache
- *
- * To use this object, you must first call [setup]. If you aren't writing a test, you can pass
- * `null` for the second parameter
- */
-@SuppressLint("StaticFieldLeak")
 class MuxPlayerCache private constructor(
   private val datastore: CacheDatastore,
 ) {
