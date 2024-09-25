@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity() {
       destination = Intent(this@MainActivity, BasicPlayerActivity::class.java)
     ),
     Example(
-      title = "Reel-style Carousel",
+      title = "Fullscreen Carousel (like reels)",
       destination = Intent(this@MainActivity, PlayerCarouselActivity::class.java),
     ),
     Example(
