@@ -33,7 +33,7 @@ internal class CacheDatastore(
   }
 
   private val dbGuard = Any()
-  // note - guarded by dbHelperGuard
+  // note - guarded by dbGuard
   private var dbHelper: DbHelper? = null
 
   /**

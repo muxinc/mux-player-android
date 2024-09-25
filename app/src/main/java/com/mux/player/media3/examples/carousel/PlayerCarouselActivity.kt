@@ -27,8 +27,7 @@ import com.mux.player.media3.databinding.ActivityPlayerCarouselBinding
 /**
  * Shows a Carousel of list items that play video (like reels)
  *
- * The carousel is a RecyclerView with a [CarouselLayoutManager]. The RecyclerView stuff is in inner
- * classes here to keep the example brief.
+ * The carousel is a RecyclerView with a [CarouselLayoutManager].
  */
 class PlayerCarouselActivity : AppCompatActivity() {
 
