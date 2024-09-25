@@ -19,7 +19,7 @@ class MuxPlayerCache private constructor(
   private val datastore: CacheDatastore,
 ) {
 
-  constructor(appContext: Context) : this(CacheDatastore(appContext))
+  private constructor(appContext: Context) : this(CacheDatastore(appContext.applicationContext))
 
   companion object {
     private const val TAG = "CacheController"
@@ -30,7 +30,9 @@ class MuxPlayerCache private constructor(
     val RX_S_MAX_AGE = Regex("""s-max-age=([0-9].*)""")
 
     @JvmSynthetic
-    internal fun createWithDatastore(datastore: CacheDatastore) = MuxPlayerCache(datastore)
+    internal fun create(appContext: Context) = MuxPlayerCache(appContext)
+    @JvmSynthetic
+    internal fun create(datastore: CacheDatastore) = MuxPlayerCache(datastore)
   }
 
   private val ioScope = CoroutineScope(Dispatchers.IO)

@@ -24,7 +24,7 @@ class MuxPlayerCacheTests : AbsRobolectricTest() {
       }
     }
 
-    muxPlayerCache = MuxPlayerCache.createWithDatastore(mockDatastore)
+    muxPlayerCache = MuxPlayerCache.create(mockDatastore)
   }
 
   @Test
