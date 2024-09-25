@@ -25,7 +25,7 @@ import kotlin.math.min
  * android environment, but not necessarily a physical phone. Examples might include functions that
  * involve database queries, functions that manage files (as opposed to generate paths), etc
  *
- * There are use unit tests for functions that are all business logic, in the `test` sourceSet,
+ * There are also unit tests for functions that are all business logic, in the `test` sourceSet,
  * where everything is nicely mocked and repeatable by default.
  */
 @RunWith(AndroidJUnit4::class)
