@@ -7,12 +7,10 @@ import android.os.Build
 import android.util.Base64
 import com.mux.player.internal.Constants
 import com.mux.player.oneOf
+import java.io.Closeable
 import java.io.File
 import java.io.IOException
 import java.net.URL
-import java.util.concurrent.CancellationException
-import java.util.concurrent.FutureTask
-import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Represents the on-disk datastore for the cache. This class provides methods that allow for
@@ -26,40 +24,45 @@ import java.util.concurrent.atomic.AtomicReference
 internal class CacheDatastore(
   val context: Context,
   val maxDiskSize: Long = 256 * 1024 * 1024,
-) {
+) : Closeable {
 
   companion object {
     @Suppress("unused")
     private const val TAG = "CacheDatastore"
-    private val openTask: AtomicReference<FutureTask<DbHelper>> = AtomicReference(null)
-
-    val RX_CHUNK_URL =
-      Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
+    val RX_CHUNK_URL = Regex("""^https://[^/]*/v1/chunk/([^/]*)/([^/]*)\.(m4s|ts)""")
   }
 
-  private val dbHelper: DbHelper get() = awaitDbHelper()
+  private val dbGuard = Any()
+  // note - guarded by dbHelperGuard
+  private var dbHelper: DbHelper? = null
 
   /**
    * Opens the datastore, blocking until it is ready to use
-   *
-   * If you use the cache before opening then it will open itself. But opening after a crash or
-   * something may take longer due to internal bookkeeping stuff, so this method is exposed for now
    *
    * Internally, this method will ensure that the cache directories and index database exist
    * on-disk, and the index db is updated. It will also clean-up orphaned files and do an eviction
    * pass and whatever other cleanup tasks are required.
    *
-   * This method is safe to call multiple times. Subsequent calls will await the same task,
-   * or do nothing if the db is already open.
+   * This method is safe to call multiple times.
    *
-   * @throws IOException if there was an error opening the cache, or if
+   * @throws IOException if there was an error opening the cache
    */
   @Throws(IOException::class)
   fun open() {
-    try {
-      awaitDbHelper()
-    } catch (_: CancellationException) {
-      // swallow cancellation errors, they are not that important
+    synchronized(dbGuard) {
+      if (dbHelper == null) {
+
+        val newHelper = DbHelper(context.applicationContext, indexDbDir())
+        // acquire an extra reference until closed. prevents DB underneath from closing/reopening
+        newHelper.writableDatabase.acquireReference()
+        this.dbHelper = newHelper
+      }
+    }
+  }
+
+  fun isOpen(): Boolean {
+    synchronized(dbGuard) {
+      return dbHelper != null
     }
   }
 
@@ -89,7 +92,7 @@ internal class CacheDatastore(
   }
 
   fun writeFileRecord(fileRecord: FileRecord): Result<Unit> {
-    val rowId = dbHelper.writableDatabase.use {
+    val rowId = databaseOrThrow().use {
       it.insertWithOnConflict(
         IndexSql.Files.name, null,
         fileRecord.toContentValues(),
@@ -105,7 +108,7 @@ internal class CacheDatastore(
   }
 
   fun readRecordByLookupKey(key: String): FileRecord? {
-    return dbHelper.writableDatabase.use {
+    return databaseOrThrow().use {
       it.query(
         IndexSql.Files.name, null,
         "${IndexSql.Files.Columns.lookupKey} is ?",
@@ -122,7 +125,7 @@ internal class CacheDatastore(
   }
 
   fun readRecordByUrl(url: String): FileRecord? {
-    return dbHelper.writableDatabase.use {
+    return databaseOrThrow().use {
       it.query(
         IndexSql.Files.name, null,
         "${IndexSql.Files.Columns.lookupKey} is ?",
@@ -171,8 +174,19 @@ internal class CacheDatastore(
    * recently-used items
    */
   fun evictByLru(): Result<Int> {
-    return dbHelper.writableDatabase.use { doEvictByLru(it) }
+    return databaseOrThrow().use { doEvictByLru(it) }
 
+  }
+
+  @Throws(IOException::class)
+  override fun close() {
+    synchronized(dbGuard) {
+      // release reference from when we opened. if any loader threads are reading/writing then
+      //  the db will close once they wind down
+      dbHelper?.writableDatabase?.releaseReference()
+      dbHelper?.close()
+      dbHelper = null
+    }
   }
 
   /**
@@ -182,7 +196,7 @@ internal class CacheDatastore(
   internal fun readLeastRecentFiles(): List<FileRecord> {
     // This function is only visible for testing. doReadLeastRecentFiles() is called internally in
     //  a transaction with an already-open db
-    return dbHelper.writableDatabase.use { doReadLeastRecentFiles(it) }
+    return databaseOrThrow().use { doReadLeastRecentFiles(it) }
   }
 
   /**
@@ -310,6 +324,7 @@ internal class CacheDatastore(
       }
     }
   }
+
   private fun doReadLeastRecentFiles(db: SQLiteDatabase): List<FileRecord> {
     return if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
       doReadLeastRecentFilesNoWindowFunc(db)
@@ -368,47 +383,10 @@ internal class CacheDatastore(
   //  opened.
   // If the db failed to open, this method will throw. Opening can be re-attempted after resolving
   @Throws(IOException::class)
-  private fun awaitDbHelper(): DbHelper {
-    // inner function closes db if the calling thread was interrupted
-    fun cancelIfInterrupted() {
-      if (Thread.interrupted()) {
-        throw CancellationException("open interrupted")
-      }
-    }
-
-    // inner function prepares the database & cache dir + opens the DB
-    fun doOpen(): DbHelper {
-      // todo - we should also consider getting our cacheQuota here, that will take a long time
-      //  so maybe do it async & only consider the cache quota once we have it(..?)
-
-      cancelIfInterrupted()
-      clearTempFiles()
-      cancelIfInterrupted()
-      ensureDirs()
-
-      val helper = DbHelper(context, indexDbDir())
-      cancelIfInterrupted()
-
-      // Do some db maintenance when we start up, in case shutdown wasn't clean
-      helper.writableDatabase.use { db ->
-        doEvictByLru(db)
-      }
-
-      cancelIfInterrupted()
-      return helper
-    }
-
-    val needToStart = openTask.compareAndSet(null, FutureTask { doOpen() })
-    try {
-      val actualTask = openTask.get()!!
-      if (needToStart) {
-        actualTask.run()
-      }
-      return actualTask.get()
-    } catch (e: Exception) {
-      // subsequent calls can attempt again
-      openTask.set(null)
-      throw IOException(e)
+  private fun databaseOrThrow(): SQLiteDatabase {
+    synchronized(dbGuard) {
+      val helper = dbHelper ?: throw IOException("CacheDatastore was closed")
+      return helper.writableDatabase
     }
   }
 }

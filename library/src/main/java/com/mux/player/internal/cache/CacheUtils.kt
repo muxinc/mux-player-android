@@ -101,7 +101,7 @@ internal val Context.filesDirNoBackupCompat: File
 
 @JvmSynthetic
 internal fun parseSMaxAge(cacheControl: String): Long? {
-  val matchResult = CacheController.RX_S_MAX_AGE.matchEntire(cacheControl)
+  val matchResult = MuxPlayerCache.RX_S_MAX_AGE.matchEntire(cacheControl)
   return if (matchResult == null) {
     null
   } else {
@@ -112,7 +112,7 @@ internal fun parseSMaxAge(cacheControl: String): Long? {
 
 @JvmSynthetic
 internal fun parseMaxAge(cacheControl: String): Long? {
-  val matchResult = CacheController.RX_MAX_AGE.matchEntire(cacheControl)
+  val matchResult = MuxPlayerCache.RX_MAX_AGE.matchEntire(cacheControl)
   return if (matchResult == null) {
     null
   } else {

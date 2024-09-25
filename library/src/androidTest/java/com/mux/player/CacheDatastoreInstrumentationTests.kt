@@ -37,17 +37,6 @@ class CacheDatastoreInstrumentationTests {
 
   private val appContext get() = InstrumentationRegistry.getInstrumentation().targetContext
 
-  // todo - more test cases once more of the Datastore is done
-  //  writeRecord: Returns successful if a new row
-  //    does eviction pass after writing
-  //  readRecord: Works for segments (written data == read data)
-  //    Works for not-segments (written data == read data)
-  //    Misses gracefully if the file underneath is deleted
-  //    (after eviction) Misses & evicts if entry is eviction candidate
-  //  evictionPass: Evicts according to max-age (including Age)
-  //    Evicts according to cache max size
-  //    Evicts according to cache quota if we are constrained (ie, if cache quota is under max)
-
   @Before
   fun setUp() {
     // clear the cache files
@@ -59,7 +48,7 @@ class CacheDatastoreInstrumentationTests {
       }
     }
 
-    // this should be fine, but we could also wipe the app cache & files dir entirely?
+    // this should be fine, but we could use wipe the app cache & files dir entirely?
     expectedFileCacheDir(appContext).definitelyDelete()
     expectedFileTempDir(appContext).definitelyDelete()
     expectedIndexDbDir(appContext).definitelyDelete()
@@ -145,6 +134,8 @@ class CacheDatastoreInstrumentationTests {
   fun testWriteRecordReplacesOnKey() {
     val datastore = CacheDatastore(appContext)
     datastore.use {
+      datastore.open()
+
       val originalRecord = FileRecord(
         url = "url",
         etag = "etag1",
@@ -193,6 +184,8 @@ class CacheDatastoreInstrumentationTests {
   fun testReadRecord() {
     fun testTheCase(url: String) {
       CacheDatastore(appContext).use { datastore ->
+        datastore.open()
+        
         val originalRecord = FileRecord(
           url = url,
           etag = "etag1",
@@ -319,7 +312,7 @@ class CacheDatastoreInstrumentationTests {
       } // for(x in ...
 
       // here we're testing file management. The index operations for eviction are tested elsewhere
-      //   I think this is still in-spec (but I'm also not worried about it)
+      //   I think this is still in-spec (but I'm use not worried about it)
       val filesBeforeEviction = datastore.fileCacheDir().listFiles()!!.filter { !it.isDirectory }
       // this shouldn't fail in the happy path
       datastore.evictByLru().getOrThrow()
