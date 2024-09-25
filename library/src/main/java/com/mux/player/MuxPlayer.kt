@@ -41,6 +41,7 @@ class MuxPlayer private constructor(
   private val muxDataKey: String?,
   private val logger: Logger,
   private val muxCacheEnabled: Boolean = true,
+  private val cache: MuxPlayerCache,
   context: Context,
   initialCustomerData: CustomerData,
   network: INetworkRequest? = null,
@@ -54,8 +55,10 @@ class MuxPlayer private constructor(
     // good to release muxStats first, so it doesn't call to the player after release
     muxStats?.release()
     muxStats = null
+
     // exoPlayer can handle multiple calls itself, not our deal
     exoPlayer.release()
+    cache.release()
 
     released = true
   }

@@ -107,6 +107,10 @@ class MuxPlayerCache private constructor(
     return revalidateRequired(nowUtc, readHandle.fileRecord)
   }
 
+  fun release() {
+    datastore.close()
+  }
+
   /**
    * Returns true if the response must be revalidated before use.
    *
