@@ -51,6 +51,8 @@ internal class CacheDatastore(
   fun open() {
     synchronized(dbGuard) {
       if (dbHelper == null) {
+        clearTempFiles()
+        ensureDirs()
 
         val newHelper = DbHelper(context.applicationContext, indexDbDir())
         // acquire an extra reference until closed. prevents DB underneath from closing/reopening
