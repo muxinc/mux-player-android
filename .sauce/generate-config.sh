@@ -11,9 +11,9 @@ export commit
 sed -E \
   -e "s/TEMPLATE_BRANCH/${BUILDKITE_BRANCH}/g" \
   -e "s/TEMPLATE_COMMIT/${BUILDKITE_BRANCH}/g" \
-  .sauce/template.sauce-data.yml > .sauce/conf.yml
+  .sauce/template.sauce-data.yml > .sauce/config.yml
 
 sed -E \
   -e "s/TEMPLATE_BRANCH/${BUILDKITE_BRANCH}/g" \
   -e "s/TEMPLATE_COMMIT/${BUILDKITE_BRANCH}/g" \
-  .sauce/template.sauce-player.yml > .sauce/conf.yml
+  .sauce/template.sauce-player.yml > .sauce/config.yml
