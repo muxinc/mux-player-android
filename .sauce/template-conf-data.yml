@@ -19,11 +19,9 @@ suites:
     devices:
       - name: Google Pixel.*
 
-#artifacts:
-#  download:
-#    when: always
-#    match:
-#      - junit.xml
-#      - device.log
-#    directory: ./data/artifacts/
-
+  - name: 'TEMPLATE_BRANCH-TEMPLATE_COMMIT Player Android Data Automation'
+    emulators:
+      - name: 'TEMPLATE_BRANCH-TEMPLATE_COMMIT Player Android Cache Instrumentation'
+        orientation: portrait
+        platformVersions:
+          - "14.0"
