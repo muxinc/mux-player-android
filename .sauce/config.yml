@@ -10,7 +10,7 @@ sauce:
       - mux-player
       - android
       - data
-    # todo --build for buildkite info
+    # best overridden from the CLI using --build
     build: "Mux Player Android"
 espresso:
   app: automatedtests/build/outputs/apk/debug/automatedtests-debug.apk
@@ -21,7 +21,7 @@ suites:
       - name: Google Pixel.*
 
   # This is not Espresso technically but it works. The testApp has the compiled tests from :library,
-  # and the CacheDatastore is compiled into the normal automated-tests app
+  # and the CacheDatastore is compiled into the normal automatedtests app
   - name: 'Player Android Emulated Tests'
     testApp: library/build/outputs/apk/androidTest/debug/library-debug-androidTest.apk
     emulators:
@@ -29,4 +29,3 @@ suites:
         orientation: portrait
         platformVersions:
           - "latest"
-          - "14.0"
