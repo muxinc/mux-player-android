@@ -1,0 +1,31 @@
+apiVersion: v1alpha
+kind: espresso
+sauce:
+  region: us-west-1
+  concurrency: 1
+  retries: 3
+    
+  metadata:
+    tags:
+      - mux-player
+      - android
+      - data
+    build: "Branch/Tag: TEMPLATE_BRANCH"
+espresso:
+#  app: automatedtests/build/outputs/apk/debug/automatedtests-debug.apk
+#  testApp: automatedtests/build/outputs/apk/androidTest/debug/automatedtests-debug-androidTest.apk
+  app: TEMPLATE_APP
+  testApp: TEMPLATE_TEST_SUITE
+suites:
+  - name: 'BUILD_LABEL Player Android Data Automation'
+    devices:
+      - name: Google Pixel.*
+
+#artifacts:
+#  download:
+#    when: always
+#    match:
+#      - junit.xml
+#      - device.log
+#    directory: ./data/artifacts/
+
