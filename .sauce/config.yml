@@ -10,16 +10,17 @@ sauce:
       - mux-player
       - android
       - data
-    build: "Branch/Tag: "
+    # todo --build for buildkite info
+    build: "Mux Player Android"
 espresso:
   app: automatedtests/build/outputs/apk/debug/automatedtests-debug.apk
   testApp: automatedtests/build/outputs/apk/androidTest/debug/automatedtests-debug-androidTest.apk
 suites:
-  - name: '- Player Android Data Automation'
+  - name: 'Player Android Data Automation'
     devices:
       - name: Google Pixel.*
 
-  # Maybe this will work
+  # todo - Maybe this will work
   - name: '- Player Android Emulator Tests'
     testApp: library/build/outputs/apk/androidTest/debug/library-debug-androidTest.apk
     emulators:
