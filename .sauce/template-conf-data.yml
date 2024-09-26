@@ -19,7 +19,9 @@ suites:
     devices:
       - name: Google Pixel.*
 
+  # Maybe this will work
   - name: 'TEMPLATE_BRANCH-TEMPLATE_COMMIT Player Android Data Automation'
+    testApp: library/build/outputs/apk/androidTest/debug/library-debug-androidTest.apk
     emulators:
       - name: 'TEMPLATE_BRANCH-TEMPLATE_COMMIT Player Android Cache Instrumentation'
         orientation: portrait
