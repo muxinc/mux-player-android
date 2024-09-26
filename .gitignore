@@ -40,4 +40,4 @@ automatedtests/automated_test_results/**
 .kotlin
 
 # Generated sauce files
-.sauce/config.yml
+#.sauce/config.yml

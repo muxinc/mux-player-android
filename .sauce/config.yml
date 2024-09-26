@@ -10,20 +10,21 @@ sauce:
       - mux-player
       - android
       - data
-    build: "Branch/Tag: TEMPLATE_BRANCH"
+    build: "Branch/Tag: "
 espresso:
   app: automatedtests/build/outputs/apk/debug/automatedtests-debug.apk
   testApp: automatedtests/build/outputs/apk/androidTest/debug/automatedtests-debug-androidTest.apk
 suites:
-  - name: 'TEMPLATE_BRANCH-TEMPLATE_COMMIT Player Android Data Automation'
+  - name: '- Player Android Data Automation'
     devices:
       - name: Google Pixel.*
 
   # Maybe this will work
-  - name: 'TEMPLATE_BRANCH-TEMPLATE_COMMIT Player Android Instrumentation Tests'
+  - name: '- Player Android Emulator Tests'
     testApp: library/build/outputs/apk/androidTest/debug/library-debug-androidTest.apk
     emulators:
-      - name: 'TEMPLATE_BRANCH-TEMPLATE_COMMIT Player Android Cache Instrumentation'
+      - name: 'Android GoogleApi Emulator'
         orientation: portrait
         platformVersions:
+          - "latest"
           - "14.0"
