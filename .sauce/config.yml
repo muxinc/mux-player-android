@@ -20,8 +20,9 @@ suites:
     devices:
       - name: Google Pixel.*
 
-  # This is not Espresso technically but it works. The testApp has the compiled tests from :library,
-  # and the CacheDatastore is compiled into the normal automatedtests app
+  # Sauce doesn't directly support library instrumentation tests, it expects the artifact under test
+  # to be an app. We can work around it though because the app under test (called 'automatedtests')
+  # has :library compiled into it; you just need to upload compiled tests for :library
   - name: 'Player Android :library emulated'
     testApp: library/build/outputs/apk/androidTest/debug/library-debug-androidTest.apk
     emulators:

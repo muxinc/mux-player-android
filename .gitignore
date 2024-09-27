@@ -39,5 +39,3 @@ automatedtests/automated_test_results/**
 *.raw
 .kotlin
 
-# Generated sauce files
-#.sauce/config.yml
