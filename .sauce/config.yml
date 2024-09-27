@@ -16,13 +16,13 @@ espresso:
   app: automatedtests/build/outputs/apk/debug/automatedtests-debug.apk
   testApp: automatedtests/build/outputs/apk/androidTest/debug/automatedtests-debug-androidTest.apk
 suites:
-  - name: 'Player Android Data App Automation'
+  - name: 'Player Android :automatedtests Any Pixel'
     devices:
       - name: Google Pixel.*
 
   # This is not Espresso technically but it works. The testApp has the compiled tests from :library,
   # and the CacheDatastore is compiled into the normal automatedtests app
-  - name: 'Player Android Emulated Tests'
+  - name: 'Player Android :library emulated'
     testApp: library/build/outputs/apk/androidTest/debug/library-debug-androidTest.apk
     emulators:
       - name: 'Android GoogleApi Emulator'
