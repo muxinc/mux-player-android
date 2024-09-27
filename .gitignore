@@ -38,3 +38,4 @@ automatedtests/automated_test_results/**
 # Test data
 *.raw
 .kotlin
+

@@ -1,0 +1,32 @@
+apiVersion: v1alpha
+kind: espresso
+sauce:
+  region: us-west-1
+  concurrency: 2
+  retries: 3
+    
+  metadata:
+    tags:
+      - mux-player
+      - android
+      - data
+    # best overridden from the CLI using --build
+    build: "Mux Player Android"
+espresso:
+  app: automatedtests/build/outputs/apk/debug/automatedtests-debug.apk
+  testApp: automatedtests/build/outputs/apk/androidTest/debug/automatedtests-debug-androidTest.apk
+suites:
+  - name: 'Player Android :automatedtests Any Pixel'
+    devices:
+      - name: Google Pixel.*
+
+  # Sauce doesn't directly support library instrumentation tests, it expects the artifact under test
+  # to be an app. We can work around it though because the app under test (called 'automatedtests')
+  # has :library compiled into it. The tests can reach :library's classes at runtime through the app
+  - name: 'Player Android :library emulated'
+    testApp: library/build/outputs/apk/androidTest/debug/library-debug-androidTest.apk
+    emulators:
+      - name: 'Android GoogleApi Emulator'
+        orientation: portrait
+        platformVersions:
+          - "latest"
