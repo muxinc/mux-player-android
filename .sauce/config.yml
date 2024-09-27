@@ -22,7 +22,7 @@ suites:
 
   # Sauce doesn't directly support library instrumentation tests, it expects the artifact under test
   # to be an app. We can work around it though because the app under test (called 'automatedtests')
-  # has :library compiled into it; you just need to upload compiled tests for :library
+  # has :library compiled into it. The tests can reach :library's classes at runtime through the app
   - name: 'Player Android :library emulated'
     testApp: library/build/outputs/apk/androidTest/debug/library-debug-androidTest.apk
     emulators:
