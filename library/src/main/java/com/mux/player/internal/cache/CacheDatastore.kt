@@ -380,10 +380,6 @@ internal class CacheDatastore(
     return cacheFile
   }
 
-  // Starts opening the DB unless it's open or being opened. If it's open, you get the DbHelper.
-  //  If it's still being opened on another thread, this method will block until the db has been
-  //  opened.
-  // If the db failed to open, this method will throw. Opening can be re-attempted after resolving
   @Throws(IOException::class)
   private fun databaseOrThrow(): SQLiteDatabase {
     synchronized(dbGuard) {
