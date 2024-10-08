@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Mux Player Demo</string>
+
+    <string name="menu_max_res">Max Resolution</string>
+    <string name="menu_min_res">Min Resolution</string>
+    <string name="menu_rendition_order">Rendition Order</string>
+    <string name="menu_custom_domain">Custom Domain</string>
+    <string name="playback_token">Playback Token</string>
+    <string name="drm_token">DRM Token</string>
 </resources>
