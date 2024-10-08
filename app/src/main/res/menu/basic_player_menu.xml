@@ -2,35 +2,111 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
   <item
-    android:id="@+id/basic_player_submenu_max_res"
+    android:id="@+id/player_menu_submenu_max_res"
     android:title="@string/menu_max_res"
     >
-    <!-- filled programmatically -->
-    <menu />
+    <menu>
+      <item
+        android:id="@+id/player_menu_max_unspecified"
+        android:title="@string/menu_unspecified_res"
+        />
+      <item
+        android:id="@+id/player_menu_max_480"
+        android:title="@string/menu_480p"
+        />
+      <item
+        android:id="@+id/player_menu_max_540"
+        android:title="@string/menu_540p"
+        />
+      <item
+        android:id="@+id/player_menu_max_720"
+        android:title="@string/menu_720p"
+        />
+      <item
+        android:id="@+id/player_menu_max_1080"
+        android:title="@string/menu_1080p"
+        />
+      <item
+        android:id="@+id/player_menu_max_1440"
+        android:title="@string/menu_1440p"
+        />
+      <item
+        android:id="@+id/player_menu_max_2160"
+        android:title="@string/menu_2160p"
+        />
+    </menu>
   </item>
 
   <item
-    android:id="@+id/basic_player_submenu_min_res"
+    android:id="@+id/player_menu_submenu_min_res"
     android:title="@string/menu_min_res"
     >
-    <!-- filled programmatically -->
-    <menu />
+    <menu
+      android:title="@string/menu_min_res"
+      >
+      <item
+        android:id="@+id/player_menu_min_unspecified"
+        android:title="@string/menu_unspecified_res"
+        />
+      <item
+        android:id="@+id/player_menu_min_480"
+        android:title="@string/menu_480p"
+        />
+      <item
+        android:id="@+id/player_menu_min_540"
+        android:title="@string/menu_540p"
+        />
+      <item
+        android:id="@+id/player_menu_min_720"
+        android:title="@string/menu_720p"
+        />
+      <item
+        android:id="@+id/player_menu_min_1080"
+        android:title="@string/menu_1080p"
+        />
+      <item
+        android:id="@+id/player_menu_min_1440"
+        android:title="@string/menu_1440p"
+        />
+      <item
+        android:id="@+id/player_menu_min_2160"
+        android:title="@string/menu_2160p"
+        />
+    </menu>
   </item>
 
   <item
-    android:id="@+id/basic_player_submenu_rendition_order"
+    android:id="@+id/player_menu_submenu_rendition_order"
     android:title="@string/menu_rendition_order"
     >
-    <!-- filled programmatically -->
-    <menu />
+    <menu
+      android:title="@string/menu_rendition_order"
+      >
+      <item
+        android:id="@+id/player_menu_rendntion_unspecified"
+        android:title="@string/menu_unspecified_res"
+        />
+      <item
+        android:id="@+id/player_menu_descending"
+        android:title="@string/menu_descending"
+        />
+      <item
+        android:id="@+id/player_menu_default"
+        android:title="@string/menu_default"
+        />
+    </menu>
   </item>
 
-  <item
-    android:id="@+id/basic_player_custom_domain"
-    android:title="@string/menu_custom_domain"
-    />
-  <item
-    android:id="@+id/basic_player_menu_playback_token"
-    android:title="@string/playback_token"
-    />
+<!--  <item-->
+<!--    android:id="@+id/player_menu_playbackId"-->
+<!--    android:title="@string/menu_playback_id"-->
+<!--    />-->
+<!--  <item-->
+<!--    android:id="@+id/player_menu_custom_domain"-->
+<!--    android:title="@string/menu_custom_domain"-->
+<!--    />-->
+<!--  <item-->
+<!--    android:id="@+id/player_menu_playback_token"-->
+<!--    android:title="@string/playback_token"-->
+<!--    />-->
 </menu>

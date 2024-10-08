@@ -1,10 +1,28 @@
 <resources>
     <string name="app_name">Mux Player Demo</string>
 
+    <string name="label_custom_domain">Custom Domain</string>
+    <string name="label_playback_token">Playback Token</string>
+    <string name="label_drm_token">DRM Token</string>
+    <string name="label_playback_id">Playback ID</string>
+
+    <string name="update_tokens_ids">Update tokens/playback ID</string>
+
+    <string name="menu_rendition_order">Rendition Order</string>
+    <string name="menu_descending">Descending</string>
+    <string name="menu_default">Default</string>
+    <string name="menu_unspecified_order">Unspecified Order</string>
+
+    <string name="unspecified_token">No token</string>
+    <string name="unspecified_custom_domain">No custom domain</string>
+
     <string name="menu_max_res">Max Resolution</string>
     <string name="menu_min_res">Min Resolution</string>
-    <string name="menu_rendition_order">Rendition Order</string>
-    <string name="menu_custom_domain">Custom Domain</string>
-    <string name="playback_token">Playback Token</string>
-    <string name="drm_token">DRM Token</string>
+    <string name="menu_unspecified_res">Unspecified Resolution</string>
+    <string name="menu_480p">480p</string>
+    <string name="menu_540p">540p</string>
+    <string name="menu_720p">720p</string>
+    <string name="menu_1080p">1080p</string>
+    <string name="menu_1440p">1440p</string>
+    <string name="menu_2160p">4k/2160p</string>
 </resources>

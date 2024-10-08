@@ -19,17 +19,16 @@ import com.mux.stats.sdk.core.model.CustomerVideoData
 import com.mux.stats.sdk.core.model.CustomerViewData
 import com.mux.stats.sdk.core.util.UUID
 import com.mux.player.MuxPlayer
-import com.mux.player.media.MediaItems
-import com.mux.player.media.PlaybackResolution
-import com.mux.player.media.RenditionOrder
-import com.mux.player.media3.PlaybackIds
 import com.mux.player.media3.R
 import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
 
 /**
- * Example Activity that enables smart caching
+ * A configurable example that uses the normal media3 player UI to play a video in the foreground from
+ * Mux Video, using a Playback ID
+ *
+ * You can configure the Activity via the UI
  */
-class SmartCacheActivity : AppCompatActivity() {
+class ConfigurablePlayerActivity : AppCompatActivity() {
 
   private lateinit var binding: ActivityBasicPlayerBinding
   private val playerView get() = binding.player
@@ -121,7 +120,7 @@ class SmartCacheActivity : AppCompatActivity() {
 
   private fun createMediaMetadata(): MediaMetadata {
     return MediaMetadata.Builder()
-      .setTitle("Mux Player Caching Example")
+      .setTitle("Mux Player Example")
       .build()
   }
 
@@ -143,7 +142,28 @@ class SmartCacheActivity : AppCompatActivity() {
   @OptIn(UnstableApi::class)
   private fun createPlayer(context: Context): MuxPlayer {
     val out: MuxPlayer = MuxPlayer.Builder(context)
-      .enableSmartCache(true)
+      .addMonitoringData(
+        CustomerData().apply {
+          customerViewData = CustomerViewData().apply {
+            viewSessionId = UUID.generateUUID()
+          }
+          customerVideoData = CustomerVideoData().apply {
+            videoSeries = "My Series"
+            videoId = "abc1234zyxw"
+          }
+          customData = CustomData().apply {
+            customData1 = "my custom metadata field"
+            customData2 = "another custom metadata field"
+            customData10 = "up to 10 custom fields"
+          }
+        }
+      )
+      .applyExoConfig {
+        // Call ExoPlayer.Builder methods here
+        setHandleAudioBecomingNoisy(true)
+        setSeekBackIncrementMs(10_000)
+        setSeekForwardIncrementMs(30_000)
+      }
       .build()
 
     out.addListener(object : Player.Listener {
@@ -151,7 +171,7 @@ class SmartCacheActivity : AppCompatActivity() {
         // todo - better error info than this, inline in ui
         Log.e(TAG, "player error!", error)
         Toast.makeText(
-          this@SmartCacheActivity,
+          this@ConfigurablePlayerActivity,
           "Playback error! ${error.localizedMessage}",
           Toast.LENGTH_LONG
         ).show()
@@ -162,6 +182,6 @@ class SmartCacheActivity : AppCompatActivity() {
   }
 
   companion object {
-    val TAG = SmartCacheActivity::class.simpleName
+    val TAG = ConfigurablePlayerActivity::class.simpleName
   }
 }

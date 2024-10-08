@@ -30,4 +30,5 @@
         <item name="colorOnSurface">@color/White</item>
         <item name="android:colorBackground">@color/BackgroundDark</item>
     </style>
+
 </resources>

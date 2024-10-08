@@ -12,8 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.mux.player.media3.databinding.ActivityMainBinding
 import com.mux.player.media3.databinding.ListitemExampleBinding
 import com.mux.player.media3.examples.BasicPlayerActivity
-import com.mux.player.media3.examples.DrmPlaybackActivity
-import com.mux.player.media3.examples.MaxResActivity
+import com.mux.player.media3.examples.ConfigurablePlayerActivity
 import com.mux.player.media3.examples.SmartCacheActivity
 import com.mux.player.media3.examples.carousel.PlayerCarouselActivity
 
@@ -42,31 +41,27 @@ class MainActivity : AppCompatActivity() {
 
   private fun examples() = listOf(
     Example(
-      title = "Basic Foreground Player",
+      title = "Basic Player Screen",
       destination = Intent(this@MainActivity, BasicPlayerActivity::class.java)
     ),
     Example(
-      title = "Fullscreen Carousel (like reels)",
-      destination = Intent(this@MainActivity, PlayerCarouselActivity::class.java),
+      title = "Configurable Player Screen",
+      destination = Intent(this@MainActivity, ConfigurablePlayerActivity::class.java)
     ),
     Example(
-      title = "Max-Resolution Modifier",
-      destination = Intent(this@MainActivity, MaxResActivity::class.java)
+      title = "Fullscreen Carousel",
+      destination = Intent(this@MainActivity, PlayerCarouselActivity::class.java),
     ),
     Example(
       title = "Smart Caching",
       destination = Intent(this@MainActivity, SmartCacheActivity::class.java)
     ),
-    Example(
-      title = "DRM Playback",
-      destination = Intent(this@MainActivity, DrmPlaybackActivity::class.java)
-    )
   )
 }
 
 data class Example(
   val title: String,
-  val destination: Intent
+  val destination: Intent,
 )
 
 class ExampleListAdapter(

@@ -3,8 +3,6 @@ package com.mux.player.media3.examples
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
-import android.view.Menu
-import android.view.MenuItem
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
@@ -19,13 +17,11 @@ import com.mux.stats.sdk.core.model.CustomerViewData
 import com.mux.stats.sdk.core.util.UUID
 import com.mux.player.MuxPlayer
 import com.mux.player.media.MediaItems
-import com.mux.player.media.PlaybackResolution
 import com.mux.player.media3.PlaybackIds
 import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
 
 /**
- * A simple example that uses the normal media3 player UI to play a video in the foreground from
- * Mux Video, using a Playback ID
+ * A minimal example of using Mux Player without any extra functionality
  */
 class BasicPlayerActivity : AppCompatActivity() {
 
@@ -50,15 +46,6 @@ class BasicPlayerActivity : AppCompatActivity() {
     tearDownPlayer()
 
     super.onStop()
-  }
-
-  override fun onCreateOptionsMenu(menu: Menu): Boolean {
-
-  }
-
-  override fun onOptionsItemSelected(item: MenuItem): Boolean {
-
-    return super.onOptionsItemSelected(item)
   }
 
   private fun tearDownPlayer() {

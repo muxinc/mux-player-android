@@ -31,4 +31,13 @@
         <item name="colorOnSurface">@color/White</item>
         <item name="android:colorBackground">@color/BackgroundDark</item>
     </style>
+    <style name="TextAppearance.App.PlaybackParamLabel" parent="@style/TextAppearance.AppCompat.Medium.Inverse">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">@color/Gray30</item>
+    </style>
+    <style name="TextAppearance.App.PlaybackParamEntry" parent="@style/TextAppearance.AppCompat.Medium.Inverse">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/Gray30</item>
+        <item name="android:textColorHint">@color/Gray70</item>
+    </style>
 </resources>
