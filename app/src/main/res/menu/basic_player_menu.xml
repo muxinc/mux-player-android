@@ -11,14 +11,6 @@
         android:title="@string/menu_unspecified_res"
         />
       <item
-        android:id="@+id/player_menu_max_480"
-        android:title="@string/menu_480p"
-        />
-      <item
-        android:id="@+id/player_menu_max_540"
-        android:title="@string/menu_540p"
-        />
-      <item
         android:id="@+id/player_menu_max_720"
         android:title="@string/menu_720p"
         />

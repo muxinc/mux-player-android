@@ -115,14 +115,6 @@ class PlaybackParamsHelper {
         maxRes = PlaybackResolution.HD_720
         true
       }
-      R.id.player_menu_max_540 -> {
-        maxRes = PlaybackResolution.LD_540
-        true
-      }
-      R.id.player_menu_max_480 -> {
-        maxRes = PlaybackResolution.LD_480
-        true
-      }
       R.id.player_menu_max_unspecified -> {
         maxRes = null
         true
