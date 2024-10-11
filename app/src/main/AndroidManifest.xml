@@ -18,22 +18,17 @@
             android:exported="false"
             tools:ignore="LockedOrientationActivity" />
         <activity
-            android:name=".examples.BasicPlayerActivity"
+          android:name=".examples.BasicPlayerActivity"
+          android:exported="false"
+          android:label="Basic Foreground Player" />
+        <activity
+            android:name=".examples.ConfigurablePlayerActivity"
             android:exported="false"
             android:label="Basic Foreground Player" />
-        <activity
-            android:name=".examples.MaxResActivity"
-            android:exported="false"
-            android:label="Max-Res Modifier" />
         <activity
             android:name=".examples.SmartCacheActivity"
             android:exported="false"
             android:label="Smart Caching Example" />
-        <activity
-            android:name=".examples.DrmPlaybackActivity"
-            android:exported="false"
-            android:label="DRM Playback Example"
-            android:theme="@style/Theme.MuxVideoMedia3.NoActionBar" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

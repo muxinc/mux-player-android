@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  tools:context=".examples.ConfigurablePlayerActivity">
+
+  <androidx.constraintlayout.widget.ConstraintLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <androidx.media3.ui.PlayerView
+      android:id="@+id/player"
+      android:layout_width="match_parent"
+      android:layout_height="320dp"
+      app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- playback ID -->
+    <TextView
+      android:id="@+id/configurable_player_playback_id_lbl"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_margin="4dp"
+      android:layout_marginTop="8dp"
+      android:text="@string/label_playback_id"
+      android:textAppearance="@style/TextAppearance.App.PlaybackParamLabel"
+      android:textSize="20sp"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@id/player" />
+
+    <EditText
+      android:id="@+id/configurable_player_playback_id_in"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_margin="4dp"
+      android:backgroundTint="@color/Gray30"
+      android:paddingEnd="24dp"
+      android:textColor="?colorOnPrimary"
+      android:textColorHint="@color/Gray70"
+      android:textSize="18sp"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@id/configurable_player_playback_id_lbl" />
+
+    <ImageButton
+      android:id="@+id/configurable_playback_id_clear"
+      android:layout_width="20dp"
+      android:layout_height="20dp"
+      android:layout_marginEnd="8dp"
+      android:background="@null"
+      android:scaleType="centerInside"
+      android:src="@drawable/quantum_ic_clear_white_24"
+      app:layout_constraintBottom_toBottomOf="@id/configurable_player_playback_id_in"
+      app:layout_constraintEnd_toEndOf="@id/configurable_player_playback_id_in"
+      app:layout_constraintTop_toTopOf="@id/configurable_player_playback_id_in" />
+
+    <!-- custom domain -->
+
+    <TextView
+      android:id="@+id/configurable_player_domain_lbl"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_margin="4dp"
+      android:layout_marginTop="8dp"
+      android:text="@string/label_custom_domain"
+      android:textAppearance="@style/TextAppearance.App.PlaybackParamLabel"
+      android:textSize="20sp"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@id/configurable_player_playback_id_in" />
+
+    <!-- hint set in code -->
+    <EditText
+      android:id="@+id/configurable_player_domain_in"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_margin="4dp"
+      android:backgroundTint="@color/Gray30"
+      android:paddingEnd="24dp"
+      android:textColor="?colorOnPrimary"
+      android:textColorHint="@color/Gray70"
+      android:textSize="18sp"
+      android:hint="@string/unspecified_custom_domain"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@id/configurable_player_domain_lbl" />
+
+    <ImageButton
+      android:id="@+id/configurable_player_domain_clear"
+      android:layout_width="20dp"
+      android:layout_height="20dp"
+      android:layout_marginEnd="8dp"
+      android:background="@null"
+      android:scaleType="centerInside"
+      android:src="@drawable/quantum_ic_clear_white_24"
+      app:layout_constraintBottom_toBottomOf="@id/configurable_player_domain_in"
+      app:layout_constraintEnd_toEndOf="@id/configurable_player_domain_in"
+      app:layout_constraintTop_toTopOf="@id/configurable_player_domain_in" />
+
+    <!-- playback token -->
+
+    <TextView
+      android:id="@+id/configurable_player_playback_token_lbl"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_margin="4dp"
+      android:text="@string/label_playback_token"
+      android:textAppearance="@style/TextAppearance.App.PlaybackParamLabel"
+      android:textSize="20sp"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@id/configurable_player_domain_in" />
+
+    <!-- hint set in code -->
+    <EditText
+      android:id="@+id/configurable_player_playback_token_in"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_margin="4dp"
+      android:backgroundTint="@color/Gray30"
+      android:hint="@string/unspecified_token"
+      android:paddingEnd="24dp"
+      android:textColor="?colorOnPrimary"
+      android:textColorHint="@color/Gray70"
+      android:textSize="18sp"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@id/configurable_player_playback_token_lbl" />
+
+    <ImageButton
+      android:id="@+id/configurable_player_playback_token_clear"
+      android:layout_width="20dp"
+      android:layout_height="20dp"
+      android:layout_marginEnd="8dp"
+      android:background="@null"
+      android:scaleType="centerInside"
+      android:src="@drawable/quantum_ic_clear_white_24"
+      app:layout_constraintBottom_toBottomOf="@id/configurable_player_playback_token_in"
+      app:layout_constraintEnd_toEndOf="@id/configurable_player_playback_token_in"
+      app:layout_constraintTop_toTopOf="@id/configurable_player_playback_token_in" />
+
+    <TextView
+      android:id="@+id/configurable_player_drm_token_lbl"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_margin="4dp"
+      android:text="@string/label_drm_token"
+      android:textAppearance="@style/TextAppearance.App.PlaybackParamLabel"
+      android:textSize="20sp"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@id/configurable_player_playback_token_in" />
+
+    <!-- hint set in code -->
+    <EditText
+      android:id="@+id/configurable_player_drm_token_in"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_margin="4dp"
+      android:backgroundTint="@color/Gray30"
+      android:hint="@string/unspecified_token"
+      android:paddingEnd="24dp"
+      android:textColor="?colorOnPrimary"
+      android:textColorHint="@color/Gray70"
+      android:textSize="18sp"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@id/configurable_player_drm_token_lbl" />
+
+    <ImageButton
+      android:id="@+id/configurable_player_drm_token_clear"
+      android:layout_width="20dp"
+      android:layout_height="20dp"
+      android:layout_marginEnd="8dp"
+      android:background="@null"
+      android:scaleType="centerInside"
+      android:src="@drawable/quantum_ic_clear_white_24"
+      app:layout_constraintBottom_toBottomOf="@id/configurable_player_drm_token_in"
+      app:layout_constraintEnd_toEndOf="@id/configurable_player_drm_token_in"
+      app:layout_constraintTop_toTopOf="@id/configurable_player_drm_token_in" />
+
+    <Button
+      android:id="@+id/configurable_player_update_media_item"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_margin="4dp"
+      android:layout_marginStart="8dp"
+      android:text="@string/update_tokens_ids"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@id/configurable_player_drm_token_in" />
+
+  </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.core.widget.NestedScrollView>
