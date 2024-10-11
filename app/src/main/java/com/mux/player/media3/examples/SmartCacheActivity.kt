@@ -13,25 +13,16 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import com.mux.stats.sdk.core.model.CustomData
-import com.mux.stats.sdk.core.model.CustomerData
-import com.mux.stats.sdk.core.model.CustomerVideoData
-import com.mux.stats.sdk.core.model.CustomerViewData
-import com.mux.stats.sdk.core.util.UUID
 import com.mux.player.MuxPlayer
-import com.mux.player.media.MediaItems
-import com.mux.player.media.PlaybackResolution
-import com.mux.player.media.RenditionOrder
-import com.mux.player.media3.PlaybackIds
 import com.mux.player.media3.R
-import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
+import com.mux.player.media3.databinding.ActivityConfigurablePlayerBinding
 
 /**
  * Example Activity that enables smart caching
  */
 class SmartCacheActivity : AppCompatActivity() {
 
-  private lateinit var binding: ActivityBasicPlayerBinding
+  private lateinit var binding: ActivityConfigurablePlayerBinding
   private val playerView get() = binding.player
 
   private val playbackParamsHelper = PlaybackParamsHelper()
@@ -40,7 +31,7 @@ class SmartCacheActivity : AppCompatActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    binding = ActivityBasicPlayerBinding.inflate(layoutInflater)
+    binding = ActivityConfigurablePlayerBinding.inflate(layoutInflater)
     setContentView(binding.root)
 
     if (savedInstanceState != null) {

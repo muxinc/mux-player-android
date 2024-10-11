@@ -20,7 +20,7 @@ import com.mux.stats.sdk.core.model.CustomerViewData
 import com.mux.stats.sdk.core.util.UUID
 import com.mux.player.MuxPlayer
 import com.mux.player.media3.R
-import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
+import com.mux.player.media3.databinding.ActivityConfigurablePlayerBinding
 
 /**
  * A configurable example that uses the normal media3 player UI to play a video in the foreground from
@@ -30,7 +30,7 @@ import com.mux.player.media3.databinding.ActivityBasicPlayerBinding
  */
 class ConfigurablePlayerActivity : AppCompatActivity() {
 
-  private lateinit var binding: ActivityBasicPlayerBinding
+  private lateinit var binding: ActivityConfigurablePlayerBinding
   private val playerView get() = binding.player
 
   private val playbackParamsHelper = PlaybackParamsHelper()
@@ -39,7 +39,7 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    binding = ActivityBasicPlayerBinding.inflate(layoutInflater)
+    binding = ActivityConfigurablePlayerBinding.inflate(layoutInflater)
     setContentView(binding.root)
 
     if (savedInstanceState != null) {
