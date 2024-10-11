@@ -46,31 +46,31 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
       playbackParamsHelper.restoreInstanceState(savedInstanceState)
     }
 
-    binding.basicPlayerPlaybackIdIn.hint = playbackParamsHelper.playbackIdOrDefault()
+    binding.configurablePlayerPlaybackIdIn.hint = playbackParamsHelper.playbackIdOrDefault()
 
-    binding.basicPlayerUpdateMediaItem.setOnClickListener {
-      playbackParamsHelper.playbackId = binding.basicPlayerPlaybackIdIn.text?.trim()?.toString()
+    binding.configurablePlayerUpdateMediaItem.setOnClickListener {
+      playbackParamsHelper.playbackId = binding.configurablePlayerPlaybackIdIn.text?.trim()?.toString()
       playbackParamsHelper.playbackToken =
-        binding.basicPlayerPlaybackTokenIn.text?.trim()?.toString()
-      playbackParamsHelper.drmToken = binding.basicPlayerDrmTokenIn.text?.trim()?.toString()
-      playbackParamsHelper.customDomain = binding.basicPlayerDomainIn.text?.trim()?.toString()
+        binding.configurablePlayerPlaybackTokenIn.text?.trim()?.toString()
+      playbackParamsHelper.drmToken = binding.configurablePlayerDrmTokenIn.text?.trim()?.toString()
+      playbackParamsHelper.customDomain = binding.configurablePlayerDomainIn.text?.trim()?.toString()
 
       maybePlayMediaItem(playbackParamsHelper.createMediaItem())
     }
-    binding.playbackIdClear.setOnClickListener {
-      binding.basicPlayerPlaybackIdIn.text = null
+    binding.configurablePlaybackIdClear.setOnClickListener {
+      binding.configurablePlayerPlaybackIdIn.text = null
       playbackParamsHelper.playbackId = null
     }
-    binding.drmTokenClear.setOnClickListener {
-      binding.basicPlayerDrmTokenIn.text = null
+    binding.configurablePlayerDrmTokenClear.setOnClickListener {
+      binding.configurablePlayerDrmTokenIn.text = null
       playbackParamsHelper.drmToken = null
     }
-    binding.playbackTokenClear.setOnClickListener {
-      binding.basicPlayerPlaybackTokenIn.text = null
+    binding.configurablePlayerPlaybackTokenClear.setOnClickListener {
+      binding.configurablePlayerPlaybackTokenIn.text = null
       playbackParamsHelper.playbackToken = null
     }
-    binding.domainClear.setOnClickListener {
-      binding.basicPlayerDomainIn.text = null
+    binding.configurablePlayerDomainClear.setOnClickListener {
+      binding.configurablePlayerDomainIn.text = null
       playbackParamsHelper.customDomain = null
     }
   }
