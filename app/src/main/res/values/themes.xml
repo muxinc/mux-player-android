@@ -33,7 +33,7 @@
     </style>
     <style name="TextAppearance.App.PlaybackParamLabel" parent="@style/TextAppearance.AppCompat.Medium.Inverse">
         <item name="android:textSize">18sp</item>
-        <item name="android:textColor">@color/Gray30</item>
+        <item name="android:textColor">?colorOnPrimary</item>
     </style>
     <style name="TextAppearance.App.PlaybackParamEntry" parent="@style/TextAppearance.AppCompat.Medium.Inverse">
         <item name="android:textSize">16sp</item>
