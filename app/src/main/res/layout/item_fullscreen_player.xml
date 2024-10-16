@@ -15,6 +15,7 @@
     android:id="@+id/item_fullscreen_player_playerview"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    app:resize_mode="zoom"
     app:show_buffering="when_playing"
     app:use_controller="false"
     app:surface_type="texture_view" />
