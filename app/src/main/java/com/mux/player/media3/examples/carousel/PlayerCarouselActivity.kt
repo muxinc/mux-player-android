@@ -93,7 +93,7 @@ class PlayerCarouselActivity : AppCompatActivity() {
       CarouselItem(
         title = "Sintel",
         description = "A knight meets a baby dragon and together they do some adventure stuff." +
-            " The dragon is super adorable, I forget what actually happens though",
+            " PS, adorable monster alert",
         mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.SINTEL),
       ),
       CarouselItem(
