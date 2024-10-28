@@ -187,8 +187,6 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
   }
 }
 
-// todo - the viewholder thing is kind of annoying here but like a View is not out of line
-
 class TextParamEntryView @JvmOverloads constructor(
   context: Context,
   attrs: AttributeSet? = null,
