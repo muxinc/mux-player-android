@@ -2,8 +2,10 @@ package com.mux.player.media3.examples
 
 import android.content.Context
 import android.os.Bundle
+import android.text.Editable
 import android.util.AttributeSet
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -27,6 +29,7 @@ import com.mux.stats.sdk.core.util.UUID
 import com.mux.player.MuxPlayer
 import com.mux.player.media3.R
 import com.mux.player.media3.databinding.ActivityConfigurablePlayerBinding
+import com.mux.player.media3.databinding.TextParamEntryBinding
 
 /**
  * A configurable example that uses the normal media3 player UI to play a video in the foreground from
@@ -194,17 +197,27 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
 
 // todo - the viewholder thing is kind of annoying here but like a View is not out of line
 
-class TextParamEntryView constructor(
+class TextParamEntryView(
   context: Context,
   attrs: AttributeSet? = null,
   defStyleAttr: Int = 0
 ) : ConstraintLayout(context, attrs, defStyleAttr) {
 
-  private val binding: TextParamEntryBinding
+  private val binding: TextParamEntryBinding = TextParamEntryBinding.inflate(
+    LayoutInflater.from(context),
+    this,
+    true
+  )
 
   init {
-    binding = TextParamEntryBinding.inflate(LayoutInflater.from(context), this, true)
-    // You can now access views in the layout using binding.viewId
-    // For example: binding.textView.text = "Hello"
+    binding.textParamEntryClear.setOnClickListener {
+      binding.textParamEntryLbl.text = null
+    }
+  }
+
+  var onClear: (() -> Unit)? = null
+  val entryStr: String? get() {
+    val text = binding.textParamEntryLbl.text?.trim()?.ifEmpty { null }?.toString()
+    return text
   }
 }
