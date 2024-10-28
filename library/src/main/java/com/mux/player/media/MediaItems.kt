@@ -71,6 +71,8 @@ object MediaItems {
     maxResolution: PlaybackResolution? = null,
     minResolution: PlaybackResolution? = null,
     renditionOrder: RenditionOrder? = null,
+    assetStartTime: Double? = null,
+    assetEndTime: Double? = null,
     domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
     drmToken: String? = null,
@@ -79,6 +81,8 @@ object MediaItems {
     maxResolution,
     minResolution,
     renditionOrder,
+    assetStartTime,
+    assetEndTime,
     domain,
     playbackToken,
     drmToken
@@ -143,6 +147,8 @@ object MediaItems {
     maxResolution: PlaybackResolution? = null,
     minResolution: PlaybackResolution? = null,
     renditionOrder: RenditionOrder? = null,
+    assetStartTime: Double? = null,
+    assetEndTime: Double? = null,
     domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
     drmToken: String? = null,
@@ -155,6 +161,8 @@ object MediaItems {
           maxResolution = maxResolution,
           minResolution = minResolution,
           renditionOrder = renditionOrder,
+          assetStartTime = assetStartTime,
+          assetEndTime = assetEndTime,
           playbackToken = playbackToken,
         )
       )
@@ -178,6 +186,8 @@ object MediaItems {
     maxResolution: PlaybackResolution? = null,
     minResolution: PlaybackResolution? = null,
     renditionOrder: RenditionOrder? = null,
+    assetStartTime: Double? = null,
+    assetEndTime: Double? = null,
     playbackToken: String? = null,
   ): String {
     val base = Uri.parse("https://$subdomain.$domain/$playbackId.m3u8").buildUpon()
@@ -186,6 +196,8 @@ object MediaItems {
     maxResolution?.let { base.appendQueryParameter("max_resolution", resolutionValue(it)) }
     renditionOrder?.takeIf { it != RenditionOrder.Default }
       ?.let { base.appendQueryParameter("rendition_order", resolutionValue(it)) }
+    assetStartTime?.let { base.appendQueryParameter("asset_start_time", assetStartTime.toString()) }
+    assetEndTime?.let { base.appendQueryParameter("asset_end_time", assetEndTime.toString()) }
     playbackToken?.let { base.appendQueryParameter("token", it) }
 
     base.appendQueryParameter("redundant_streams", "true");

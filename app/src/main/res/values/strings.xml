@@ -5,6 +5,8 @@
     <string name="label_playback_token">Playback Token</string>
     <string name="label_drm_token">DRM Token</string>
     <string name="label_playback_id">Playback ID</string>
+    <string name="asset_start_time">Clip Start Time (sec)</string>
+    <string name="asset_end_time">Clip End Time (sec)</string>
 
     <string name="update_tokens_ids">Update tokens/playback ID</string>
 

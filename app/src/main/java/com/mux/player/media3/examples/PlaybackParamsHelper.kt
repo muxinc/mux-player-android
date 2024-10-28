@@ -23,6 +23,8 @@ class PlaybackParamsHelper {
   var drmToken: String? = null
   var playbackId: String? = null
   var customDomain: String? = null
+  var assetStartTime: Double? = null
+  var assetEndTime: Double? = null
 
   fun createMediaItemBuilder(): MediaItem.Builder {
     return MediaItems.builderFromMuxPlaybackId(
@@ -30,6 +32,8 @@ class PlaybackParamsHelper {
       minResolution = minRes,
       maxResolution = maxRes,
       renditionOrder = renditionOrder,
+      assetStartTime = assetStartTime,
+      assetEndTime = assetEndTime,
       playbackToken = playbackToken?.ifEmpty { null },
       drmToken = drmToken?.ifEmpty { null },
       domain = customDomain?.ifEmpty { null },

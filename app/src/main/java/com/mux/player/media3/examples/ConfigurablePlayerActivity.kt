@@ -2,17 +2,25 @@ package com.mux.player.media3.examples
 
 import android.content.Context
 import android.os.Bundle
+import android.text.Editable
+import android.util.AttributeSet
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import com.mux.stats.sdk.core.model.CustomData
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.core.model.CustomerVideoData
@@ -21,6 +29,8 @@ import com.mux.stats.sdk.core.util.UUID
 import com.mux.player.MuxPlayer
 import com.mux.player.media3.R
 import com.mux.player.media3.databinding.ActivityConfigurablePlayerBinding
+import com.mux.player.media3.databinding.NumericParamEntryBinding
+import com.mux.player.media3.databinding.TextParamEntryBinding
 
 /**
  * A configurable example that uses the normal media3 player UI to play a video in the foreground from
@@ -46,32 +56,24 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
       playbackParamsHelper.restoreInstanceState(savedInstanceState)
     }
 
-    binding.configurablePlayerPlaybackIdIn.hint = playbackParamsHelper.playbackIdOrDefault()
+    binding.configurablePlayerPlaybackId.hint = playbackParamsHelper.playbackIdOrDefault()
+    binding.configurablePlayerPlaybackId.onClear = { playbackParamsHelper.playbackId = null }
+    binding.configurablePlayerCustomDomain.onClear = { playbackParamsHelper.customDomain = null }
+    binding.configurablePlayerInstantclipStart.onClear =
+      { playbackParamsHelper.assetStartTime = null }
+    binding.configurablePlayerInstantclipEnd.onClear = { playbackParamsHelper.assetEndTime = null }
+    binding.configurablePlayerPlaybackToken.onClear = { playbackParamsHelper.playbackToken = null }
+    binding.configurablePlayerDrmToken.onClear = { playbackParamsHelper.drmToken = null }
 
     binding.configurablePlayerUpdateMediaItem.setOnClickListener {
-      playbackParamsHelper.playbackId = binding.configurablePlayerPlaybackIdIn.text?.trim()?.toString()
-      playbackParamsHelper.playbackToken =
-        binding.configurablePlayerPlaybackTokenIn.text?.trim()?.toString()
-      playbackParamsHelper.drmToken = binding.configurablePlayerDrmTokenIn.text?.trim()?.toString()
-      playbackParamsHelper.customDomain = binding.configurablePlayerDomainIn.text?.trim()?.toString()
+      playbackParamsHelper.playbackId = binding.configurablePlayerPlaybackId.entry
+      playbackParamsHelper.playbackToken = binding.configurablePlayerPlaybackToken.entry
+      playbackParamsHelper.drmToken = binding.configurablePlayerDrmToken.entry
+      playbackParamsHelper.customDomain = binding.configurablePlayerCustomDomain.entry
+      playbackParamsHelper.assetStartTime = binding.configurablePlayerInstantclipStart.entry
+      playbackParamsHelper.assetEndTime = binding.configurablePlayerInstantclipEnd.entry
 
       maybePlayMediaItem(playbackParamsHelper.createMediaItem())
-    }
-    binding.configurablePlaybackIdClear.setOnClickListener {
-      binding.configurablePlayerPlaybackIdIn.text = null
-      playbackParamsHelper.playbackId = null
-    }
-    binding.configurablePlayerDrmTokenClear.setOnClickListener {
-      binding.configurablePlayerDrmTokenIn.text = null
-      playbackParamsHelper.drmToken = null
-    }
-    binding.configurablePlayerPlaybackTokenClear.setOnClickListener {
-      binding.configurablePlayerPlaybackTokenIn.text = null
-      playbackParamsHelper.playbackToken = null
-    }
-    binding.configurablePlayerDomainClear.setOnClickListener {
-      binding.configurablePlayerDomainIn.text = null
-      playbackParamsHelper.customDomain = null
     }
   }
 
@@ -79,7 +81,6 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
     super.onStart()
 
     val mediaItem = playbackParamsHelper.createMediaItem()
-
     maybePlayMediaItem(mediaItem)
   }
 
@@ -168,7 +169,6 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
 
     out.addListener(object : Player.Listener {
       override fun onPlayerError(error: PlaybackException) {
-        // todo - better error info than this, inline in ui
         Log.e(TAG, "player error!", error)
         Toast.makeText(
           this@ConfigurablePlayerActivity,
@@ -183,5 +183,111 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
 
   companion object {
     val TAG = ConfigurablePlayerActivity::class.simpleName
+  }
+}
+
+class TextParamEntryView @JvmOverloads constructor(
+  context: Context,
+  attrs: AttributeSet? = null,
+  defStyleAttr: Int = 0
+) : ConstraintLayout(context, attrs, defStyleAttr) {
+
+  private val binding: TextParamEntryBinding = TextParamEntryBinding.inflate(
+    LayoutInflater.from(context),
+    this,
+    true
+  )
+
+  init {
+    context.theme.obtainStyledAttributes(attrs, R.styleable.TextParamEntryView, 0, R.style.Theme_MuxVideoMedia3).apply {
+      try {
+        hint = getString(R.styleable.TextParamEntryView_hint)
+      } finally {
+        recycle()
+      }
+    }
+    context.theme.obtainStyledAttributes(attrs, R.styleable.ParamEntry, 0, 0).apply {
+      try {
+        title = getString(R.styleable.ParamEntry_title)
+      } finally {
+        recycle()
+      }
+    }
+    binding.textParamEntryClear.setOnClickListener {
+      binding.textParamEntryIn.text = null
+      onClear?.invoke()
+    }
+  }
+
+  var title: CharSequence? = null
+    set(value) {
+      binding.textParamEntryLbl.text = value
+      field = value
+    }
+  var hint: CharSequence? = null
+    set(value) {
+      binding.textParamEntryIn.hint = value
+      field = value
+    }
+
+  var onClear: (() -> Unit)? = null
+  val entry: String? get() {
+    val text = binding.textParamEntryIn.text?.trim()?.ifEmpty { null }?.toString()
+    return text
+  }
+}
+
+class NumericParamEntryView @JvmOverloads constructor(
+  context: Context,
+  attrs: AttributeSet? = null,
+  defStyleAttr: Int = 0
+) : ConstraintLayout(context, attrs, defStyleAttr) {
+
+  private val binding: NumericParamEntryBinding = NumericParamEntryBinding.inflate(
+    LayoutInflater.from(context),
+    this,
+    true
+  )
+
+  init {
+    context.theme.obtainStyledAttributes(attrs, R.styleable.NumericParamEntryView, 0, 0).apply {
+      try {
+        hint = getFloat(R.styleable.NumericParamEntryView_hint_num, Float.NaN)
+          .toDouble()
+          .takeIf { !it.isNaN() }
+      } finally {
+        recycle()
+      }
+    }
+    context.theme.obtainStyledAttributes(attrs, R.styleable.ParamEntry, 0, 0).apply {
+      try {
+        title = getString(R.styleable.ParamEntry_title)
+      } finally {
+        recycle()
+      }
+    }
+
+    binding.numericParamEntryClear.setOnClickListener {
+      binding.numericParamEntryIn.text = null
+      onClear?.invoke()
+    }
+  }
+
+  var title: CharSequence? = null
+    set(value) {
+      binding.numericParamEntryLbl.text = value
+      field = value
+    }
+  var hint: Double? = null
+    set(value) {
+      binding.numericParamEntryIn.hint = value?.toString()
+      field = value
+    }
+
+  var onClear: (() -> Unit)? = null
+  val entry: Double? get() {
+    val text =
+      binding.numericParamEntryIn.text?.trim()?.ifEmpty { null }?.toString()?.toDoubleOrNull()
+    return text
   }
 }

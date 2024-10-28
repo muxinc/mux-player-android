@@ -53,11 +53,13 @@ class PlayerCarouselActivity : AppCompatActivity() {
       adapter = { adapter }
     )
 
-    carousel.addOnChildAttachStateChangeListener(object : RecyclerView.OnChildAttachStateChangeListener {
+    carousel.addOnChildAttachStateChangeListener(object :
+      RecyclerView.OnChildAttachStateChangeListener {
       override fun onChildViewAttachedToWindow(view: View) {
         // If the player is idle when we bind, the UI is initializing and we should autoplay
         if (viewModel.player.playbackState == Player.STATE_IDLE
-          || viewModel.player.currentMediaItem == null) {
+          || viewModel.player.currentMediaItem == null
+        ) {
           val item = adapter.items[0]
           viewModel.changeMediaItem(item.mediaItem)
           viewModel.playIntoView(view.findViewById(R.id.item_fullscreen_player_playerview))
@@ -66,6 +68,7 @@ class PlayerCarouselActivity : AppCompatActivity() {
           Log.d("PlayerCarouselActivity", "Player was idle. Autoplaying")
         }
       }
+
       override fun onChildViewDetachedFromWindow(view: View) {
       }
     })
@@ -88,13 +91,21 @@ class PlayerCarouselActivity : AppCompatActivity() {
         title = "Tears of Steel",
         description = "A time travel story with really cool high-quality CGI and some truly" +
             " powerful dialogue writing",
-        mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.TEARS_OF_STEEL),
+        mediaItem = MediaItems.fromMuxPlaybackId(
+          PlaybackIds.TEARS_OF_STEEL,
+          assetStartTime = 25.0,
+          assetEndTime = 35.0,
+        ),
       ),
       CarouselItem(
         title = "Sintel",
         description = "A knight meets a baby dragon and together they do some adventure stuff." +
-            " The dragon is super adorable, I forget what actually happens though",
-        mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.SINTEL),
+            " PS, adorable monster alert",
+        mediaItem = MediaItems.fromMuxPlaybackId(
+          PlaybackIds.SINTEL,
+          assetStartTime = 240.0,
+          assetEndTime = 285.0,
+        ),
       ),
       CarouselItem(
         title = "Robot shooting a bird",
@@ -104,12 +115,20 @@ class PlayerCarouselActivity : AppCompatActivity() {
       CarouselItem(
         title = "Making of Sintel",
         description = "A documentary about the making of Sintel",
-        mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.MAKING_OF_SINTEL),
+        mediaItem = MediaItems.fromMuxPlaybackId(
+          PlaybackIds.MAKING_OF_SINTEL,
+          assetStartTime = 140.0,
+          assetEndTime = 300.0,
+        ),
       ),
       CarouselItem(
         title = "Big Buck Bunny",
         description = "A rabbit gets harassed by a bunch of punk squirrels.",
-        mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.BIG_BUCK_BUNNY),
+        mediaItem = MediaItems.fromMuxPlaybackId(
+          PlaybackIds.BIG_BUCK_BUNNY,
+          assetStartTime = 200.0,
+          assetEndTime = 260.0,
+        ),
       ),
       CarouselItem(
         title = "Mux Marketing Video",
@@ -124,13 +143,21 @@ class PlayerCarouselActivity : AppCompatActivity() {
         title = "Making of Big Buck Bunny",
         description = "A group of nerds talk about making big buck bunny, presumably because they " +
             "were the ones that did that",
-        mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.MAKING_OF_BUCK_BUNNY),
+        mediaItem = MediaItems.fromMuxPlaybackId(
+          PlaybackIds.MAKING_OF_BUCK_BUNNY,
+          assetStartTime = 0.0,
+          assetEndTime = 30.0,
+        ),
       ),
       CarouselItem(
         title = "Elephant's Dream",
         description = "A surreal fantasy action movie. The first Open Movie Project movie. It's " +
             "old but kinda trippy",
-        mediaItem = MediaItems.fromMuxPlaybackId(PlaybackIds.ELEPHANTS_DREAM),
+        mediaItem = MediaItems.fromMuxPlaybackId(
+          PlaybackIds.ELEPHANTS_DREAM,
+          assetStartTime = 300.0,
+          assetEndTime = 450.0,
+        ),
       ),
       CarouselItem(
         title = "View From a Blue Moon",
