@@ -131,7 +131,6 @@ class SmartCacheActivity : AppCompatActivity() {
 
     out.addListener(object : Player.Listener {
       override fun onPlayerError(error: PlaybackException) {
-        // todo - better error info than this, inline in ui
         Log.e(TAG, "player error!", error)
         Toast.makeText(
           this@SmartCacheActivity,
