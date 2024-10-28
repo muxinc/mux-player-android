@@ -38,33 +38,33 @@ class SmartCacheActivity : AppCompatActivity() {
       playbackParamsHelper.restoreInstanceState(savedInstanceState)
     }
 
-    binding.configurablePlayerPlaybackIdIn.hint = playbackParamsHelper.playbackIdOrDefault()
-
-    binding.configurablePlayerUpdateMediaItem.setOnClickListener {
-      playbackParamsHelper.playbackId = binding.configurablePlayerPlaybackIdIn.text?.trim()?.toString()
-      playbackParamsHelper.playbackToken =
-        binding.configurablePlayerPlaybackTokenIn.text?.trim()?.toString()
-      playbackParamsHelper.drmToken = binding.configurablePlayerDrmTokenIn.text?.trim()?.toString()
-      playbackParamsHelper.customDomain = binding.configurablePlayerDomainIn.text?.trim()?.toString()
-
-      maybePlayMediaItem(playbackParamsHelper.createMediaItem())
-    }
-    binding.configurablePlaybackIdClear.setOnClickListener {
-      binding.configurablePlayerPlaybackIdIn.text = null
-      playbackParamsHelper.playbackId = null
-    }
-    binding.configurablePlayerDrmTokenClear.setOnClickListener {
-      binding.configurablePlayerDrmTokenIn.text = null
-      playbackParamsHelper.drmToken = null
-    }
-    binding.configurablePlayerPlaybackTokenClear.setOnClickListener {
-      binding.configurablePlayerPlaybackTokenIn.text = null
-      playbackParamsHelper.playbackToken = null
-    }
-    binding.configurablePlayerDomainClear.setOnClickListener {
-      binding.configurablePlayerDomainIn.text = null
-      playbackParamsHelper.customDomain = null
-    }
+//    binding.configurablePlayerPlaybackIdIn.hint = playbackParamsHelper.playbackIdOrDefault()
+//
+//    binding.configurablePlayerUpdateMediaItem.setOnClickListener {
+//      playbackParamsHelper.playbackId = binding.configurablePlayerPlaybackIdIn.text?.trim()?.toString()
+//      playbackParamsHelper.playbackToken =
+//        binding.configurablePlayerPlaybackTokenIn.text?.trim()?.toString()
+//      playbackParamsHelper.drmToken = binding.configurablePlayerDrmTokenIn.text?.trim()?.toString()
+//      playbackParamsHelper.customDomain = binding.configurablePlayerDomainIn.text?.trim()?.toString()
+//
+//      maybePlayMediaItem(playbackParamsHelper.createMediaItem())
+//    }
+//    binding.configurablePlaybackIdClear.setOnClickListener {
+//      binding.configurablePlayerPlaybackIdIn.text = null
+//      playbackParamsHelper.playbackId = null
+//    }
+//    binding.configurablePlayerDrmTokenClear.setOnClickListener {
+//      binding.configurablePlayerDrmTokenIn.text = null
+//      playbackParamsHelper.drmToken = null
+//    }
+//    binding.configurablePlayerPlaybackTokenClear.setOnClickListener {
+//      binding.configurablePlayerPlaybackTokenIn.text = null
+//      playbackParamsHelper.playbackToken = null
+//    }
+//    binding.configurablePlayerDomainClear.setOnClickListener {
+//      binding.configurablePlayerDomainIn.text = null
+//      playbackParamsHelper.customDomain = null
+//    }
   }
 
   override fun onStart() {

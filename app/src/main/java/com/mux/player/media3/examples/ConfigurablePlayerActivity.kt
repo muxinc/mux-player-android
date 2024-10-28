@@ -56,33 +56,33 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
       playbackParamsHelper.restoreInstanceState(savedInstanceState)
     }
 
-    binding.configurablePlayerPlaybackIdIn.hint = playbackParamsHelper.playbackIdOrDefault()
-
-    binding.configurablePlayerUpdateMediaItem.setOnClickListener {
-      playbackParamsHelper.playbackId = binding.configurablePlayerPlaybackIdIn.text?.trim()?.toString()
-      playbackParamsHelper.playbackToken =
-        binding.configurablePlayerPlaybackTokenIn.text?.trim()?.toString()
-      playbackParamsHelper.drmToken = binding.configurablePlayerDrmTokenIn.text?.trim()?.toString()
-      playbackParamsHelper.customDomain = binding.configurablePlayerDomainIn.text?.trim()?.toString()
-
-      maybePlayMediaItem(playbackParamsHelper.createMediaItem())
-    }
-    binding.configurablePlaybackIdClear.setOnClickListener {
-      binding.configurablePlayerPlaybackIdIn.text = null
-      playbackParamsHelper.playbackId = null
-    }
-    binding.configurablePlayerDrmTokenClear.setOnClickListener {
-      binding.configurablePlayerDrmTokenIn.text = null
-      playbackParamsHelper.drmToken = null
-    }
-    binding.configurablePlayerPlaybackTokenClear.setOnClickListener {
-      binding.configurablePlayerPlaybackTokenIn.text = null
-      playbackParamsHelper.playbackToken = null
-    }
-    binding.configurablePlayerDomainClear.setOnClickListener {
-      binding.configurablePlayerDomainIn.text = null
-      playbackParamsHelper.customDomain = null
-    }
+//    binding.configurablePlayerPlaybackIdIn.hint = playbackParamsHelper.playbackIdOrDefault()
+//
+//    binding.configurablePlayerUpdateMediaItem.setOnClickListener {
+//      playbackParamsHelper.playbackId = binding.configurablePlayerPlaybackIdIn.text?.trim()?.toString()
+//      playbackParamsHelper.playbackToken =
+//        binding.configurablePlayerPlaybackTokenIn.text?.trim()?.toString()
+//      playbackParamsHelper.drmToken = binding.configurablePlayerDrmTokenIn.text?.trim()?.toString()
+//      playbackParamsHelper.customDomain = binding.configurablePlayerDomainIn.text?.trim()?.toString()
+//
+//      maybePlayMediaItem(playbackParamsHelper.createMediaItem())
+//    }
+//    binding.configurablePlaybackIdClear.setOnClickListener {
+//      binding.configurablePlayerPlaybackIdIn.text = null
+//      playbackParamsHelper.playbackId = null
+//    }
+//    binding.configurablePlayerDrmTokenClear.setOnClickListener {
+//      binding.configurablePlayerDrmTokenIn.text = null
+//      playbackParamsHelper.drmToken = null
+//    }
+//    binding.configurablePlayerPlaybackTokenClear.setOnClickListener {
+//      binding.configurablePlayerPlaybackTokenIn.text = null
+//      playbackParamsHelper.playbackToken = null
+//    }
+//    binding.configurablePlayerDomainClear.setOnClickListener {
+//      binding.configurablePlayerDomainIn.text = null
+//      playbackParamsHelper.customDomain = null
+//    }
   }
 
   override fun onStart() {
@@ -198,7 +198,7 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
 
 // todo - the viewholder thing is kind of annoying here but like a View is not out of line
 
-class TextParamEntryView(
+class TextParamEntryView @JvmOverloads constructor(
   context: Context,
   attrs: AttributeSet? = null,
   defStyleAttr: Int = 0
@@ -211,10 +211,17 @@ class TextParamEntryView(
   )
 
   init {
-    context.theme.obtainStyledAttributes(attrs, R.styleable.TextParamEntryView, 0, 0).apply {
+    context.theme.obtainStyledAttributes(attrs, R.styleable.TextParamEntryView, 0, R.style.Theme_MuxVideoMedia3).apply {
       try {
-        title = getString(R.styleable.TextParamEntryView_title)
+        title = getString(R.styleable.ParamEntry_title)
         hint = getString(R.styleable.TextParamEntryView_hint)
+      } finally {
+        recycle()
+      }
+    }
+    context.theme.obtainStyledAttributes(attrs, R.styleable.ParamEntry, 0, 0).apply {
+      try {
+        title = getString(R.styleable.ParamEntry_title)
       } finally {
         recycle()
       }
@@ -243,7 +250,7 @@ class TextParamEntryView(
   }
 }
 
-class NumericParamEntryView(
+class NumericParamEntryView @JvmOverloads constructor(
   context: Context,
   attrs: AttributeSet? = null,
   defStyleAttr: Int = 0
@@ -258,10 +265,16 @@ class NumericParamEntryView(
   init {
     context.theme.obtainStyledAttributes(attrs, R.styleable.NumericParamEntryView, 0, 0).apply {
       try {
-        title = getString(R.styleable.NumericParamEntryView_title)
-        hint = getFloat(R.styleable.NumericParamEntryView_hint, Float.NaN)
+        hint = getFloat(R.styleable.NumericParamEntryView_hint_num, Float.NaN)
           .toDouble()
           .takeIf { !it.isNaN() }
+      } finally {
+        recycle()
+      }
+    }
+    context.theme.obtainStyledAttributes(attrs, R.styleable.ParamEntry, 0, 0).apply {
+      try {
+        title = getString(R.styleable.ParamEntry_title)
       } finally {
         recycle()
       }
