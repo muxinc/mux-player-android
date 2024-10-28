@@ -2,17 +2,23 @@ package com.mux.player.media3.examples
 
 import android.content.Context
 import android.os.Bundle
+import android.util.AttributeSet
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import com.mux.stats.sdk.core.model.CustomData
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.core.model.CustomerVideoData
@@ -183,5 +189,22 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
 
   companion object {
     val TAG = ConfigurablePlayerActivity::class.simpleName
+  }
+}
+
+// todo - the viewholder thing is kind of annoying here but like a View is not out of line
+
+class TextParamEntryView constructor(
+  context: Context,
+  attrs: AttributeSet? = null,
+  defStyleAttr: Int = 0
+) : ConstraintLayout(context, attrs, defStyleAttr) {
+
+  private val binding: TextParamEntryBinding
+
+  init {
+    binding = TextParamEntryBinding.inflate(LayoutInflater.from(context), this, true)
+    // You can now access views in the layout using binding.viewId
+    // For example: binding.textView.text = "Hello"
   }
 }

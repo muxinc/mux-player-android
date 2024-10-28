@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- playback ID -->
+    <TextView
+      android:id="@+id/text_param_entry_lbl"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_margin="4dp"
+      android:layout_marginTop="8dp"
+      android:textAppearance="@style/TextAppearance.App.PlaybackParamLabel"
+      android:textSize="20sp"
+      tools:text="Text Entry Label"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+      android:id="@+id/text_param_entry_in"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_margin="4dp"
+      android:backgroundTint="@color/Gray30"
+      android:paddingEnd="24dp"
+      android:textColor="?colorOnPrimary"
+      android:textColorHint="@color/Gray70"
+      android:textSize="18sp"
+      tools:hint="Entry Hint"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@id/text_param_entry_lbl" />
+
+    <ImageButton
+      android:id="@+id/configurable_playback_id_clear"
+      android:layout_width="20dp"
+      android:layout_height="20dp"
+      android:layout_marginEnd="8dp"
+      android:background="@null"
+      android:scaleType="centerInside"
+      android:src="@drawable/quantum_ic_clear_white_24"
+      app:layout_constraintBottom_toBottomOf="@id/text_param_entry_in"
+      app:layout_constraintEnd_toEndOf="@id/text_param_entry_in"
+      app:layout_constraintTop_toTopOf="@id/text_param_entry_in" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
