@@ -56,40 +56,27 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
       playbackParamsHelper.restoreInstanceState(savedInstanceState)
     }
 
-//    binding.configurablePlayerPlaybackIdIn.hint = playbackParamsHelper.playbackIdOrDefault()
-//
-//    binding.configurablePlayerUpdateMediaItem.setOnClickListener {
-//      playbackParamsHelper.playbackId = binding.configurablePlayerPlaybackIdIn.text?.trim()?.toString()
-//      playbackParamsHelper.playbackToken =
-//        binding.configurablePlayerPlaybackTokenIn.text?.trim()?.toString()
-//      playbackParamsHelper.drmToken = binding.configurablePlayerDrmTokenIn.text?.trim()?.toString()
-//      playbackParamsHelper.customDomain = binding.configurablePlayerDomainIn.text?.trim()?.toString()
-//
-//      maybePlayMediaItem(playbackParamsHelper.createMediaItem())
-//    }
-//    binding.configurablePlaybackIdClear.setOnClickListener {
-//      binding.configurablePlayerPlaybackIdIn.text = null
-//      playbackParamsHelper.playbackId = null
-//    }
-//    binding.configurablePlayerDrmTokenClear.setOnClickListener {
-//      binding.configurablePlayerDrmTokenIn.text = null
-//      playbackParamsHelper.drmToken = null
-//    }
-//    binding.configurablePlayerPlaybackTokenClear.setOnClickListener {
-//      binding.configurablePlayerPlaybackTokenIn.text = null
-//      playbackParamsHelper.playbackToken = null
-//    }
-//    binding.configurablePlayerDomainClear.setOnClickListener {
-//      binding.configurablePlayerDomainIn.text = null
-//      playbackParamsHelper.customDomain = null
-//    }
+    binding.configurablePlayerPlaybackId.hint = playbackParamsHelper.playbackIdOrDefault()
+    binding.configurablePlayerPlaybackId.onClear =  {
+      playbackParamsHelper.playbackId = null
+    }
+
+    binding.configurablePlayerUpdateMediaItem.setOnClickListener {
+      playbackParamsHelper.playbackId = binding.configurablePlayerPlaybackId.entry
+      playbackParamsHelper.playbackToken = binding.configurablePlayerPlaybackToken.entry
+      playbackParamsHelper.drmToken = binding.configurablePlayerDrmToken.entry
+      playbackParamsHelper.customDomain = binding.configurablePlayerCustomDomain.entry
+      playbackParamsHelper.assetStartTime = binding.configurablePlayerInstantclipStart.entry
+      playbackParamsHelper.assetEndTime = binding.configurablePlayerInstantclipEnd.entry
+
+      maybePlayMediaItem(playbackParamsHelper.createMediaItem())
+    }
   }
 
   override fun onStart() {
     super.onStart()
 
     val mediaItem = playbackParamsHelper.createMediaItem()
-
     maybePlayMediaItem(mediaItem)
   }
 
@@ -213,7 +200,6 @@ class TextParamEntryView @JvmOverloads constructor(
   init {
     context.theme.obtainStyledAttributes(attrs, R.styleable.TextParamEntryView, 0, R.style.Theme_MuxVideoMedia3).apply {
       try {
-        title = getString(R.styleable.ParamEntry_title)
         hint = getString(R.styleable.TextParamEntryView_hint)
       } finally {
         recycle()
