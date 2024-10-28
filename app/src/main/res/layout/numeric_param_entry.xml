@@ -8,19 +8,19 @@
 
     <!-- playback ID -->
     <TextView
-      android:id="@+id/time_param_entry_lbl"
+      android:id="@+id/numeric_param_entry_lbl"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:layout_margin="4dp"
       android:textAppearance="@style/TextAppearance.App.PlaybackParamLabel"
       android:textSize="20sp"
       tools:text="Text Entry Label"
-      app:layout_constraintBaseline_toBaselineOf="@+id/time_param_entry_in"
+      app:layout_constraintBaseline_toBaselineOf="@+id/numeric_param_entry_in"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent" />
 
     <EditText
-      android:id="@+id/time_param_entry_in"
+      android:id="@+id/numeric_param_entry_in"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:layout_margin="4dp"
@@ -35,19 +35,19 @@
       app:layout_constraintWidth_min="90dp"
       app:layout_constraintHorizontal_bias="0.6"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintStart_toEndOf="@id/time_param_entry_lbl"
+      app:layout_constraintStart_toEndOf="@id/numeric_param_entry_lbl"
       app:layout_constraintTop_toTopOf="parent"/>
 
     <ImageButton
-      android:id="@+id/time_param_entry_clear"
+      android:id="@+id/numeric_param_entry_clear"
       android:layout_width="20dp"
       android:layout_height="20dp"
       android:layout_marginEnd="8dp"
       android:background="@null"
       android:scaleType="centerInside"
       android:src="@drawable/quantum_ic_clear_white_24"
-      app:layout_constraintBottom_toBottomOf="@id/time_param_entry_in"
-      app:layout_constraintEnd_toEndOf="@id/time_param_entry_in"
-      app:layout_constraintTop_toTopOf="@id/time_param_entry_in" />
+      app:layout_constraintBottom_toBottomOf="@id/numeric_param_entry_in"
+      app:layout_constraintEnd_toEndOf="@id/numeric_param_entry_in"
+      app:layout_constraintTop_toTopOf="@id/numeric_param_entry_in" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
