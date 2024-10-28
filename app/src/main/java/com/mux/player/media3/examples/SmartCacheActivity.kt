@@ -39,9 +39,13 @@ class SmartCacheActivity : AppCompatActivity() {
     }
 
     binding.configurablePlayerPlaybackId.hint = playbackParamsHelper.playbackIdOrDefault()
-    binding.configurablePlayerPlaybackId.onClear =  {
-      playbackParamsHelper.playbackId = null
-    }
+    binding.configurablePlayerPlaybackId.onClear = { playbackParamsHelper.playbackId = null }
+    binding.configurablePlayerCustomDomain.onClear = { playbackParamsHelper.customDomain = null }
+    binding.configurablePlayerInstantclipStart.onClear =
+      { playbackParamsHelper.assetStartTime = null }
+    binding.configurablePlayerInstantclipEnd.onClear = { playbackParamsHelper.assetEndTime = null }
+    binding.configurablePlayerPlaybackToken.onClear = { playbackParamsHelper.playbackToken = null }
+    binding.configurablePlayerDrmToken.onClear = { playbackParamsHelper.playbackToken = null }
 
     binding.configurablePlayerUpdateMediaItem.setOnClickListener {
       playbackParamsHelper.playbackId = binding.configurablePlayerPlaybackId.entry
