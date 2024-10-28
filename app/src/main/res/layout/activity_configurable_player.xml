@@ -25,13 +25,12 @@
       app:title="@string/label_playback_id"
       android:orientation="vertical"
       >
+
       <com.mux.player.media3.examples.TextParamEntryView
         android:id="@+id/configurable_player_playback_id"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@id/player"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="4dp"
         app:title="@string/label_playback_id"
         />
 
@@ -39,12 +38,52 @@
         android:id="@+id/configurable_player_custom_domain"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@id/player"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="4dp"
         app:title="@string/label_custom_domain"
         app:hint="@string/unspecified_custom_domain"
         />
+
+      <com.mux.player.media3.examples.NumericParamEntryView
+        android:id="@+id/configurable_player_instantclip_start"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        app:title="@string/asset_start_time"
+        />
+
+      <com.mux.player.media3.examples.NumericParamEntryView
+        android:id="@+id/configurable_player_instantclip_end"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        app:title="@string/asset_end_time"
+        />
+
+      <com.mux.player.media3.examples.TextParamEntryView
+        android:id="@+id/configurable_player_playback_token"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        app:title="@string/label_playback_token"
+        app:hint="@string/unspecified_token"
+        />
+
+      <com.mux.player.media3.examples.TextParamEntryView
+        android:id="@+id/configurable_player_drm_token"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        app:title="@string/label_drm_token"
+        app:hint="@string/unspecified_token"
+        />
+
+      <Button
+        android:id="@+id/configurable_player_update_media_item"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="4dp"
+        android:layout_marginStart="8dp"
+        android:text="@string/update_tokens_ids"/>
 
     </LinearLayout>
     <!-- hint set in code -->
@@ -210,15 +249,6 @@
 <!--      app:layout_constraintEnd_toEndOf="@id/configurable_player_drm_token_in"-->
 <!--      app:layout_constraintTop_toTopOf="@id/configurable_player_drm_token_in" />-->
 
-<!--    <Button-->
-<!--      android:id="@+id/configurable_player_update_media_item"-->
-<!--      android:layout_width="wrap_content"-->
-<!--      android:layout_height="wrap_content"-->
-<!--      android:layout_margin="4dp"-->
-<!--      android:layout_marginStart="8dp"-->
-<!--      android:text="@string/update_tokens_ids"-->
-<!--      app:layout_constraintStart_toStartOf="parent"-->
-<!--      app:layout_constraintTop_toBottomOf="@id/configurable_player_drm_token_in" />-->
 
   </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.core.widget.NestedScrollView>

@@ -3,7 +3,6 @@
   xmlns:app="http://schemas.android.com/apk/res-auto"
   android:layout_width="match_parent"
   android:layout_height="wrap_content"
-  android:layout_marginTop="8dp"
   xmlns:tools="http://schemas.android.com/tools">
 
     <!-- playback ID -->
@@ -32,8 +31,8 @@
       android:textSize="18sp"
       android:inputType="number"
       tools:hint="9999"
-      app:layout_constraintWidth_min="90dp"
-      app:layout_constraintHorizontal_bias="0.6"
+      app:layout_constraintWidth_min="126dp"
+      app:layout_constraintHorizontal_bias="1"
       app:layout_constraintEnd_toEndOf="parent"
       app:layout_constraintStart_toEndOf="@id/numeric_param_entry_lbl"
       app:layout_constraintTop_toTopOf="parent"/>
