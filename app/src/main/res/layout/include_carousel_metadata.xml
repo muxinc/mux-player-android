@@ -7,7 +7,7 @@
   android:layout_height="wrap_content"
   android:layout_gravity="bottom|start"
   android:padding="8dp"
-  android:background="#66ffffff"
+  android:background="#66000000"
   >
   <TextView
     android:id="@+id/include_carousel_metadata_title"
@@ -19,6 +19,8 @@
     android:textColor="@color/white"
     android:maxLines="1"
     android:ellipsize="end"
+    android:shadowColor="@color/Gray30"
+    android:shadowRadius="2.0"
     tools:text="Video Title"
     />
 
@@ -36,7 +38,8 @@
     android:minLines="3"
     android:maxLines="6"
     android:ellipsize="end"
-    tools:text="Video Description, which can be up to three lines. Blah blah blah yadda yadda etc"
+    android:shadowRadius="2.0"
+    tools:text="Video Description, which is up to 6 lines which seems like plenty. Blah blah blah yadda yadda etc"
     />
 
 </RelativeLayout>

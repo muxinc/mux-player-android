@@ -38,32 +38,24 @@ class SmartCacheActivity : AppCompatActivity() {
       playbackParamsHelper.restoreInstanceState(savedInstanceState)
     }
 
-    binding.configurablePlayerPlaybackIdIn.hint = playbackParamsHelper.playbackIdOrDefault()
+    binding.configurablePlayerPlaybackId.hint = playbackParamsHelper.playbackIdOrDefault()
+    binding.configurablePlayerPlaybackId.onClear = { playbackParamsHelper.playbackId = null }
+    binding.configurablePlayerCustomDomain.onClear = { playbackParamsHelper.customDomain = null }
+    binding.configurablePlayerInstantclipStart.onClear =
+      { playbackParamsHelper.assetStartTime = null }
+    binding.configurablePlayerInstantclipEnd.onClear = { playbackParamsHelper.assetEndTime = null }
+    binding.configurablePlayerPlaybackToken.onClear = { playbackParamsHelper.playbackToken = null }
+    binding.configurablePlayerDrmToken.onClear = { playbackParamsHelper.drmToken = null }
 
     binding.configurablePlayerUpdateMediaItem.setOnClickListener {
-      playbackParamsHelper.playbackId = binding.configurablePlayerPlaybackIdIn.text?.trim()?.toString()
-      playbackParamsHelper.playbackToken =
-        binding.configurablePlayerPlaybackTokenIn.text?.trim()?.toString()
-      playbackParamsHelper.drmToken = binding.configurablePlayerDrmTokenIn.text?.trim()?.toString()
-      playbackParamsHelper.customDomain = binding.configurablePlayerDomainIn.text?.trim()?.toString()
+      playbackParamsHelper.playbackId = binding.configurablePlayerPlaybackId.entry
+      playbackParamsHelper.playbackToken = binding.configurablePlayerPlaybackToken.entry
+      playbackParamsHelper.drmToken = binding.configurablePlayerDrmToken.entry
+      playbackParamsHelper.customDomain = binding.configurablePlayerCustomDomain.entry
+      playbackParamsHelper.assetStartTime = binding.configurablePlayerInstantclipStart.entry
+      playbackParamsHelper.assetEndTime = binding.configurablePlayerInstantclipEnd.entry
 
       maybePlayMediaItem(playbackParamsHelper.createMediaItem())
-    }
-    binding.configurablePlaybackIdClear.setOnClickListener {
-      binding.configurablePlayerPlaybackIdIn.text = null
-      playbackParamsHelper.playbackId = null
-    }
-    binding.configurablePlayerDrmTokenClear.setOnClickListener {
-      binding.configurablePlayerDrmTokenIn.text = null
-      playbackParamsHelper.drmToken = null
-    }
-    binding.configurablePlayerPlaybackTokenClear.setOnClickListener {
-      binding.configurablePlayerPlaybackTokenIn.text = null
-      playbackParamsHelper.playbackToken = null
-    }
-    binding.configurablePlayerDomainClear.setOnClickListener {
-      binding.configurablePlayerDomainIn.text = null
-      playbackParamsHelper.customDomain = null
     }
   }
 
@@ -139,7 +131,6 @@ class SmartCacheActivity : AppCompatActivity() {
 
     out.addListener(object : Player.Listener {
       override fun onPlayerError(error: PlaybackException) {
-        // todo - better error info than this, inline in ui
         Log.e(TAG, "player error!", error)
         Toast.makeText(
           this@SmartCacheActivity,
