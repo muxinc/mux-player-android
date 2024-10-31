@@ -38,8 +38,10 @@ internal class CacheDatastore(
   }
 
   private val dbGuard = Any()
+
   // note - guarded by dbHelperGuard
   private var dbHelper: DbHelper? = null
+
   // note - guarded by dbHelperGuard
   private var sqlDb: SQLiteDatabase? = null
 
@@ -62,8 +64,6 @@ internal class CacheDatastore(
         ensureDirs()
 
         val newHelper = DbHelper(context.applicationContext, indexDbDir())
-        // acquire an extra reference until closed. prevents DB underneath from closing/reopening
-        //newHelper.writableDatabase.acquireReference()
         this.dbHelper = newHelper
         this.sqlDb = newHelper.writableDatabase
       }
@@ -117,52 +117,50 @@ internal class CacheDatastore(
 
   fun readRecordByLookupKey(key: String): FileRecord? {
     return databaseOrThrow().query(
-        IndexSql.Files.name, null,
-        "${IndexSql.Files.Columns.lookupKey} is ?",
-        arrayOf(key),
-        null, null, null
-      ).use { cursor ->
-        if (cursor.count > 0 && cursor.moveToFirst()) {
-          cursor.toFileRecord()
-        } else {
-          null
-        }
+      IndexSql.Files.name, null,
+      "${IndexSql.Files.Columns.lookupKey} is ?",
+      arrayOf(key),
+      null, null, null
+    ).use { cursor ->
+      if (cursor.count > 0 && cursor.moveToFirst()) {
+        cursor.toFileRecord()
+      } else {
+        null
+      }
     }
   }
 
   fun readRecordByUrl(url: String): FileRecord? {
-    logger.i("CacheInvest", "readRecordByUrl() tid=${Thread.currentThread().id} called for datastore $this\n\tfor url $url")
-    try {
-      return databaseOrThrow().run {
-        query(
-          IndexSql.Files.name, null,
-          "${IndexSql.Files.Columns.lookupKey} is ?",
-          arrayOf(safeCacheKey(URL(url))),
-          null, null, null
-        ).use { cursor ->
-          logger.d(
-            "CacheInvest",
-            "readRecordByUrl() tid=${Thread.currentThread().id} about to talk to the cursor $this\n\t btw is it closed according to Cursor? ${cursor.isClosed}"
-          )
-          logger.i(
-            "CacheInvest",
-            "readRecordByUrl() tid=${Thread.currentThread().id} \n\tcursor closed ${cursor.isClosed}\n\t db closed ${!isOpen}"
-          )
-          if (cursor.count > 0 && cursor.moveToFirst()) {
-            cursor.toFileRecord().also {
-              logger.i(
-                "CacheInvest",
-                "readRecordByUrl() tid=${Thread.currentThread().id} returning with record\n\tfor $url"
-              )
-            }
-          } else {
-            null
+    logger.i(
+      TAG,
+      "readRecordByUrl() tid=${Thread.currentThread().id} called for datastore $this\n\tfor url $url"
+    )
+    return databaseOrThrow().run {
+      query(
+        IndexSql.Files.name, null,
+        "${IndexSql.Files.Columns.lookupKey} is ?",
+        arrayOf(safeCacheKey(URL(url))),
+        null, null, null
+      ).use { cursor ->
+        logger.d(
+          TAG,
+          "readRecordByUrl() tid=${Thread.currentThread().id} about to talk to the cursor $this\n\t btw is it closed according to Cursor? ${cursor.isClosed}"
+        )
+        logger.i(
+          TAG,
+          "readRecordByUrl() tid=${Thread.currentThread().id} \n\tcursor closed ${cursor.isClosed}\n\t db closed ${!isOpen}"
+        )
+        if (cursor.count > 0 && cursor.moveToFirst()) {
+          cursor.toFileRecord().also {
+            logger.i(
+              TAG,
+              "readRecordByUrl() tid=${Thread.currentThread().id} returning with record\n\tfor $url"
+            )
           }
+        } else {
+          null
         }
       }
-    } catch (e: Exception) {
-      logger.e("CacheInvest", "rethrowing DB error from tid ${Thread.currentThread().id} for datastore $this", e)
-      throw e
     }
   }
 
@@ -205,7 +203,7 @@ internal class CacheDatastore(
 
   @Throws(IOException::class)
   override fun close() {
-    logger.i("CacheInvest", "close() tid=${Thread.currentThread().id} called for datastore $this")
+    logger.i(TAG, "close() tid=${Thread.currentThread().id} called for datastore $this")
     synchronized(dbGuard) {
       sqlDb?.close()
       dbHelper?.close()
@@ -422,6 +420,7 @@ private class DbHelper(
 ) {
 
   companion object {
+    private const val TAG = "CacheDatastore"
     private const val DB_FILE = "mux-player-cache.db"
   }
 
