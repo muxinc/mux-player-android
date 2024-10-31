@@ -5,7 +5,11 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.os.Build
 import android.util.Base64
+import android.util.Log
+import com.google.common.cache.Cache
 import com.mux.player.internal.Constants
+import com.mux.player.internal.Logger
+import com.mux.player.internal.createNoLogger
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
@@ -24,6 +28,7 @@ import java.net.URL
 internal class CacheDatastore(
   val context: Context,
   val maxDiskSize: Long = 256 * 1024 * 1024,
+  val logger: Logger,
 ) : Closeable {
 
   companion object {
@@ -33,8 +38,12 @@ internal class CacheDatastore(
   }
 
   private val dbGuard = Any()
+
   // note - guarded by dbHelperGuard
   private var dbHelper: DbHelper? = null
+
+  // note - guarded by dbHelperGuard
+  private var sqlDb: SQLiteDatabase? = null
 
   /**
    * Opens the datastore, blocking until it is ready to use
@@ -55,16 +64,15 @@ internal class CacheDatastore(
         ensureDirs()
 
         val newHelper = DbHelper(context.applicationContext, indexDbDir())
-        // acquire an extra reference until closed. prevents DB underneath from closing/reopening
-        newHelper.writableDatabase.acquireReference()
         this.dbHelper = newHelper
+        this.sqlDb = newHelper.writableDatabase
       }
     }
   }
 
   fun isOpen(): Boolean {
     synchronized(dbGuard) {
-      return dbHelper != null
+      return dbHelper != null && (sqlDb?.isOpen ?: false)
     }
   }
 
@@ -94,13 +102,11 @@ internal class CacheDatastore(
   }
 
   fun writeFileRecord(fileRecord: FileRecord): Result<Unit> {
-    val rowId = databaseOrThrow().use {
-      it.insertWithOnConflict(
-        IndexSql.Files.name, null,
-        fileRecord.toContentValues(),
-        SQLiteDatabase.CONFLICT_REPLACE
-      )
-    }
+    val rowId = databaseOrThrow().insertWithOnConflict(
+      IndexSql.Files.name, null,
+      fileRecord.toContentValues(),
+      SQLiteDatabase.CONFLICT_REPLACE
+    )
 
     return if (rowId >= 0) {
       Result.success(Unit)
@@ -110,32 +116,47 @@ internal class CacheDatastore(
   }
 
   fun readRecordByLookupKey(key: String): FileRecord? {
-    return databaseOrThrow().use {
-      it.query(
-        IndexSql.Files.name, null,
-        "${IndexSql.Files.Columns.lookupKey} is ?",
-        arrayOf(key),
-        null, null, null
-      ).use { cursor ->
-        if (cursor.count > 0 && cursor.moveToFirst()) {
-          cursor.toFileRecord()
-        } else {
-          null
-        }
+    return databaseOrThrow().query(
+      IndexSql.Files.name, null,
+      "${IndexSql.Files.Columns.lookupKey} is ?",
+      arrayOf(key),
+      null, null, null
+    ).use { cursor ->
+      if (cursor.count > 0 && cursor.moveToFirst()) {
+        cursor.toFileRecord()
+      } else {
+        null
       }
     }
   }
 
   fun readRecordByUrl(url: String): FileRecord? {
-    return databaseOrThrow().use {
-      it.query(
+    logger.i(
+      TAG,
+      "readRecordByUrl() tid=${Thread.currentThread().id} called for datastore $this\n\tfor url $url"
+    )
+    return databaseOrThrow().run {
+      query(
         IndexSql.Files.name, null,
         "${IndexSql.Files.Columns.lookupKey} is ?",
         arrayOf(safeCacheKey(URL(url))),
         null, null, null
       ).use { cursor ->
+        logger.d(
+          TAG,
+          "readRecordByUrl() tid=${Thread.currentThread().id} about to talk to the cursor $this\n\t btw is it closed according to Cursor? ${cursor.isClosed}"
+        )
+        logger.i(
+          TAG,
+          "readRecordByUrl() tid=${Thread.currentThread().id} \n\tcursor closed ${cursor.isClosed}\n\t db closed ${!isOpen}"
+        )
         if (cursor.count > 0 && cursor.moveToFirst()) {
-          cursor.toFileRecord()
+          cursor.toFileRecord().also {
+            logger.i(
+              TAG,
+              "readRecordByUrl() tid=${Thread.currentThread().id} returning with record\n\tfor $url"
+            )
+          }
         } else {
           null
         }
@@ -176,18 +197,18 @@ internal class CacheDatastore(
    * recently-used items
    */
   fun evictByLru(): Result<Int> {
-    return databaseOrThrow().use { doEvictByLru(it) }
+    return doEvictByLru(databaseOrThrow())
 
   }
 
   @Throws(IOException::class)
   override fun close() {
+    logger.i(TAG, "close() tid=${Thread.currentThread().id} called for datastore $this")
     synchronized(dbGuard) {
-      // release reference from when we opened. if any loader threads are reading/writing then
-      //  the db will close once they wind down
-      dbHelper?.writableDatabase?.releaseReference()
+      sqlDb?.close()
       dbHelper?.close()
       dbHelper = null
+      sqlDb = null
     }
   }
 
@@ -198,7 +219,7 @@ internal class CacheDatastore(
   internal fun readLeastRecentFiles(): List<FileRecord> {
     // This function is only visible for testing. doReadLeastRecentFiles() is called internally in
     //  a transaction with an already-open db
-    return databaseOrThrow().use { doReadLeastRecentFiles(it) }
+    return doReadLeastRecentFiles(databaseOrThrow())
   }
 
   /**
@@ -383,8 +404,7 @@ internal class CacheDatastore(
   @Throws(IOException::class)
   private fun databaseOrThrow(): SQLiteDatabase {
     synchronized(dbGuard) {
-      val helper = dbHelper ?: throw IOException("CacheDatastore was closed")
-      return helper.writableDatabase
+      return sqlDb?.takeIf { it.isOpen } ?: throw IOException("CacheDatastore was closed")
     }
   }
 }
@@ -400,6 +420,7 @@ private class DbHelper(
 ) {
 
   companion object {
+    private const val TAG = "CacheDatastore"
     private const val DB_FILE = "mux-player-cache.db"
   }
 
