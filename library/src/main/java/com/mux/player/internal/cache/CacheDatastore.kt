@@ -207,9 +207,6 @@ internal class CacheDatastore(
   override fun close() {
     logger.i("CacheInvest", "close() tid=${Thread.currentThread().id} called for datastore $this")
     synchronized(dbGuard) {
-      // release reference from when we opened. if any loader threads are reading/writing then
-      //  the db will close once they wind down
-//      dbHelper?.writableDatabase?.releaseReference()
       sqlDb?.close()
       dbHelper?.close()
       dbHelper = null
@@ -409,8 +406,6 @@ internal class CacheDatastore(
   @Throws(IOException::class)
   private fun databaseOrThrow(): SQLiteDatabase {
     synchronized(dbGuard) {
-//      val helper = dbHelper ?: throw IOException("CacheDatastore was closed")
-//      return helper.writableDatabase
       return sqlDb?.takeIf { it.isOpen } ?: throw IOException("CacheDatastore was closed")
     }
   }
