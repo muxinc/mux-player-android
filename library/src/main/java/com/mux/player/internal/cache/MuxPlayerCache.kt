@@ -1,6 +1,8 @@
 package com.mux.player.internal.cache
 
 import android.content.Context
+import com.mux.player.internal.Logger
+import com.mux.player.internal.createNoLogger
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.Closeable
@@ -21,9 +23,11 @@ import java.util.concurrent.TimeUnit
  */
 class MuxPlayerCache private constructor(
   private val datastore: CacheDatastore,
+  private val logger: Logger,
 ) {
 
-  constructor(appContext: Context) : this(CacheDatastore(appContext.applicationContext))
+  constructor(appContext: Context, logger: Logger)
+      : this(CacheDatastore(appContext.applicationContext, logger = logger), logger)
 
   companion object {
     private const val TAG = "CacheController"
@@ -34,9 +38,10 @@ class MuxPlayerCache private constructor(
     val RX_S_MAX_AGE = Regex("""s-max-age=([0-9].*)""")
 
     @JvmSynthetic
-    internal fun create(appContext: Context) = MuxPlayerCache(appContext)
+    internal fun create(appContext: Context, logger: Logger) = MuxPlayerCache(appContext, logger)
     @JvmSynthetic
-    internal fun create(datastore: CacheDatastore) = MuxPlayerCache(datastore)
+    internal fun create(datastore: CacheDatastore, logger: Logger) =
+      MuxPlayerCache(datastore, logger)
   }
 
   /**

@@ -8,6 +8,8 @@ import android.util.Base64
 import android.util.Log
 import com.google.common.cache.Cache
 import com.mux.player.internal.Constants
+import com.mux.player.internal.Logger
+import com.mux.player.internal.createNoLogger
 import com.mux.player.oneOf
 import java.io.Closeable
 import java.io.File
@@ -26,6 +28,7 @@ import java.net.URL
 internal class CacheDatastore(
   val context: Context,
   val maxDiskSize: Long = 256 * 1024 * 1024,
+  val logger: Logger,
 ) : Closeable {
 
   companion object {
