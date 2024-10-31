@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.os.Build
 import android.util.Base64
+import android.util.Log
 import com.mux.player.internal.Constants
 import com.mux.player.oneOf
 import java.io.Closeable
@@ -127,6 +128,7 @@ internal class CacheDatastore(
   }
 
   fun readRecordByUrl(url: String): FileRecord? {
+    Log.i("CacheInvest", "readRecordByUrl() called for datastore $this\n\tfor url $url")
     return databaseOrThrow().use {
       it.query(
         IndexSql.Files.name, null,
@@ -134,6 +136,7 @@ internal class CacheDatastore(
         arrayOf(safeCacheKey(URL(url))),
         null, null, null
       ).use { cursor ->
+        Log.d("CacheInvest", "readRecordByUrl() about to talk to the cursor $cursor")
         if (cursor.count > 0 && cursor.moveToFirst()) {
           cursor.toFileRecord()
         } else {
@@ -182,6 +185,7 @@ internal class CacheDatastore(
 
   @Throws(IOException::class)
   override fun close() {
+    Log.i("CacheInvest", "close() called for datastore $this")
     synchronized(dbGuard) {
       // release reference from when we opened. if any loader threads are reading/writing then
       //  the db will close once they wind down
