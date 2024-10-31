@@ -221,7 +221,7 @@ internal class CacheDatastore(
   internal fun readLeastRecentFiles(): List<FileRecord> {
     // This function is only visible for testing. doReadLeastRecentFiles() is called internally in
     //  a transaction with an already-open db
-    return databaseOrThrow().let { doReadLeastRecentFiles(it) }
+    return doReadLeastRecentFiles(databaseOrThrow())
   }
 
   /**
