@@ -8,6 +8,7 @@ import com.mux.player.internal.Constants
 import com.mux.player.internal.cache.CacheDatastore
 import com.mux.player.internal.cache.FileRecord
 import com.mux.player.internal.cache.filesDirNoBackupCompat
+import com.mux.player.internal.createLogcatLogger
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -56,7 +57,7 @@ class CacheDatastoreInstrumentationTests {
 
   @Test
   fun testBasicInitialization() {
-    val datastore = CacheDatastore(appContext)
+    val datastore = CacheDatastore(appContext, logger = createLogcatLogger())
     datastore.use { it.open() }
 
     Assert.assertTrue(
@@ -80,7 +81,7 @@ class CacheDatastoreInstrumentationTests {
 
   @Test
   fun testCreateTempDownloadFile() {
-    val datastore = CacheDatastore(appContext)
+    val datastore = CacheDatastore(appContext, logger = createLogcatLogger())
     datastore.use {
       it.open()
 
@@ -102,7 +103,7 @@ class CacheDatastoreInstrumentationTests {
     val oldFileData = "old data".toByteArray(Charsets.UTF_8)
     val newFileData = "new data".toByteArray(Charsets.UTF_8)
 
-    val datastore = CacheDatastore(appContext)
+    val datastore = CacheDatastore(appContext, logger = createLogcatLogger())
     datastore.open()
     datastore.use {
       // Write one file...
@@ -132,7 +133,7 @@ class CacheDatastoreInstrumentationTests {
 
   @Test
   fun testWriteRecordReplacesOnKey() {
-    val datastore = CacheDatastore(appContext)
+    val datastore = CacheDatastore(appContext, logger = createLogcatLogger())
     datastore.use {
       datastore.open()
 
@@ -183,7 +184,7 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testReadRecord() {
     fun testTheCase(url: String) {
-      CacheDatastore(appContext).use { datastore ->
+      CacheDatastore(appContext, logger = createLogcatLogger()).use { datastore ->
         datastore.open()
         
         val originalRecord = FileRecord(
@@ -216,7 +217,7 @@ class CacheDatastoreInstrumentationTests {
   @Test
   fun testReadLeastRecentFiles() {
     val maxCacheSize = 5L
-    CacheDatastore(appContext, maxDiskSize = maxCacheSize).use { datastore ->
+    CacheDatastore(appContext, maxDiskSize = maxCacheSize, createLogcatLogger()).use { datastore ->
       datastore.open()
       // For this test, size "units" are like one digit.
       //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
@@ -279,7 +280,7 @@ class CacheDatastoreInstrumentationTests {
     val maxCacheSize = 5500L
     val dummyFileSize = 1000L
 
-    CacheDatastore(appContext, maxDiskSize = maxCacheSize).use { datastore ->
+    CacheDatastore(appContext, maxDiskSize = maxCacheSize, createLogcatLogger()).use { datastore ->
       datastore.open()
       //  time "units" start in the 3-digit range and tick at ~10 units per call to fakeNow()
       var fakeLastAccess = 200L // increment by some amount when you need to
