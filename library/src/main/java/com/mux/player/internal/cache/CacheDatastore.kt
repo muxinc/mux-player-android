@@ -131,7 +131,7 @@ internal class CacheDatastore(
   }
 
   fun readRecordByUrl(url: String): FileRecord? {
-    Log.i("CacheInvest", "readRecordByUrl() tid=${Thread.currentThread().id} called for datastore $this\n\tfor url $url")
+    logger.i("CacheInvest", "readRecordByUrl() tid=${Thread.currentThread().id} called for datastore $this\n\tfor url $url")
     try {
       return databaseOrThrow().run {
         query(
@@ -140,17 +140,17 @@ internal class CacheDatastore(
           arrayOf(safeCacheKey(URL(url))),
           null, null, null
         ).use { cursor ->
-          Log.d(
+          logger.d(
             "CacheInvest",
             "readRecordByUrl() tid=${Thread.currentThread().id} about to talk to the cursor $this\n\t btw is it closed according to Cursor? ${cursor.isClosed}"
           )
-          Log.i(
+          logger.i(
             "CacheInvest",
             "readRecordByUrl() tid=${Thread.currentThread().id} \n\tcursor closed ${cursor.isClosed}\n\t db closed ${!isOpen}"
           )
           if (cursor.count > 0 && cursor.moveToFirst()) {
             cursor.toFileRecord().also {
-              Log.i(
+              logger.i(
                 "CacheInvest",
                 "readRecordByUrl() tid=${Thread.currentThread().id} returning with record\n\tfor $url"
               )
@@ -161,7 +161,7 @@ internal class CacheDatastore(
         }
       }
     } catch (e: Exception) {
-      Log.e("CacheInvest", "rethrowing DB error from tid ${Thread.currentThread().id} for datastore $this", e)
+      logger.e("CacheInvest", "rethrowing DB error from tid ${Thread.currentThread().id} for datastore $this", e)
       throw e
     }
   }
@@ -205,7 +205,7 @@ internal class CacheDatastore(
 
   @Throws(IOException::class)
   override fun close() {
-    Log.i("CacheInvest", "close() tid=${Thread.currentThread().id} called for datastore $this")
+    logger.i("CacheInvest", "close() tid=${Thread.currentThread().id} called for datastore $this")
     synchronized(dbGuard) {
       // release reference from when we opened. if any loader threads are reading/writing then
       //  the db will close once they wind down
