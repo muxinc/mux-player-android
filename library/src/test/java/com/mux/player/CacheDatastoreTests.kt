@@ -2,6 +2,7 @@ package com.mux.player
 
 import android.content.Context
 import com.mux.player.internal.cache.CacheDatastore
+import com.mux.player.internal.createNoLogger
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert
@@ -21,7 +22,7 @@ class CacheDatastoreTests : AbsRobolectricTest() {
       }
     }
 
-    cacheDatastore = CacheDatastore(mockContext)
+    cacheDatastore = CacheDatastore(mockContext, logger = createNoLogger())
   }
 
   @Test

@@ -138,7 +138,10 @@ class MuxPlayer private constructor(
     private var customerData: CustomerData = CustomerData()
     private var exoPlayerBinding: ExoPlayerBinding? = null
     private var network: INetworkRequest? = null
-    private var muxPlayerCache: MuxPlayerCache = MuxPlayerCache.create(context.applicationContext)
+    private var muxPlayerCache: MuxPlayerCache = MuxPlayerCache.create(
+      context.applicationContext,
+      logger = logger ?: createNoLogger()
+    )
 
     constructor(context: Context) : this(context, ExoPlayer.Builder(context))
 
