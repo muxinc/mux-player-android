@@ -77,19 +77,18 @@ muxDistribution {
 
 dependencies {
 
-  def media3Version = "1.1.1";
+  def media3Version = "1.4.1"
+  def media3DataSdk = "at_1_4"
   api "androidx.media3:media3-common:${media3Version}"
   api "androidx.media3:media3-exoplayer:${media3Version}"
   api "androidx.media3:media3-ui:${media3Version}"
   api "androidx.media3:media3-exoplayer-hls:${media3Version}"
-  api "androidx.media3:media3-exoplayer-dash:${media3Version}"
   api "androidx.media3:media3-exoplayer-ima:${media3Version}"
   api "androidx.media3:media3-cast:${media3Version}"
-  api "androidx.media3:media3-extractor:${media3Version}"
 
-  api("com.mux.stats.sdk.muxstats:data-media3:${project.ext.get("muxDataVersion")}")
+  api("com.mux.stats.sdk.muxstats:data-media3-$media3DataSdk:${project.ext.get("muxDataVersion")}")
 
-  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
 
   testImplementation 'junit:junit:4.13.2'
   testImplementation 'androidx.test.ext:junit:1.1.5'
