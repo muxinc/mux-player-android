@@ -8,6 +8,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class LatencyTests extends TestBase {
@@ -58,6 +59,7 @@ public class LatencyTests extends TestBase {
         && videoPartTargetHoldbackFound;
   }
 
+  @Ignore // The test asset is currently down and it's apparently a big deal to bring it back
   @Test
   public void testLiveStreamMetrics() {
     try {
