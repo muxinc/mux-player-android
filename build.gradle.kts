@@ -1,12 +1,12 @@
 plugins {
-  id("com.android.application") version "8.5.2" apply false
-  id("org.jetbrains.kotlin.android") version "2.0.10" apply false
-  id("com.android.library") version "8.5.2" apply false
-  id("com.mux.gradle.android.mux-android-distribution") version "1.2.1" apply false
+  id("com.android.application") version "8.7.2" apply false
+  id("org.jetbrains.kotlin.android") version "2.0.21" apply false
+  id("com.android.library") version "8.7.2" apply false
+  id("com.mux.gradle.android.mux-android-distribution") version "1.3.0" apply false
 }
 
 allprojects {
   ext {
-    set("muxDataVersion", "1.1.0")
+    set("muxDataVersion", "1.6.0")
   }
 }

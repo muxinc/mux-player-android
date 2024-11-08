@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
+import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
@@ -165,6 +166,14 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
         .build();
 
     player.addAnalyticsListener(this);
+
+    player.addListener(new Player.Listener() {
+      @Override
+      public void onPlayerError(PlaybackException error) {
+        throw new RuntimeException("Playback error while trying to test", error);
+      }
+    });
+
     playerView.setPlayer(player);
   }
 

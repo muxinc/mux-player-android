@@ -3,7 +3,7 @@ kind: espresso
 sauce:
   region: us-west-1
   concurrency: 2
-  retries: 3
+  retries: 1
     
   metadata:
     tags:
