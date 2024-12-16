@@ -7,6 +7,6 @@ plugins {
 
 allprojects {
   ext {
-    set("muxDataVersion", "1.6.0")
+    set("muxDataVersion", "1.6.2")
   }
 }
