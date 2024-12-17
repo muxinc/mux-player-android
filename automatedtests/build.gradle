@@ -3,14 +3,13 @@ apply plugin: 'com.android.application'
 
 android {
   namespace = "com.mux.player.media3"
-  compileSdkVersion 34
+  compileSdk 35
 
   defaultConfig {
     applicationId "com.mux.player.media3"
     minSdkVersion 21
-    // Target SDK 31 causes manifest merger errors. One of our dependencies is not setting
-    //  `android:exported` for an Activity. Error logs have no more useful information
-    targetSdkVersion 34 //project.ext.targetSdkVersion
+    //noinspection EditedTargetSdkVersion
+    targetSdk 35
     versionCode 1
     versionName "1.0"
     multiDexEnabled true
