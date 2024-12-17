@@ -7,12 +7,12 @@ plugins {
 
 android {
   namespace 'com.mux.player'
-  compileSdk 34
+  compileSdk 35
 
   defaultConfig {
     minSdk 21
     //noinspection EditedTargetSdkVersion
-    targetSdk 34
+    targetSdk 35
 
     testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     consumerProguardFiles "consumer-rules.pro"
@@ -77,8 +77,8 @@ muxDistribution {
 
 dependencies {
 
-  def media3Version = "1.4.1"
-  def media3DataSdk = "at_1_4"
+  def media3Version = "1.5.0"
+  def media3DataSdk = "at_1_5"
   api "androidx.media3:media3-common:${media3Version}"
   api "androidx.media3:media3-exoplayer:${media3Version}"
   api "androidx.media3:media3-ui:${media3Version}"
