@@ -1,6 +1,10 @@
 package com.mux.player
 
 import android.content.Context
+import android.util.Log
+import android.view.SurfaceView
+import android.view.TextureView
+import android.view.View
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player.Listener
 import androidx.media3.datasource.DefaultDataSource
@@ -50,6 +54,23 @@ class MuxPlayer private constructor(
 
   private var muxStats: MuxStatsSdkMedia3<ExoPlayer>? = null
   private var released: Boolean = false
+
+  override fun setVideoSurfaceView(surfaceView: SurfaceView?) {
+    Log.d("MuxPlayer", "setVideoSurfaceView called")
+    Log.d("MuxPlayer", "\tDimens at call time ${surfaceView?.width} x ${surfaceView?.height}")
+
+    // We don't need the whole PlayerView, just the rendering surface
+    muxStats?.setPlayerView(surfaceView)
+    exoPlayer.setVideoSurfaceView(surfaceView)
+  }
+
+  override fun setVideoTextureView(textureView: TextureView?) {
+    Log.d("MuxPlayer", "setVideoSurfaceView called")
+    Log.d("MuxPlayer", "\tDimens at call time ${textureView?.width} x ${textureView?.height}")
+    // We don't need the whole PlayerView, just the rendering surface
+    muxStats?.setPlayerView(textureView)
+    exoPlayer.setVideoTextureView(textureView)
+  }
 
   override fun release() {
     // good to release muxStats first, so it doesn't call to the player after release
