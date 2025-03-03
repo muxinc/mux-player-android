@@ -4,10 +4,15 @@ import android.content.Context
 import android.util.Log
 import android.view.SurfaceView
 import android.view.TextureView
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.Player.Listener
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.ExoPlayer.VideoComponent
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import com.mux.player.internal.cache.MuxPlayerCache
 import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
@@ -49,10 +54,14 @@ class MuxPlayer private constructor(
   initialCustomerData: CustomerData,
   network: INetworkRequest? = null,
   exoPlayerBinding: ExoPlayerBinding? = null
-) : ExoPlayer by exoPlayer {
+) : Player by exoPlayer {
 
   private var muxStats: MuxStatsSdkMedia3<ExoPlayer>? = null
   private var released: Boolean = false
+
+  fun addAnalyticsListener(listener: AnalyticsListener) {
+    exoPlayer.addAnalyticsListener(listener)
+  }
 
   override fun setVideoSurfaceView(surfaceView: SurfaceView?) {
     // We don't need the whole PlayerView, the surface (inside surfaceView) is where content goes
@@ -110,7 +119,7 @@ class MuxPlayer private constructor(
         context = context,
         envKey = muxDataKey ?: "", // empty string should infer the key
         customerData = initialCustomerData,
-        player = this,
+        player = exoPlayer,
         playerView = null,
         customOptions = null,
         device = muxPlayerDevice,
@@ -314,3 +323,8 @@ class MuxPlayer private constructor(
     }
   }
 }
+
+@OptIn(UnstableApi::class)
+private class DelegatingVideoComponent(
+  val comp: ExoPlayer
+) : VideoComponent by comp as VideoComponent
