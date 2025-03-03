@@ -55,13 +55,13 @@ class MuxPlayer private constructor(
   private var released: Boolean = false
 
   override fun setVideoSurfaceView(surfaceView: SurfaceView?) {
-    // We don't need the whole PlayerView, just the rendering surface (lucky that's what we can get)
+    // We don't need the whole PlayerView, the surface (inside surfaceView) is where content goes
     muxStats?.setPlayerView(surfaceView)
     exoPlayer.setVideoSurfaceView(surfaceView)
   }
 
   override fun setVideoTextureView(textureView: TextureView?) {
-    // We don't need the whole PlayerView, just the rendering surface (lucky that's what we can get)
+    // We don't need the whole PlayerView, the surface (inside textureView) is where content goes
     muxStats?.setPlayerView(textureView)
     exoPlayer.setVideoTextureView(textureView)
   }
