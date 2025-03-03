@@ -323,8 +323,3 @@ class MuxPlayer private constructor(
     }
   }
 }
-
-@OptIn(UnstableApi::class)
-private class DelegatingVideoComponent(
-  val comp: ExoPlayer
-) : VideoComponent by comp as VideoComponent
