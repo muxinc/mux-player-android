@@ -1,30 +1,27 @@
 package com.mux.player
 
 import android.content.Context
-import android.util.Log
 import android.view.SurfaceView
 import android.view.TextureView
-import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Player.Listener
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.ExoPlayer.VideoComponent
 import androidx.media3.exoplayer.analytics.AnalyticsListener
-import com.mux.player.internal.cache.MuxPlayerCache
-import com.mux.stats.sdk.core.model.CustomerData
-import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
-import com.mux.player.internal.createLogcatLogger
+import com.mux.player.MuxPlayer.Builder
 import com.mux.player.internal.Logger
+import com.mux.player.internal.cache.MuxPlayerCache
+import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.createNoLogger
+import com.mux.player.media.MediaItems
 import com.mux.player.media.MuxDataSource
 import com.mux.player.media.MuxMediaSourceFactory
-import com.mux.player.media.MediaItems
+import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.muxstats.ExoPlayerBinding
 import com.mux.stats.sdk.muxstats.INetworkRequest
 import com.mux.stats.sdk.muxstats.MuxDataSdk
+import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.stats.sdk.muxstats.media3.BuildConfig as MuxDataBuildConfig
 
 /**
