@@ -60,6 +60,20 @@ class MuxPlayer private constructor(
     exoPlayer.addAnalyticsListener(listener)
   }
 
+  /**
+   * This method is *optional*.
+   *
+   * Records the size of the player. Note: you only need to call this method if you're using
+   * [setVideoSurfaceHolder] or similar methods. You don't need to call if if you're using the
+   * default `PlayerView`, or a [SurfaceView] or [TextureView].
+   *
+   * @param widthPx The width of the player view, in px
+   * @param heightPx The height of the player view, in px
+   */
+  fun recordPlayerSize(widthPx: Int, heightPx: Int) {
+    muxStats?.setPlayerSize(widthPx, heightPx)
+  }
+
   override fun setVideoSurfaceView(surfaceView: SurfaceView?) {
     // We don't need the whole PlayerView, the surface (inside surfaceView) is where content goes
     muxStats?.setPlayerView(surfaceView)
