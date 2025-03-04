@@ -1,18 +1,17 @@
 package com.mux.player.internal
 
 import android.net.Uri
-import android.util.Log
+import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSourceInputStream
 import androidx.media3.datasource.DataSpec
+import com.mux.player.media.MediaItems
 import com.mux.player.media.MediaItems.MUX_VIDEO_DEFAULT_DOMAIN
-import com.mux.player.media.MuxDrmCallback.Companion.TAG
-import com.mux.player.media.MuxDrmSessionManagerProvider
-import com.mux.player.media.MuxDrmSessionManagerProvider.Companion
-import kotlin.jvm.Throws
+import com.mux.stats.sdk.core.model.CustomerVideoData
+import org.json.JSONObject
 
 @Throws
 @JvmSynthetic
@@ -79,3 +78,15 @@ internal fun executePost(
   val host = "license.${customMuxVideoDomain}"
   return host
 }
+
+@JvmSynthetic internal fun CustomerVideoData.toBundle(): Bundle {
+  val bundle = Bundle()
+  bundle.putString(MediaItems.EXTRA_CUSTOMER_VIDEO_DATA, muxDictionary.toString())
+  return bundle
+}
+
+@JvmSynthetic internal fun Bundle.toCustomerVideoData(): CustomerVideoData? = runCatching {
+  return getString(MediaItems.EXTRA_CUSTOMER_VIDEO_DATA, null)
+    ?.takeIf { it.isNotEmpty() }
+    ?.let { CustomerVideoData().apply { replace(JSONObject(it)) } }
+}.getOrNull()

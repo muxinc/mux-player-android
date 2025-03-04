@@ -5,7 +5,8 @@ import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import com.mux.player.internal.Constants
-import com.mux.stats.sdk.core.model.CustomerData
+import com.mux.player.internal.toBundle
+import com.mux.stats.sdk.core.model.CustomerVideoData
 import org.json.JSONObject
 
 /**
@@ -22,7 +23,7 @@ object MediaItems {
   internal const val MUX_VIDEO_DEFAULT_DOMAIN = "mux.com"
 
   internal const val MUX_VIDEO_SUBDOMAIN = "stream"
-  internal const val EXTRA_CUSTOMER_DATA = "com.mux.video.customerdata"
+  internal const val EXTRA_CUSTOMER_VIDEO_DATA = "com.mux.video.customerdata"
 
   /**
    * Creates a new [MediaItem] that points to a given Mux Playback ID.
@@ -76,7 +77,7 @@ object MediaItems {
     assetEndTime: Double? = null,
     domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
-    muxMetadata: CustomerData? = null,
+    muxMetadata: CustomerVideoData? = null,
     drmToken: String? = null,
   ): MediaItem = builderFromMuxPlaybackId(
     playbackId,
@@ -154,7 +155,7 @@ object MediaItems {
     assetEndTime: Double? = null,
     domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
-    muxMetadata: CustomerData? = null,
+    muxMetadata: CustomerVideoData? = null,
     drmToken: String? = null,
   ): MediaItem.Builder {
     return MediaItem.Builder()
@@ -178,7 +179,7 @@ object MediaItems {
               putString(Constants.BUNDLE_PLAYBACK_ID, playbackId)
               putString(Constants.BUNDLE_PLAYBACK_DOMAIN, domain)
               muxMetadata?.let {
-                putBundle(EXTRA_CUSTOMER_DATA, BundledCustomerData(it).toBundle())
+                putBundle(EXTRA_CUSTOMER_VIDEO_DATA, it.toBundle())
               }
             }
           )
@@ -258,38 +259,4 @@ enum class RenditionOrder {
    * The default rendition order will be used, which may be optimized for delivery
    */
   Default,
-}
-
-internal class BundledCustomerData(val data: CustomerData) {
-
-  companion object {
-    const val BUNDLE_PLAYER_DATA = "player-data"
-    const val BUNDLE_VIDEO_DATA = "video-data"
-    const val BUNDLE_VIEW_DATA = "view-data"
-    const val BUNDLE_VIEWER_DATA = "viewer-data"
-    const val BUNDLE_CUSTOM_DATA = "custom-data"
-  }
-
-  constructor(bundle: Bundle) : this(CustomerData()) {
-      bundle.getString(BUNDLE_PLAYER_DATA, null)
-        ?.let { data.customerPlayerData.replace(JSONObject(it)) }
-      bundle.getString(BUNDLE_VIDEO_DATA, null)
-        ?.let { data.customerVideoData.replace(JSONObject(it)) }
-      bundle.getString(BUNDLE_VIEW_DATA, null)
-        ?.let { data.customerViewData.replace(JSONObject(it)) }
-      bundle.getString(BUNDLE_VIEWER_DATA, null)
-        ?.let { data.customerViewerData.replace(JSONObject(it)) }
-      bundle.getString(BUNDLE_CUSTOM_DATA, null)
-        ?.let { data.customData.replace(JSONObject(it)) }
-  }
-
-  fun toBundle(): Bundle {
-    val bundle = Bundle()
-    bundle.putString(BUNDLE_PLAYER_DATA, data.customerPlayerData.muxDictionary.toString())
-    bundle.putString(BUNDLE_VIDEO_DATA, data.customerVideoData.muxDictionary.toString())
-    bundle.putString(BUNDLE_VIEW_DATA, data.customerViewData.muxDictionary.toString())
-    bundle.putString(BUNDLE_VIEWER_DATA, data.customerViewerData.muxDictionary.toString())
-    bundle.putString(BUNDLE_CUSTOM_DATA, data.customData.muxDictionary.toString())
-    return bundle
-  }
 }
