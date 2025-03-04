@@ -2,7 +2,6 @@ package com.mux.player.media
 
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import com.mux.player.internal.Constants
@@ -23,7 +22,7 @@ object MediaItems {
   internal const val MUX_VIDEO_DEFAULT_DOMAIN = "mux.com"
 
   internal const val MUX_VIDEO_SUBDOMAIN = "stream"
-  internal const val EXTRA_VIDEO_DATA = "com.mux.video.customerdata"
+  internal const val EXTRA_CUSTOMER_DATA = "com.mux.video.customerdata"
 
   /**
    * Creates a new [MediaItem] that points to a given Mux Playback ID.
@@ -178,7 +177,9 @@ object MediaItems {
               putString(Constants.BUNDLE_DRM_TOKEN, drmToken)
               putString(Constants.BUNDLE_PLAYBACK_ID, playbackId)
               putString(Constants.BUNDLE_PLAYBACK_DOMAIN, domain)
-              muxMetadata?.let { putBundle(EXTRA_VIDEO_DATA, BundledCustomerData(it).toBundle()) }
+              muxMetadata?.let {
+                putBundle(EXTRA_CUSTOMER_DATA, BundledCustomerData(it).toBundle())
+              }
             }
           )
           .build()
@@ -259,7 +260,8 @@ enum class RenditionOrder {
   Default,
 }
 
-private class BundledCustomerData(private val data: CustomerData) {
+internal class BundledCustomerData(val data: CustomerData) {
+
   companion object {
     const val BUNDLE_PLAYER_DATA = "player-data"
     const val BUNDLE_VIDEO_DATA = "video-data"

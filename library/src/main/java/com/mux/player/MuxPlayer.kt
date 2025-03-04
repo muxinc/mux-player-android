@@ -11,9 +11,11 @@ import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.Logger
 import com.mux.player.internal.createNoLogger
+import com.mux.player.media.BundledCustomerData
 import com.mux.player.media.MuxDataSource
 import com.mux.player.media.MuxMediaSourceFactory
 import com.mux.player.media.MediaItems
+import com.mux.stats.sdk.core.model.CustomerVideoData
 import com.mux.stats.sdk.muxstats.ExoPlayerBinding
 import com.mux.stats.sdk.muxstats.INetworkRequest
 import com.mux.stats.sdk.muxstats.MuxDataSdk
@@ -72,15 +74,6 @@ class MuxPlayer private constructor(
   }
 
   init {
-    // listen internally before Mux Data gets events, in case we need to handle something before
-    // the data SDK sees (like media metadata for new streams during a MediaItem transition, etc)
-    exoPlayer.addListener(object : Listener {
-      // more listener methods here if required
-      override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-        //muxStats?.videoChange(CustomerVideoData())
-      }
-    })
-
     // init Mux Data
     val muxPlayerDevice = MuxDataSdk.AndroidDevice(
       ctx = context,
@@ -111,6 +104,17 @@ class MuxPlayer private constructor(
         playerBinding = exoPlayerBinding,
       )
     }
+
+    // listen internally before Mux Data gets events, in case we need to handle something before
+    // the data SDK sees (like media metadata for new streams during a MediaItem transition, etc)
+    exoPlayer.addListener(object : Listener {
+      // more listener methods here if required
+      override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        val data = mediaItem?.requestMetadata?.extras?.getBundle(MediaItems.EXTRA_CUSTOMER_DATA)
+          ?.let { BundledCustomerData(it).data }
+        muxStats?.videoChange(data?.customerVideoData ?: CustomerVideoData())
+      }
+    })
   }
 
   /**
