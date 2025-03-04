@@ -51,6 +51,14 @@ class MuxPlayer private constructor(
   private var muxStats: MuxStatsSdkMedia3<ExoPlayer>? = null
   private var released: Boolean = false
 
+  /**
+   * Updates the Mux [CustomerData] reported by this player. This data will be applied until you
+   * change it again, or [release] this player.
+   */
+  fun updateCustomerData(customerData: CustomerData) {
+    muxStats?.updateCustomerData(customerData)
+  }
+
   override fun release() {
     // good to release muxStats first, so it doesn't call to the player after release
     muxStats?.release()
