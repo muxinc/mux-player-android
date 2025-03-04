@@ -76,7 +76,7 @@ object MediaItems {
     assetEndTime: Double? = null,
     domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
-    muxMetadata: CustomerData?,
+    muxMetadata: CustomerData? = null,
     drmToken: String? = null,
   ): MediaItem = builderFromMuxPlaybackId(
     playbackId,
@@ -154,7 +154,7 @@ object MediaItems {
     assetEndTime: Double? = null,
     domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
-    muxMetadata: CustomerData?,
+    muxMetadata: CustomerData? = null,
     drmToken: String? = null,
   ): MediaItem.Builder {
     return MediaItem.Builder()
