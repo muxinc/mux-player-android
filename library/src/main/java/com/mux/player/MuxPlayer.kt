@@ -73,7 +73,7 @@ class MuxPlayer private constructor(
   /**
    * This method is optional. Normally, Mux Player can detect the size of the your player view
    *
-   * Records the size of the player. You don't need to call if if you're using the default
+   * Records the size of the player. You don't need to call this if you're using the default
    * `PlayerView`, or a [SurfaceView] or [TextureView].
    *
    * @param widthPx The width of the player view, in px
