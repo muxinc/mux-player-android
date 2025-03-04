@@ -85,6 +85,7 @@ class MuxPlayer private constructor(
         // change the video regardless of if there's a `CustomerVideoData`
         muxStats?.videoChange(data?.customerVideoData ?: CustomerVideoData())
         // update the rest of the customer data if we have one, otherwise don't touch it
+        // todo - should we bundle everything this way? Maybe just video data, and then change the APIs
         data?.let { muxStats?.updateCustomerData(it) }
       }
     })
