@@ -70,6 +70,7 @@ object MediaItems {
   @JvmOverloads
   fun fromMuxPlaybackId(
     playbackId: String,
+    muxMetadata: CustomerVideoData? = null,
     maxResolution: PlaybackResolution? = null,
     minResolution: PlaybackResolution? = null,
     renditionOrder: RenditionOrder? = null,
@@ -77,10 +78,10 @@ object MediaItems {
     assetEndTime: Double? = null,
     domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
-    muxMetadata: CustomerVideoData? = null,
     drmToken: String? = null,
   ): MediaItem = builderFromMuxPlaybackId(
     playbackId,
+    muxMetadata,
     maxResolution,
     minResolution,
     renditionOrder,
@@ -88,8 +89,7 @@ object MediaItems {
     assetEndTime,
     domain,
     playbackToken,
-    muxMetadata,
-    drmToken
+    drmToken,
   ).build()
 
 
@@ -148,6 +148,7 @@ object MediaItems {
   @JvmOverloads
   fun builderFromMuxPlaybackId(
     playbackId: String,
+    muxMetadata: CustomerVideoData? = null,
     maxResolution: PlaybackResolution? = null,
     minResolution: PlaybackResolution? = null,
     renditionOrder: RenditionOrder? = null,
@@ -155,7 +156,6 @@ object MediaItems {
     assetEndTime: Double? = null,
     domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
-    muxMetadata: CustomerVideoData? = null,
     drmToken: String? = null,
   ): MediaItem.Builder {
     return MediaItem.Builder()
