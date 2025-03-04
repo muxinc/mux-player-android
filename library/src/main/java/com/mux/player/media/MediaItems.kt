@@ -7,7 +7,6 @@ import androidx.media3.common.MediaItem.RequestMetadata
 import com.mux.player.internal.Constants
 import com.mux.player.internal.toBundle
 import com.mux.stats.sdk.core.model.CustomerVideoData
-import org.json.JSONObject
 
 /**
  * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with MuxPlayer`.
