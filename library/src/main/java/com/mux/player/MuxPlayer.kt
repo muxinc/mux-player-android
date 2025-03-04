@@ -81,7 +81,11 @@ class MuxPlayer private constructor(
       override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         val data = mediaItem?.requestMetadata?.extras?.getBundle(MediaItems.EXTRA_CUSTOMER_DATA)
           ?.let { BundledCustomerData(it).data }
+
+        // change the video regardless of if there's a `CustomerVideoData`
         muxStats?.videoChange(data?.customerVideoData ?: CustomerVideoData())
+        // update the rest of the customer data if we have one, otherwise don't touch it
+        data?.let { muxStats?.updateCustomerData(it) }
       }
     })
 
