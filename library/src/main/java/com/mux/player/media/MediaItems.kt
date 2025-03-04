@@ -6,6 +6,8 @@ import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import com.mux.player.internal.Constants
+import com.mux.stats.sdk.core.model.CustomerData
+import org.json.JSONObject
 
 /**
  * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with MuxPlayer`.
@@ -75,6 +77,7 @@ object MediaItems {
     assetEndTime: Double? = null,
     domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
+    muxMetadata: CustomerData?,
     drmToken: String? = null,
   ): MediaItem = builderFromMuxPlaybackId(
     playbackId,
@@ -85,6 +88,7 @@ object MediaItems {
     assetEndTime,
     domain,
     playbackToken,
+    muxMetadata,
     drmToken
   ).build()
 
@@ -151,6 +155,7 @@ object MediaItems {
     assetEndTime: Double? = null,
     domain: String? = MUX_VIDEO_DEFAULT_DOMAIN,
     playbackToken: String? = null,
+    muxMetadata: CustomerData?,
     drmToken: String? = null,
   ): MediaItem.Builder {
     return MediaItem.Builder()
@@ -173,6 +178,7 @@ object MediaItems {
               putString(Constants.BUNDLE_DRM_TOKEN, drmToken)
               putString(Constants.BUNDLE_PLAYBACK_ID, playbackId)
               putString(Constants.BUNDLE_PLAYBACK_DOMAIN, domain)
+              muxMetadata?.let { putBundle(EXTRA_VIDEO_DATA, BundledCustomerData(it).toBundle()) }
             }
           )
           .build()
@@ -251,4 +257,37 @@ enum class RenditionOrder {
    * The default rendition order will be used, which may be optimized for delivery
    */
   Default,
+}
+
+private class BundledCustomerData(private val data: CustomerData) {
+  companion object {
+    const val BUNDLE_PLAYER_DATA = "player-data"
+    const val BUNDLE_VIDEO_DATA = "video-data"
+    const val BUNDLE_VIEW_DATA = "view-data"
+    const val BUNDLE_VIEWER_DATA = "viewer-data"
+    const val BUNDLE_CUSTOM_DATA = "custom-data"
+  }
+
+  constructor(bundle: Bundle) : this(CustomerData()) {
+      bundle.getString(BUNDLE_PLAYER_DATA, null)
+        ?.let { data.customerPlayerData.replace(JSONObject(it)) }
+      bundle.getString(BUNDLE_VIDEO_DATA, null)
+        ?.let { data.customerVideoData.replace(JSONObject(it)) }
+      bundle.getString(BUNDLE_VIEW_DATA, null)
+        ?.let { data.customerViewData.replace(JSONObject(it)) }
+      bundle.getString(BUNDLE_VIEWER_DATA, null)
+        ?.let { data.customerViewerData.replace(JSONObject(it)) }
+      bundle.getString(BUNDLE_CUSTOM_DATA, null)
+        ?.let { data.customData.replace(JSONObject(it)) }
+  }
+
+  fun toBundle(): Bundle {
+    val bundle = Bundle()
+    bundle.putString(BUNDLE_PLAYER_DATA, data.customerPlayerData.muxDictionary.toString())
+    bundle.putString(BUNDLE_VIDEO_DATA, data.customerVideoData.muxDictionary.toString())
+    bundle.putString(BUNDLE_VIEW_DATA, data.customerViewData.muxDictionary.toString())
+    bundle.putString(BUNDLE_VIEWER_DATA, data.customerViewerData.muxDictionary.toString())
+    bundle.putString(BUNDLE_CUSTOM_DATA, data.customData.muxDictionary.toString())
+    return bundle
+  }
 }
