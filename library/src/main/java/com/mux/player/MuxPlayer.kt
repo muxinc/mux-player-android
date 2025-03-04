@@ -60,24 +60,26 @@ class MuxPlayer private constructor(
    * Updates the Mux [CustomerData] reported by this player. This data will be applied until you
    * change it again, or [release] this player.
    */
+  @Suppress("unused")
   fun updateCustomerData(customerData: CustomerData) {
     muxStats?.updateCustomerData(customerData)
   }
 
+  @Suppress("unused")
   fun addAnalyticsListener(listener: AnalyticsListener) {
     exoPlayer.addAnalyticsListener(listener)
   }
 
   /**
-   * This method is *optional*.
+   * This method is optional. Normally, Mux Player can detect the size of the your player view
    *
-   * Records the size of the player. Note: you only need to call this method if you're using
-   * [setVideoSurfaceHolder] or similar methods. You don't need to call if if you're using the
-   * default `PlayerView`, or a [SurfaceView] or [TextureView].
+   * Records the size of the player. You don't need to call if if you're using the default
+   * `PlayerView`, or a [SurfaceView] or [TextureView].
    *
    * @param widthPx The width of the player view, in px
    * @param heightPx The height of the player view, in px
    */
+  @Suppress("unused")
   fun recordPlayerSize(widthPx: Int, heightPx: Int) {
     muxStats?.setPlayerSize(widthPx, heightPx)
   }
