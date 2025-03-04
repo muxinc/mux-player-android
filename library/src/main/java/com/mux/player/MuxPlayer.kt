@@ -5,21 +5,20 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player.Listener
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import com.mux.player.MuxPlayer.Builder
-import com.mux.player.internal.Logger
 import com.mux.player.internal.cache.MuxPlayerCache
+import com.mux.stats.sdk.core.model.CustomerData
+import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.player.internal.createLogcatLogger
+import com.mux.player.internal.Logger
 import com.mux.player.internal.createNoLogger
-import com.mux.player.internal.toCustomerVideoData
-import com.mux.player.media.MediaItems
+import com.mux.player.media.BundledCustomerData
 import com.mux.player.media.MuxDataSource
 import com.mux.player.media.MuxMediaSourceFactory
-import com.mux.stats.sdk.core.model.CustomerData
+import com.mux.player.media.MediaItems
 import com.mux.stats.sdk.core.model.CustomerVideoData
 import com.mux.stats.sdk.muxstats.ExoPlayerBinding
 import com.mux.stats.sdk.muxstats.INetworkRequest
 import com.mux.stats.sdk.muxstats.MuxDataSdk
-import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.stats.sdk.muxstats.media3.BuildConfig as MuxDataBuildConfig
 
 /**
@@ -80,10 +79,14 @@ class MuxPlayer private constructor(
     exoPlayer.addListener(object : Listener {
       // more listener methods here if required
       override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-        val data = mediaItem?.requestMetadata?.extras
-          ?.getBundle(MediaItems.EXTRA_CUSTOMER_VIDEO_DATA)?.toCustomerVideoData()
+        val data = mediaItem?.requestMetadata?.extras?.getBundle(MediaItems.EXTRA_CUSTOMER_DATA)
+          ?.let { BundledCustomerData(it).data }
+
         // change the video regardless of if there's a `CustomerVideoData`
-        muxStats?.videoChange(data ?: CustomerVideoData())
+        muxStats?.videoChange(data?.customerVideoData ?: CustomerVideoData())
+        // update the rest of the customer data if we have one, otherwise don't touch it
+        // todo - should we bundle everything this way? Maybe just video data, and then change the APIs
+        data?.let { muxStats?.updateCustomerData(it) }
       }
     })
 
