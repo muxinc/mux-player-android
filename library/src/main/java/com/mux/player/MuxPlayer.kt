@@ -1,22 +1,27 @@
 package com.mux.player
 
 import android.content.Context
+import android.view.SurfaceView
+import android.view.TextureView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.Player.Listener
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import com.mux.player.internal.cache.MuxPlayerCache
-import com.mux.stats.sdk.core.model.CustomerData
-import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
-import com.mux.player.internal.createLogcatLogger
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import com.mux.player.MuxPlayer.Builder
 import com.mux.player.internal.Logger
+import com.mux.player.internal.cache.MuxPlayerCache
+import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.createNoLogger
+import com.mux.player.media.MediaItems
 import com.mux.player.media.MuxDataSource
 import com.mux.player.media.MuxMediaSourceFactory
-import com.mux.player.media.MediaItems
+import com.mux.stats.sdk.core.model.CustomerData
 import com.mux.stats.sdk.muxstats.ExoPlayerBinding
 import com.mux.stats.sdk.muxstats.INetworkRequest
 import com.mux.stats.sdk.muxstats.MuxDataSdk
+import com.mux.stats.sdk.muxstats.MuxStatsSdkMedia3
 import com.mux.stats.sdk.muxstats.media3.BuildConfig as MuxDataBuildConfig
 
 /**
@@ -46,10 +51,50 @@ class MuxPlayer private constructor(
   initialCustomerData: CustomerData,
   network: INetworkRequest? = null,
   exoPlayerBinding: ExoPlayerBinding? = null
-) : ExoPlayer by exoPlayer {
+) : Player by exoPlayer {
 
   private var muxStats: MuxStatsSdkMedia3<ExoPlayer>? = null
   private var released: Boolean = false
+
+  /**
+   * Updates the Mux [CustomerData] reported by this player. This data will be applied until you
+   * change it again, or [release] this player.
+   */
+  @Suppress("unused")
+  fun updateCustomerData(customerData: CustomerData) {
+    muxStats?.updateCustomerData(customerData)
+  }
+
+  @Suppress("unused")
+  fun addAnalyticsListener(listener: AnalyticsListener) {
+    exoPlayer.addAnalyticsListener(listener)
+  }
+
+  /**
+   * This method is optional. Mux Player automatically detects the size of the your player view
+   *
+   * Records the size of the player. You don't need to call this if you're using the default
+   * `PlayerView`, or a [SurfaceView] or [TextureView].
+   *
+   * @param widthPx The width of the player view, in px
+   * @param heightPx The height of the player view, in px
+   */
+  @Suppress("unused")
+  fun recordPlayerSize(widthPx: Int, heightPx: Int) {
+    muxStats?.setPlayerSize(widthPx, heightPx)
+  }
+
+  override fun setVideoSurfaceView(surfaceView: SurfaceView?) {
+    // We don't need the whole PlayerView, the surface (inside surfaceView) is where content goes
+    muxStats?.setPlayerView(surfaceView)
+    exoPlayer.setVideoSurfaceView(surfaceView)
+  }
+
+  override fun setVideoTextureView(textureView: TextureView?) {
+    // We don't need the whole PlayerView, the surface (inside textureView) is where content goes
+    muxStats?.setPlayerView(textureView)
+    exoPlayer.setVideoTextureView(textureView)
+  }
 
   override fun release() {
     // good to release muxStats first, so it doesn't call to the player after release
@@ -95,7 +140,7 @@ class MuxPlayer private constructor(
         context = context,
         envKey = muxDataKey ?: "", // empty string should infer the key
         customerData = initialCustomerData,
-        player = this,
+        player = exoPlayer,
         playerView = null,
         customOptions = null,
         device = muxPlayerDevice,
