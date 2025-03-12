@@ -11,11 +11,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MuxVideoMedia3"
-        tools:targetApi="31">
+        >
         <activity
             android:name=".examples.carousel.PlayerCarouselActivity"
             android:screenOrientation="sensorPortrait"
             android:exported="false"
+              android:theme="@style/Theme.MuxVideoMedia3.NoActionBar"
             tools:ignore="LockedOrientationActivity" />
         <activity
           android:name=".examples.BasicPlayerActivity"
