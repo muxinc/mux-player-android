@@ -14,6 +14,9 @@ import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
@@ -51,6 +54,18 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
     super.onCreate(savedInstanceState)
     binding = ActivityConfigurablePlayerBinding.inflate(layoutInflater)
     setContentView(binding.root)
+
+    ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+      val bars = insets.getInsets(
+        WindowInsetsCompat.Type.systemBars()
+            or WindowInsetsCompat.Type.displayCutout()
+      )
+      v.updatePadding(
+        top = bars.top,
+        bottom = bars.bottom,
+      )
+      WindowInsetsCompat.CONSUMED
+    }
 
     if (savedInstanceState != null) {
       playbackParamsHelper.restoreInstanceState(savedInstanceState)
