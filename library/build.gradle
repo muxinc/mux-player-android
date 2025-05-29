@@ -79,7 +79,7 @@ dependencies {
 
   def media3Version = "1.6.0"
   def muxDataVariant = "at_1_6"
-  def muxDataVersion = "1.7.2"
+  def muxDataVersion = "1.7.3"
   api "androidx.media3:media3-common:${media3Version}"
   api "androidx.media3:media3-exoplayer:${media3Version}"
   api "androidx.media3:media3-ui:${media3Version}"
