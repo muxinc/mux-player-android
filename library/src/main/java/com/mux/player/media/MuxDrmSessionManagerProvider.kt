@@ -128,11 +128,14 @@ class MuxDrmCallback(
 
     logger.v(TAG, "widevine data: ${Base64.encodeToString(request.data, Base64.NO_WRAP)}")
 
+//    val decoded = Base64.decode(request.data, Base64.NO_WRAP)
+
     try {
       return executePost(
         uri,
         headers = headers,
         requestBody = request.data,
+//        requestBody = decoded,
         dataSourceFactory = drmHttpDataSourceFactory,
       ).also {
         logger.i(TAG, "License Response: ${Base64.encodeToString(it, Base64.NO_WRAP)}")

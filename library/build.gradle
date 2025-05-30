@@ -77,7 +77,7 @@ muxDistribution {
 
 dependencies {
 
-  def media3Version = "1.6.0"
+  def media3Version = "1.6.1"
   def muxDataVariant = "at_1_6"
   def muxDataVersion = "dev-fix-abstract-method-error-1ee5cdc"
   api "androidx.media3:media3-common:${media3Version}"
