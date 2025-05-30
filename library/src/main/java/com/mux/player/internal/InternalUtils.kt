@@ -1,7 +1,6 @@
 package com.mux.player.internal
 
 import android.net.Uri
-import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
@@ -9,9 +8,6 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSourceInputStream
 import androidx.media3.datasource.DataSpec
 import com.mux.player.media.MediaItems.MUX_VIDEO_DEFAULT_DOMAIN
-import com.mux.player.media.MuxDrmCallback.Companion.TAG
-import com.mux.player.media.MuxDrmSessionManagerProvider
-import com.mux.player.media.MuxDrmSessionManagerProvider.Companion
 import kotlin.jvm.Throws
 
 @Throws

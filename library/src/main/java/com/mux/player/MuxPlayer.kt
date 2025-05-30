@@ -228,6 +228,7 @@ class MuxPlayer private constructor(
       } else {
         createNoLogger()
       }
+      setUpMediaSourceFactory(this.playerBuilder)
       return this
     }
 

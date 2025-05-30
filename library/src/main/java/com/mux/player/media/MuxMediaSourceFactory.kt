@@ -13,6 +13,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.CmcdConfiguration
 import com.mux.player.internal.Logger
+import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.createNoLogger
 
 /**
@@ -52,7 +53,7 @@ class MuxMediaSourceFactory private constructor(
     ctx: Context,
     dataSourceFactory: DataSource.Factory,
     innerFactory: DefaultMediaSourceFactory = DefaultMediaSourceFactory(ctx),
-  ) : this (ctx, dataSourceFactory, innerFactory, createNoLogger())
+  ) : this (ctx, dataSourceFactory, innerFactory, createLogcatLogger())
 
   init {
     // basics
