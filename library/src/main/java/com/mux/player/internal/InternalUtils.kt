@@ -16,7 +16,7 @@ import kotlin.jvm.Throws
 internal fun executePost(
   uri: Uri,
   headers: Map<String, List<String>>,
-  requestBody: ByteArray,
+  requestBody: ByteArray?,
   dataSourceFactory: DataSource.Factory,
   ): ByteArray {
   val dataSpec = DataSpec.Builder()

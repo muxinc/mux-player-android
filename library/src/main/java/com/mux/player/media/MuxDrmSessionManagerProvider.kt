@@ -1,5 +1,6 @@
 package com.mux.player.media
 
+import android.annotation.SuppressLint
 import android.net.Uri
 import android.util.Base64
 import android.util.Log
@@ -7,12 +8,14 @@ import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.util.Util
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.HttpDataSource.HttpDataSourceException
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
+import androidx.media3.exoplayer.drm.DrmUtil
 import androidx.media3.exoplayer.drm.ExoMediaDrm.ProvisionRequest
 import androidx.media3.exoplayer.drm.ExoMediaDrm.KeyRequest
 import androidx.media3.exoplayer.drm.FrameworkMediaDrm
@@ -120,24 +123,38 @@ class MuxDrmCallback(
       throw IOException("Mux player does not support scheme: $uuid")
     }
 
-    val uri = createLicenseUri(playbackId, drmToken, licenseEndpointHost)
+//    val uri = createLicenseUri(playbackId, drmToken, licenseEndpointHost)
+    val url = request.defaultUrl + "&signedRequest=" + Util.fromUtf8Bytes(request.data)
+    @SuppressLint("UseKtx") // TODO: Probably just include KTX and use that
+    val uri = Uri.parse(request.defaultUrl + "&signedRequest=" + Util.fromUtf8Bytes(request.data))
+//    val uri = Uri.parse(request.defaultUrl)// + "&signedRequest=" + Util.fromUtf8Bytes(request.data))
+//      .buildUpon()
+//      .appendQueryParameter("signedRequest", Util.fromUtf8Bytes(request.data))
+//      .build()
     logger.d(TAG, "executeProvisionRequest: license URI is $uri")
-    val headers = mapOf(
-      "Content-Type" to listOf("application/octet-stream")
-    )
+//    val headers = mapOf(
+//      "Content-Type" to listOf("application/octet-stream")
+//    )
 
-    logger.v(TAG, "widevine data: ${Base64.encodeToString(request.data, Base64.NO_WRAP)}")
+//    logger.v(TAG, "widevine data: ${Base64.encodeToString(request.data, Base64.NO_WRAP)}")
 
 //    val decoded = Base64.decode(request.data, Base64.NO_WRAP)
 
     try {
-      return executePost(
-        uri,
-        headers = headers,
-        requestBody = request.data,
-//        requestBody = decoded,
-        dataSourceFactory = drmHttpDataSourceFactory,
-      ).also {
+//      return executePost(
+//        uri,
+//        headers = mapOf(),
+//        requestBody = null,
+////        requestBody = decoded,
+//        dataSourceFactory = drmHttpDataSourceFactory,
+//      )
+      return DrmUtil.executePost(
+        drmHttpDataSourceFactory.createDataSource(),
+        url,
+        null,
+        emptyMap()
+      )
+        .also {
         logger.i(TAG, "License Response: ${Base64.encodeToString(it, Base64.NO_WRAP)}")
       }
     } catch (e: InvalidResponseCodeException) {
