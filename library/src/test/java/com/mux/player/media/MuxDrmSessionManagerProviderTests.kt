@@ -7,6 +7,7 @@ import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.drm.ExoMediaDrm.KeyRequest
 import androidx.media3.exoplayer.drm.ExoMediaDrm.ProvisionRequest
 import com.mux.player.AbsRobolectricTest
+import com.mux.player.internal.createNoLogger
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -17,6 +18,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
+import kotlin.math.log
 import kotlin.math.min
 
 class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
@@ -34,7 +36,8 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
       drmToken = "drm token 2"
     )
     val provider = MuxDrmSessionManagerProvider(
-      drmHttpDataSourceFactory = mockk(relaxed = true)
+      drmHttpDataSourceFactory = mockk(relaxed = true),
+      logger = createNoLogger()
     )
 
     val manager1 = provider.get(mediaItem1)
@@ -111,7 +114,8 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
       playbackToken = "playback-token",
     )
     val provider = MuxDrmSessionManagerProvider(
-      drmHttpDataSourceFactory = mockk(relaxed = true)
+      drmHttpDataSourceFactory = mockk(relaxed = true),
+      logger = createNoLogger()
     )
 
     val sessionManagerNoTokens = provider.get(mediaItemNoTokens)
