@@ -130,10 +130,12 @@ class MuxDrmCallback(
         emptyMap()
       )
     } catch (e: InvalidResponseCodeException) {
-      logger.d(TAG, "Dumping data spec: ${e.dataSpec}")
+      logger.e(TAG, "Provisioning/License Request failed!", e)
+      logger.d(TAG, "Failed data spec: ${e.dataSpec}")
       throw e
     } catch (e: HttpDataSourceException) {
       logger.e(TAG, "Provisioning Request failed!", e)
+      logger.d(TAG, "Failed data spec: ${e.dataSpec}")
       throw e
     } catch (e: Exception) {
       logger.e(TAG, "Provisioning Request failed!", e)
@@ -145,7 +147,7 @@ class MuxDrmCallback(
     uuid: UUID,
     request: KeyRequest
   ): ByteArray {
-    val widevine = uuid == C.WIDEVINE_UUID;
+    val widevine = uuid == C.WIDEVINE_UUID
     if (!widevine) {
       throw IOException("Mux player does not support scheme: $uuid")
     }
@@ -165,9 +167,11 @@ class MuxDrmCallback(
       )
     } catch (e: InvalidResponseCodeException) {
       logger.e(TAG, "key request failed!", e)
+      logger.d(TAG, "Failed data spec: ${e.dataSpec}")
       throw e
     } catch (e: HttpDataSourceException) {
       logger.e(TAG, "Key Request failed!", e)
+      logger.d(TAG, "Failed data spec: ${e.dataSpec}")
       throw e
     } catch (e: Exception) {
       logger.e(TAG, "KEY Request failed!", e)
