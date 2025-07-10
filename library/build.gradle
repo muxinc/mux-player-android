@@ -79,7 +79,6 @@ dependencies {
 
   def media3Version = "1.6.1"
   def muxDataVariant = "at_1_6"
-  def muxDataVersion = "dev-fix-abstract-method-error-1ee5cdc"
   api "androidx.media3:media3-common:${media3Version}"
   api "androidx.media3:media3-exoplayer:${media3Version}"
   api "androidx.media3:media3-ui:${media3Version}"
@@ -87,7 +86,7 @@ dependencies {
   api "androidx.media3:media3-exoplayer-ima:${media3Version}"
   api "androidx.media3:media3-cast:${media3Version}"
 
-  api("com.mux.stats.sdk.muxstats:data-media3-$muxDataVariant:$muxDataVersion")
+  api("com.mux.stats.sdk.muxstats:data-media3-$muxDataVariant:1.6.2")
 
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
 
