@@ -120,7 +120,6 @@ class MuxDrmCallback(
     }
 
     val url = request.defaultUrl + "&signedRequest=" + Util.fromUtf8Bytes(request.data)
-    @SuppressLint("UseKtx") // TODO: Probably just include KTX and use that
     logger.d(TAG, "executeProvisionRequest: license URI is $url")
 
     try {
