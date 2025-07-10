@@ -130,14 +130,9 @@ class MuxDrmCallback(
         null,
         emptyMap()
       )
-        .also {
-        logger.i(TAG, "License Response: ${Base64.encodeToString(it, Base64.NO_WRAP)}")
-      }
     } catch (e: InvalidResponseCodeException) {
-      logger.e(TAG, "Provisioning failed: ${e.responseCode}/${e.responseMessage}", e)
       logger.d(TAG, "Dumping data spec: ${e.dataSpec}")
       logger.d(TAG, "Error Body Bytes: ${Base64.encodeToString(e.responseBody, Base64.NO_WRAP)}")
-      logger.d(TAG, "Error Text: ${e.responseBody.decodeToString()}")
       throw e
     } catch (e: HttpDataSourceException) {
       logger.e(TAG, "Provisioning/License Request failed!", e)
