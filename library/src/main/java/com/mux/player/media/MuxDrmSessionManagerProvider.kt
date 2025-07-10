@@ -132,14 +132,12 @@ class MuxDrmCallback(
       )
     } catch (e: InvalidResponseCodeException) {
       logger.d(TAG, "Dumping data spec: ${e.dataSpec}")
-      logger.d(TAG, "Error Body Bytes: ${Base64.encodeToString(e.responseBody, Base64.NO_WRAP)}")
       throw e
     } catch (e: HttpDataSourceException) {
-      logger.e(TAG, "Provisioning/License Request failed!", e)
-      logger.d(TAG, "Dumping data spec: ${e.dataSpec}")
+      logger.e(TAG, "Provisioning Request failed!", e)
       throw e
     } catch (e: Exception) {
-      logger.e(TAG, "Provisioning/License Request failed!", e)
+      logger.e(TAG, "Provisioning Request failed!", e)
       throw e
     }
   }
