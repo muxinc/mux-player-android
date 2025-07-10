@@ -136,7 +136,7 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
     val fakeEndpointHost = "license.fake.endpoint"
     val fakeDrmToken = "fake-drm-token"
     val fakePlaybackId = "fake-playback-id"
-    val fakeRequestData = "--init data".toByteArray() //as in, license request data
+    val fakeRequestData = "--init data".toByteArray()
     val fakeLicenseData = "++license data".toByteArray()
 
     val capturedLicenseReq = slot<DataSpec>()
@@ -175,6 +175,7 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
     }
     val mockProvisionRequest = mockk<ProvisionRequest> {
       every { data } returns fakeRequestData
+      every { defaultUrl } returns "http://fake-url?fakeparam=fakevalue"
     }
     // object under test
     val drmCallback = MuxDrmCallback(
@@ -195,18 +196,12 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
       fakeLicenseData.contentToString(), licenseData.contentToString()
     )
 
-    // Request to license proxy
-    val capturedCertRequestBody = capturedLicenseReq.captured.httpBody
-    val capturedCertRequestHeaders = capturedLicenseReq.captured.httpRequestHeaders
+    // Request to provision endpoint
+    val capturedProvisionRequestUrl = capturedLicenseReq.captured.uri
+    val capturedSignedRequestParam = capturedProvisionRequestUrl.getQueryParameter("signedRequest")
     assertEquals(
-      "Request body from license request should come from provision request",
-      fakeRequestData, capturedCertRequestBody
-    )
-    val capturedContentLen =
-      capturedCertRequestHeaders.mapKeys { it.key.lowercase() }["content-type"]
-    assertEquals(
-      "Request should be application/octet-stream",
-      "application/octet-stream", capturedContentLen
+      "signedRequestParam should be gathered from default URL",
+          fakeRequestData.decodeToString(), capturedSignedRequestParam
     )
   }
 
@@ -229,6 +224,7 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
     }
     val mockProvisionRequest = mockk<ProvisionRequest> {
       every { data } returns fakeRequestData
+      every { defaultUrl } returns "fake-url"
     }
     // object under test
     val drmCallback = MuxDrmCallback(
