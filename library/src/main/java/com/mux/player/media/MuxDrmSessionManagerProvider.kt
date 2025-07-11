@@ -1,23 +1,23 @@
 package com.mux.player.media
 
-import android.net.Uri
+import android.annotation.SuppressLint
 import android.util.Base64
-import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.util.Util
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.HttpDataSource.HttpDataSourceException
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
-import androidx.media3.exoplayer.drm.ExoMediaDrm.ProvisionRequest
+import androidx.media3.exoplayer.drm.DrmUtil
 import androidx.media3.exoplayer.drm.ExoMediaDrm.KeyRequest
+import androidx.media3.exoplayer.drm.ExoMediaDrm.ProvisionRequest
 import androidx.media3.exoplayer.drm.FrameworkMediaDrm
 import androidx.media3.exoplayer.drm.MediaDrmCallback
-import com.mux.player.internal.Constants
 import com.mux.player.internal.Logger
 import com.mux.player.internal.createLicenseUri
 import com.mux.player.internal.createNoLogger
@@ -26,14 +26,13 @@ import com.mux.player.internal.getDrmToken
 import com.mux.player.internal.getLicenseUrlHost
 import com.mux.player.internal.getPlaybackDomain
 import com.mux.player.internal.getPlaybackId
-import com.mux.player.media.MediaItems.MUX_VIDEO_DEFAULT_DOMAIN
 import java.io.IOException
 import java.util.UUID
 
 @OptIn(UnstableApi::class)
 class MuxDrmSessionManagerProvider(
   val drmHttpDataSourceFactory: HttpDataSource.Factory,
-  val logger: Logger = createNoLogger(),
+  val logger: Logger,
 ) : DrmSessionManagerProvider {
 
   companion object {
@@ -120,32 +119,26 @@ class MuxDrmCallback(
       throw IOException("Mux player does not support scheme: $uuid")
     }
 
-    val uri = createLicenseUri(playbackId, drmToken, licenseEndpointHost)
-    logger.d(TAG, "executeProvisionRequest: license URI is $uri")
-    val headers = mapOf(
-      "Content-Type" to listOf("application/octet-stream")
-    )
+    val url = request.defaultUrl + "&signedRequest=" + Util.fromUtf8Bytes(request.data)
+    logger.d(TAG, "executeProvisionRequest: license URI is $url")
 
     try {
-      return executePost(
-        uri,
-        headers = headers,
-        requestBody = request.data,
-        dataSourceFactory = drmHttpDataSourceFactory,
-      ).also {
-        logger.i(TAG, "License Response: ${Base64.encodeToString(it, Base64.NO_WRAP)}")
-      }
+      return DrmUtil.executePost(
+        drmHttpDataSourceFactory.createDataSource(),
+        url,
+        null,
+        emptyMap()
+      )
     } catch (e: InvalidResponseCodeException) {
       logger.e(TAG, "Provisioning/License Request failed!", e)
-      logger.d(TAG, "Dumping data spec: ${e.dataSpec}")
-      logger.d(TAG, "Error Body Bytes: ${Base64.encodeToString(e.responseBody, Base64.NO_WRAP)}")
+      logger.d(TAG, "Failed data spec: ${e.dataSpec}")
       throw e
     } catch (e: HttpDataSourceException) {
-      logger.e(TAG, "Provisioning/License Request failed!", e)
-      logger.d(TAG, "Dumping data spec: ${e.dataSpec}")
+      logger.e(TAG, "Provisioning Request failed!", e)
+      logger.d(TAG, "Failed data spec: ${e.dataSpec}")
       throw e
     } catch (e: Exception) {
-      logger.e(TAG, "Provisioning/License Request failed!", e)
+      logger.e(TAG, "Provisioning Request failed!", e)
       throw e
     }
   }
@@ -154,7 +147,7 @@ class MuxDrmCallback(
     uuid: UUID,
     request: KeyRequest
   ): ByteArray {
-    val widevine = uuid == C.WIDEVINE_UUID;
+    val widevine = uuid == C.WIDEVINE_UUID
     if (!widevine) {
       throw IOException("Mux player does not support scheme: $uuid")
     }
@@ -174,9 +167,11 @@ class MuxDrmCallback(
       )
     } catch (e: InvalidResponseCodeException) {
       logger.e(TAG, "key request failed!", e)
+      logger.d(TAG, "Failed data spec: ${e.dataSpec}")
       throw e
     } catch (e: HttpDataSourceException) {
       logger.e(TAG, "Key Request failed!", e)
+      logger.d(TAG, "Failed data spec: ${e.dataSpec}")
       throw e
     } catch (e: Exception) {
       logger.e(TAG, "KEY Request failed!", e)

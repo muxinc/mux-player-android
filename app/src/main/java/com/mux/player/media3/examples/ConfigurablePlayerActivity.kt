@@ -180,6 +180,7 @@ class ConfigurablePlayerActivity : AppCompatActivity() {
         setSeekBackIncrementMs(10_000)
         setSeekForwardIncrementMs(30_000)
       }
+      .enableLogcat(true)
       .build()
 
     out.addListener(object : Player.Listener {

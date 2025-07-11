@@ -87,7 +87,7 @@ dependencies {
   api "androidx.media3:media3-exoplayer-ima:${media3Version}"
   api "androidx.media3:media3-cast:${media3Version}"
 
-  api("com.mux.stats.sdk.muxstats:data-media3-$muxDataVariant:$muxDataVersion")
+  api("com.mux.stats.sdk.muxstats:data-media3-$muxDataVariant:${muxDataVersion}")
 
   implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
 
