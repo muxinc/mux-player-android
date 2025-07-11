@@ -59,6 +59,13 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
   protected static final String ARG_TITLE = "title";
   protected static final String ARG_START_POSITION = "start_position";
 
+  public static final String DEVICE_CATEGORY_OVERRIDE = "Mux test tablet";
+  public static final String DEVICE_MANUFACTURER_OVERRIDE = "Mux";
+  public static final String DEVICE_NAME_OVERRIDE = "Mux test";
+  public static final String DEVICE_OS_FAMILY_OVERRIDE = "Mux test OS";
+  public static final String DEVICE_OS_VERSION_OVERRIDE = "2.15";
+  public static final String DEVICE_MODEL_OVERRIDE = "Mux test model";
+
   MuxMediaSourceFactory mediaSourceFactory;
 
   public String videoTitle = "Test Video";
@@ -266,12 +273,12 @@ public class SimplePlayerTestActivity extends AppCompatActivity implements Analy
     customerVideoData.setVideoTitle(videoTitle);
     CustomerData customerData = new CustomerData(customerPlayerData, customerVideoData, null);
     CustomerViewerData customerViewerData = new CustomerViewerData();
-    customerViewerData.setMuxViewerDeviceCategory(PlaybackTests.DEVICE_CATEGORY_OVERRIDE);
-    customerViewerData.setMuxViewerDeviceManufacturer(PlaybackTests.DEVICE_MANUFACTURER_OVERRIDE);
-    customerViewerData.setMuxViewerDeviceModel(PlaybackTests.DEVICE_MODEL_OVERRIDE);
-    customerViewerData.setMuxViewerDeviceName(PlaybackTests.DEVICE_NAME_OVERRIDE);
-    customerViewerData.setMuxViewerOsFamily(PlaybackTests.DEVICE_OS_FAMILY_OVERRIDE);
-    customerViewerData.setMuxViewerOsVersion(PlaybackTests.DEVICE_OS_VERSION_OVERRIDE);
+    customerViewerData.setMuxViewerDeviceCategory(DEVICE_CATEGORY_OVERRIDE);
+    customerViewerData.setMuxViewerDeviceManufacturer(DEVICE_MANUFACTURER_OVERRIDE);
+    customerViewerData.setMuxViewerDeviceModel(DEVICE_MODEL_OVERRIDE);
+    customerViewerData.setMuxViewerDeviceName(DEVICE_NAME_OVERRIDE);
+    customerViewerData.setMuxViewerOsFamily(DEVICE_OS_FAMILY_OVERRIDE);
+    customerViewerData.setMuxViewerOsVersion(DEVICE_OS_VERSION_OVERRIDE);
     customerData.setCustomerViewerData(customerViewerData);
 
 //    for (String headerName : addAllowedHeaders) {
