@@ -6,7 +6,10 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -35,8 +38,19 @@ class BasicPlayerActivity : AppCompatActivity() {
     super.onCreate(savedInstanceState)
 
     WindowCompat.setDecorFitsSystemWindows(window, true)
-
     binding = ActivityBasicPlayerBinding.inflate(layoutInflater)
+    ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+      val bars = insets.getInsets(
+        WindowInsetsCompat.Type.systemBars()
+            or WindowInsetsCompat.Type.displayCutout()
+      )
+      v.updatePadding(
+        top = bars.top,
+        bottom = bars.bottom,
+      )
+      WindowInsetsCompat.CONSUMED
+    }
+
     setContentView(binding.root)
   }
 
