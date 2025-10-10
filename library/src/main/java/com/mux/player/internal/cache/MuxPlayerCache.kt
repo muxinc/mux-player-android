@@ -58,12 +58,18 @@ class MuxPlayerCache private constructor(
     return if (fileRecord == null) {
       null
     } else {
-      ReadHandle.create(
-        url = requestUrl,
-        fileRecord = fileRecord,
-        datastore = datastore,
-        directory = datastore.fileCacheDir(),
-      )
+      val file = File(datastore.fileCacheDir(), fileRecord.relativePath)
+      return if (file.exists() && file.length() > 0) {
+        ReadHandle.create(
+          url = requestUrl,
+          fileRecord = fileRecord,
+          datastore = datastore,
+          directory = datastore.fileCacheDir(),
+        )
+      } else {
+        // file was deleted. This can happen during normal operation because we use the temp dir
+        null
+      }
     }
   }
 
