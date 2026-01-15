@@ -4,12 +4,11 @@ import android.content.Context
 import android.view.SurfaceView
 import android.view.TextureView
 import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
 import androidx.media3.common.Player.Listener
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.analytics.AnalyticsListener
-import com.mux.player.MuxPlayer.Builder
+import androidx.media3.exoplayer.Renderer
 import com.mux.player.internal.Logger
 import com.mux.player.internal.cache.MuxPlayerCache
 import com.mux.player.internal.createLogcatLogger
@@ -51,7 +50,7 @@ class MuxPlayer private constructor(
   initialCustomerData: CustomerData,
   network: INetworkRequest? = null,
   exoPlayerBinding: ExoPlayerBinding? = null
-) : Player by exoPlayer {
+) : ExoPlayer by exoPlayer {
 
   private var muxStats: MuxStatsSdkMedia3<ExoPlayer>? = null
   private var released: Boolean = false
@@ -65,9 +64,9 @@ class MuxPlayer private constructor(
     muxStats?.updateCustomerData(customerData)
   }
 
-  @Suppress("unused")
-  fun addAnalyticsListener(listener: AnalyticsListener) {
-    exoPlayer.addAnalyticsListener(listener)
+  @UnstableApi
+  override fun getSecondaryRenderer(index: Int): Renderer? {
+    return exoPlayer.getSecondaryRenderer(index)
   }
 
   /**
