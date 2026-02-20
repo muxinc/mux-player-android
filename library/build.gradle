@@ -84,7 +84,6 @@ dependencies {
   api "androidx.media3:media3-exoplayer:${media3Version}"
   api "androidx.media3:media3-ui:${media3Version}"
   api "androidx.media3:media3-exoplayer-hls:${media3Version}"
-//  api "androidx.media3:media3-exoplayer-ima:${media3Version}"
   api "androidx.media3:media3-cast:${media3Version}"
 
   api("com.mux.stats.sdk.muxstats:data-media3-$muxDataVariant:${muxDataVersion}")
