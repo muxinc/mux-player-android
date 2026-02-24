@@ -193,7 +193,7 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
     // Data to CDM
     assertEquals(
       "license data should be returned to caller",
-      fakeLicenseData.contentToString(), licenseData.contentToString()
+      fakeLicenseData.contentToString(), licenseData.data.contentToString()
     )
 
     // Request to provision endpoint
@@ -306,7 +306,7 @@ class MuxDrmSessionManagerProviderTests : AbsRobolectricTest() {
     // Data to CDM
     assertEquals(
       "license data should be returned to caller",
-      fakeKeyData.contentToString(), keyData.contentToString()
+      fakeKeyData.contentToString(), keyData.data.contentToString()
     )
 
     // Request to license proxy
