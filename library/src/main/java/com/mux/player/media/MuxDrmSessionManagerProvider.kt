@@ -1,6 +1,7 @@
 package com.mux.player.media
 
 import android.annotation.SuppressLint
+import android.media.MediaDrm
 import android.util.Base64
 import androidx.annotation.OptIn
 import androidx.media3.common.C
@@ -113,7 +114,7 @@ class MuxDrmCallback(
   override fun executeProvisionRequest(
     uuid: UUID,
     request: ProvisionRequest
-  ): ByteArray {
+  ): MediaDrmCallback.Response {
     val widevine = uuid == C.WIDEVINE_UUID;
     if (!widevine) {
       throw IOException("Mux player does not support scheme: $uuid")
@@ -125,8 +126,7 @@ class MuxDrmCallback(
     try {
       return DrmUtil.executePost(
         drmHttpDataSourceFactory.createDataSource(),
-        url,
-        null,
+        url, null,
         emptyMap()
       )
     } catch (e: InvalidResponseCodeException) {
@@ -146,7 +146,7 @@ class MuxDrmCallback(
   override fun executeKeyRequest(
     uuid: UUID,
     request: KeyRequest
-  ): ByteArray {
+  ): MediaDrmCallback.Response {
     val widevine = uuid == C.WIDEVINE_UUID
     if (!widevine) {
       throw IOException("Mux player does not support scheme: $uuid")
@@ -159,12 +159,12 @@ class MuxDrmCallback(
     logger.d(TAG, "Key Request URI is $url")
 
     try {
-      return executePost(
+      return MediaDrmCallback.Response(executePost(
         uri = url,
         headers = headers,
         requestBody = request.data,
         dataSourceFactory = drmHttpDataSourceFactory,
-      )
+      ))
     } catch (e: InvalidResponseCodeException) {
       logger.e(TAG, "key request failed!", e)
       logger.d(TAG, "Failed data spec: ${e.dataSpec}")
