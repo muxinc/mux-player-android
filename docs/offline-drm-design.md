@@ -215,7 +215,8 @@ class MuxDrmDownloadCallback(
         // 1. select tracks — top video (+ default audio); audio renditions deferred (§4)
         // 2. videoKey = capture.videoKey  (the #EXT-X-KEY PSSH; §2.4)
         // 3. ioExecutor: drmProvider.offlineLicenseHelper(mediaItem)?.downloadLicense(format) → keySetId
-        // 4. request = helper.getDownloadRequest(data).copyWithKeySetId(keySetId)
+        // 4. request = helper.getDownloadRequest(mediaItem.getPlaybackId(), data)  // id = playbackId, NOT the default uri id
+        //              .copyWithKeySetId(keySetId)
         // 5. onReady(request); helper.release()
     }
     override fun onPrepareError(helper: DownloadHelper, e: IOException) = onError(e)
@@ -225,6 +226,14 @@ class MuxDrmDownloadCallback(
 Acquisition runs on `ioExecutor` because `onPrepared` is delivered on the caller's looper and
 `OfflineLicenseHelper.downloadLicense` blocks. DRM content with a null `capture.videoKey` is an
 error path (→ `onError`).
+
+**playbackId → keySetId is stored as a single `DownloadIndex` row.** Step 4 uses the id-taking
+overload `getDownloadRequest(playbackId, …)` so the row's primary key (`DefaultDownloadIndex.java:110`)
+is the playback ID, and `copyWithKeySetId` puts the license in the row's `key_set_id` column
+(`:65`). That row *is* the association — there is no separate keyset table. Read it back with
+`downloadManager.downloadIndex.getDownload(playbackId)?.request?.keySetId` at playback (§2.4) and
+removal (§1.8). The **default** `getDownloadRequest(data)` keys by the manifest URI
+(`DownloadHelper.java:860`), which would break the lookup — hence the explicit id.
 
 ### 1.5 License seam — `offlineLicenseHelper` (provider extension)
 
@@ -316,7 +325,7 @@ race-free and already performed by removal** — there is nothing extra to delet
 > (manager thread, post-removal) — never synchronously in `remove()`.
 
 **`remove(playbackId)`** captures the keySetId before the index entry is gone, deletes media via
-the manager, then releases the DRM keyset:
+the manager, then drops the offline keyset from local CDM storage:
 
 ```kotlin
 fun remove(context: Context, playbackId: String) {
@@ -324,15 +333,28 @@ fun remove(context: Context, playbackId: String) {
     store.ioExecutor.execute {
         val keySetId = store.downloadManager.downloadIndex.getDownload(playbackId)?.request?.keySetId
         DownloadService.sendRemoveDownload(context, MuxDownloadService::class.java, playbackId, /* foreground = */ false)
-        keySetId?.let { releaseOfflineLicense(playbackId, it) }   // OfflineLicenseHelper.releaseLicense, MODE_RELEASE
+        keySetId?.let { dropOfflineLicense(it) }
     }
+}
+
+/** Local-only purge — no network, no drmToken. Mux enforces no offline-license quota, so we
+ *  never do a server-side MODE_RELEASE. */
+private fun dropOfflineLicense(keySetId: ByteArray) {
+    if (Build.VERSION.SDK_INT < 29) return            // no per-license purge API pre-29 (see below)
+    val mediaDrm = try { MediaDrm(C.WIDEVINE_UUID) } catch (_: Exception) { return }
+    try { mediaDrm.removeOfflineLicense(keySetId) } catch (_: Exception) { /* best-effort */ }
+    finally { mediaDrm.close() }                      // close() is API 28+
 }
 ```
 
-`releaseLicense` (`OfflineLicenseHelper.java:258`, MODE_RELEASE) touches MediaDrm + the license
-server, **not the disk cache**, so it cannot race cache writes — its order relative to
-`sendRemoveDownload` is irrelevant for safety. Its open wrinkle (the license-server creds aren't
-persisted in `DownloadRequest`, and the `drmToken` may be expired at removal time) is in §6.
+We deliberately **do not** call `OfflineLicenseHelper.releaseLicense` (MODE_RELEASE): that is a
+*networked* release exchange — it POSTs a release request to the license server via the
+`MediaDrmCallback` and needs a valid `drmToken` — whose only purpose is decrementing a server-side
+allotment, which Mux doesn't enforce. `MediaDrm.removeOfflineLicense` (API 29+) purges the keyset
+from the device's CDM store with no I/O. On **API 23–28** there is no public per-license purge API;
+removing the `Download` already drops our `keySetId` reference, leaving only a tiny orphaned CDM
+blob (a few KB, unreferenceable) — a negligible local leak with no quota to care about. Either way
+this touches the CDM store, not the disk cache, so it can't race cache writes.
 
 **Playback restore** is the mirror image: resolve the `keySetId` from the `DownloadIndex` by
 `playbackId` and hand it to `MuxDrmSessionManagerProvider` for `setMode(MODE_PLAYBACK, keySetId)`
@@ -598,12 +620,12 @@ All read the **same** source: the segment-level `DrmInitData` decoded from `#EXT
 
 **Storage / lifecycle:**
 - Cache + index live in `OfflineDownloadStore` (§1.7); license rides `DownloadRequest.keySetId`
-  (§2.2). Removal is writer-safe via `DownloadManager.removeDownload` (§1.8); renewal for
-  expiry-bearing licenses via `OfflineLicenseHelper.renewLicense` (§3).
-- **Keyset release on removal needs license-server creds not persisted in `DownloadRequest`**
-  (§1.8). Options: stash what's needed in `DownloadRequest.data` (persisted) to rebuild
-  `MuxDrmCallback`, vs. drop the local reference and accept a Widevine secure-store leak — and the
-  `drmToken` may be expired at removal time (server-policy question for the Mux DRM service).
+  (§2.2). Removal is writer-safe via `DownloadManager.removeDownload`, and the keyset is dropped
+  **locally** via `MediaDrm.removeOfflineLicense` (API 29+) — no server release, since Mux has no
+  offline-license quota (§1.8). Renewal for expiry-bearing licenses via
+  `OfflineLicenseHelper.renewLicense` (§3).
+- Pre-API-29 has no per-license purge API; removal drops the `keySetId` reference and leaves a
+  negligible orphaned CDM blob. (No remaining decision here.)
 
 **Download stack — decided (SDK provides `MuxDownloadService`, §1.3):**
 - **Scheduler:** `PlatformScheduler` (JobScheduler; resumes across reboot/network, needs only
