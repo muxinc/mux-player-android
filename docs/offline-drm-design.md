@@ -212,9 +212,10 @@ sequenceDiagram
   safe VOD read point.
 - **Key never reaches the `Format`.** Chunkless prep still strips it; irrelevant here since we
   read it from the observer.
-- **`drmToken` must authorize a persistent/offline license** server-side, or the returned
-  license is short-lived. Check `OfflineLicenseHelper.getLicenseDurationRemainingSec(keySetId)`
-  (`OfflineLicenseHelper.java:274`) after acquisition; renew via `renewLicense(...)`.
+- **Persistent offline licenses are supported** by the Mux DRM service (confirmed), so the
+  acquired `keySetId` is durable for offline playback. Still surface
+  `OfflineLicenseHelper.getLicenseDurationRemainingSec(keySetId)` (`OfflineLicenseHelper.java:274`)
+  and renew via `renewLicense(...)` for any license that carries an expiry.
 - **`MuxDrmCallback` construction at download time** needs `playbackId` / `drmToken` /
   custom-domain from the `MediaItem` — confirmed available via the existing `MediaItem`
   extension getters, so §9.4 builds the callback directly.
@@ -595,14 +596,14 @@ All read the **same** source: the segment-level `DrmInitData` decoded from `#EXT
 
 ## 11. Open questions
 
-**v1 (answer these):**
+**v1 — all resolved:**
 - ~~Do all video variants share one `#EXT-X-KEY`?~~ **Resolved:** yes for Mux, and we download a
   single video variant regardless — the §4 observer reading `variants[0]` is correct (§6).
 - ~~Confirm `MuxDrmCallback`'s inputs are reachable from the `MediaItem`.~~ **Resolved:**
   `playbackId` / `drmToken` / custom-domain are available via the existing `MediaItem` extension
   getters; §9.4 builds the callback from them.
-- Does the `drmToken` authorize a **persistent/offline** license server-side? (Otherwise the
-  license is short-lived — see §6.) **The last genuine v1 unknown.**
+- ~~Does the `drmToken` authorize a persistent/offline license?~~ **Resolved:** yes — the Mux DRM
+  service issues persistent offline licenses, so the acquired `keySetId` is durable (§6).
 
 **Storage / lifecycle:**
 - Cache + index live in `OfflineDownloadStore` (§9.1); license rides `DownloadRequest.keySetId`
