@@ -20,7 +20,7 @@ read that first if the *why* matters more than the *what*.
 
 This section is ordered **call-site first**: the customer-visible entry points (§1.1 facade, §1.2
 `createDownloadHelper`) and the SDK-provided service (§1.3), then the internal implementation
-(§1.4–§1.7), and download lifecycle — remove / keyset release / playback restore — in §1.8.
+(§1.4–§1.7), download lifecycle (§1.8), and offline playback + enumeration (§1.9).
 
 All offline code lives in one new sub-package — **`com.mux.player.offline`** — in this module
 (no new Gradle module). Reuse in non-Mux Media3 integrations is **by example**: the reusable
@@ -39,7 +39,8 @@ com.mux.player.offline/
   MuxDrmDownloadCallback.kt           // DownloadHelper.Callback (§2.4 flow)
   MuxOfflineLicense.kt                // provider extensions: offlineLicenseHelper(), createDownloadHelper()
   MuxDownloadService.kt               // concrete DownloadService, declared in the SDK manifest (§1.3)
-  MuxOfflineDownloads.kt              // customer-facing facade; prefers MuxDownloadService (§1.1)
+  MuxOfflineDownloads.kt              // facade: downloads, enumeration, offline playback (§1.1, §1.9)
+  MuxDownload.kt                      // typed download row — playbackId + state + progress (§1.9)
 ```
 
 Component view — how the facade, store, and service wire together (dashed arrows are dependency
@@ -94,21 +95,33 @@ object MuxOfflineDownloads {
      *  enqueues to MuxDownloadService. id = playbackId. */
     fun startDownload(context: Context, mediaItem: MediaItem)
 
-    fun remove(context: Context, playbackId: String)       // DownloadService.sendRemoveDownload(…, MuxDownloadService::class)
+    fun remove(context: Context, playbackId: String)       // delete media + drop keyset (§1.8)
     fun pauseAll(context: Context)                          // sendPauseDownloads
     fun resumeAll(context: Context)                         // sendResumeDownloads
-    fun downloadManager(context: Context): DownloadManager  // for addListener / DownloadIndex queries
+
+    // enumeration & playback — keyed by playbackId (§1.9). suspend: each hits the SQLite index off-thread.
+    suspend fun downloads(context: Context): List<MuxDownload>
+    suspend fun downloaded(context: Context): List<MuxDownload>     // STATE_COMPLETED only
+    suspend fun download(context: Context, playbackId: String): MuxDownload?            // null if absent
+    suspend fun createOfflineMediaSource(context: Context, playbackId: String): MediaSource?  // null if not downloaded
+    fun addListener(context: Context, listener: MuxDownload.Listener)   // live progress (non-blocking)
 }
 ```
 
 ```kotlin
 // caller's whole world:
-MuxOfflineDownloads.startDownload(context, mediaItem)
-MuxOfflineDownloads.downloadManager(context).addListener(myListener)   // observe progress/state
+MuxOfflineDownloads.startDownload(context, mediaItem)                       // download
+MuxOfflineDownloads.addListener(context, myListener)                       // observe progress/state (non-blocking)
+lifecycleScope.launch {
+    val downloaded = MuxOfflineDownloads.downloaded(context)               // enumerate by playbackId
+    val src = MuxOfflineDownloads.createOfflineMediaSource(context, playbackId) ?: return@launch  // null if absent
+    player.setMediaSource(src); player.prepare()
+}
 ```
 
 Customers who want the `DownloadHelper` directly (e.g. custom track selection) drop to
-`provider.createDownloadHelper` (§1.2); everything below that (§1.4–§1.7) is internal.
+`provider.createDownloadHelper` (§1.2); the implementation pieces (§1.4–§1.7) are internal, while
+download lifecycle (§1.8) and offline playback + enumeration (§1.9) round out the facade.
 
 ### 1.2 `createDownloadHelper` (provider extension) — the public factory
 
@@ -320,10 +333,13 @@ class OfflineDownloadStore private constructor(
     val ioExecutor: Executor,                   // opinionated infra — used by §1.2
     val httpDataSourceFactory: DataSource.Factory, // default upstream for playlist/segment fetch
 ) {
-    /** Backs both segment download and offline playback reads. Defaults upstream to httpDataSourceFactory. */
+    /** Cache + network upstream — used by the download (write) path. */
     fun cacheDataSourceFactory(
         upstream: DataSource.Factory = httpDataSourceFactory,
     ): CacheDataSource.Factory
+
+    /** Read-only, no upstream — for offline playback (§1.9); a cache miss errors, never streams. */
+    fun cacheOnlyDataSourceFactory(): CacheDataSource.Factory
 
     companion object { fun get(context: Context): OfflineDownloadStore }
 }
@@ -383,9 +399,71 @@ removing the `Download` already drops our `keySetId` reference, leaving only a t
 blob (a few KB, unreferenceable) — a negligible local leak with no quota to care about. Either way
 this touches the CDM store, not the disk cache, so it can't race cache writes.
 
-**Playback restore** is the mirror image: resolve the `keySetId` from the `DownloadIndex` by
-`playbackId` and hand it to `MuxDrmSessionManagerProvider` for `setMode(MODE_PLAYBACK, keySetId)`
-(§2.4). The store already exposes `downloadManager` (hence the index) for this lookup.
+**Playback restore** is the mirror image, handled by `createOfflineMediaSource` (§1.9): resolve
+the `keySetId` from the `DownloadIndex` by `playbackId` and build a dedicated `MODE_PLAYBACK` DRM
+session manager. The store exposes `downloadManager` (hence the index) for this lookup.
+
+### 1.9 Offline playback & enumeration
+
+**Enumeration — by playbackId.** The store's `DownloadIndex` *is* the catalog of downloaded Mux
+assets (every row's `id` is a playbackId, §1.4). The facade exposes a Mux-typed view rather than
+raw Media3 `Download`s:
+
+```kotlin
+data class MuxDownload(
+    val playbackId: String,        // == Download.request.id
+    val state: State,              // QUEUED / DOWNLOADING / COMPLETED / FAILED / REMOVING
+    val percentDownloaded: Float,
+    val bytesDownloaded: Long,
+)
+```
+
+The enumeration methods are **`suspend`**: `DownloadIndex.getDownload`/`getDownloads` are
+synchronous SQLite reads (`DefaultDownloadIndex.java:201`, blocking disk I/O), and "downloaded" is
+a **terminal** state that `DownloadManager.getCurrentDownloads()` deliberately excludes
+(`DownloadManager.java:412`) — so the index is the only source. Each suspend call runs the query on
+a background dispatcher (the store's `ioExecutor`) and maps `Download → MuxDownload` by
+`request.id`. There is **no `isDownloaded`** — a `null` from `download(playbackId)` or
+`createOfflineMediaSource` is the "not downloaded" signal. `addListener` (non-suspend) wraps
+`DownloadManager.Listener` for live progress of active downloads.
+
+**Offline playback — by playbackId, separate from online.** A dedicated source builder:
+
+```kotlin
+suspend fun MuxOfflineDownloads.createOfflineMediaSource(context: Context, playbackId: String): MediaSource? {
+    val store = OfflineDownloadStore.get(context)
+    val download = store.downloadManager.downloadIndex.getDownload(playbackId)
+        ?.takeIf { it.state == Download.STATE_COMPLETED } ?: return null      // null = not available offline
+    val drm = download.request.keySetId?.let { offlinePlaybackDrm(it) } ?: DrmSessionManager.DRM_UNSUPPORTED
+    return DownloadHelper.createMediaSource(            // exposes only downloaded tracks — DownloadHelper.java:479
+        download.request,                              // uri + streamKeys + keySetId
+        store.cacheOnlyDataSourceFactory(),            // download cache; no network fallthrough
+        drm,
+    )
+}
+
+private fun offlinePlaybackDrm(keySetId: ByteArray): DrmSessionManager =
+    DefaultDrmSessionManager.Builder()
+        .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
+        .setMode(DefaultDrmSessionManager.MODE_PLAYBACK, keySetId)   // restore persisted license locally
+        .build(failingMediaDrmCallback)                              // not invoked for a valid offline license
+```
+
+The app plays it with `player.setMediaSource(src); player.prepare()`. This is **separate from the
+online path** (`MediaItems.fromMuxPlaybackId`): offline = cache-only source + `MODE_PLAYBACK`
+restore + exactly the downloaded tracks; online = network + streaming DRM + adaptive selection. The
+SDK returns a `MediaSource` building block (chosen over a `MuxPlayer`-level entry) so offline stays
+fully decoupled — the app picks offline vs online itself.
+
+- **`MODE_PLAYBACK` needs no network/token** — it restores the persisted license locally, so the
+  `MediaDrmCallback` isn't invoked for a valid license (we don't hold the `drmToken` offline
+  anyway). An expired license fails at prepare with `KeysExpiredException` → surface as
+  "re-download needed" (§3 keeps `renewLicense` for expiry-bearing licenses).
+- **Cache-only** — `cacheOnlyDataSourceFactory()` (§1.7) has no upstream, so a missing span errors
+  instead of silently streaming. Offline means offline.
+- **`null` = not downloaded** — there is no `isDownloaded`; callers branch to offline vs online
+  `MediaItems.fromMuxPlaybackId` on a `null` return from `download(playbackId)` /
+  `createOfflineMediaSource`. No ambiguous auto-resolution.
 
 ## 2. Background: the added PSSH-extraction logic
 
@@ -540,9 +618,9 @@ HlsMediaSource.Factory(dataSourceFactory)
 **License acquisition** reuses `MuxDrmCallback` (the §1.5 seam) so it hits the same Mux endpoint;
 `OfflineLicenseHelper.downloadLicense(Format(capturedVideoKey))` returns the `keySetId`.
 
-**Playback restore.** Thread the stored `keySetId` into `MuxDrmSessionManagerProvider` so its
-builder calls `setMode(MODE_PLAYBACK, keySetId)` when an offline license exists for the playback
-ID — no network license request is made.
+**Playback restore.** Offline playback (§1.9) resolves the stored `keySetId` from the
+`DownloadIndex` by playbackId and builds a dedicated `MODE_PLAYBACK` DRM session manager — a local
+restore, no network license request, and separate from the online `MuxDrmSessionManagerProvider`.
 
 ### 2.5 End-to-end flow
 
