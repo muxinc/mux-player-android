@@ -168,20 +168,37 @@ the playback ID. With `MODE_PLAYBACK` + a valid `keySetId`, no network license r
 
 ## 5. End-to-end flow
 
-```
-DownloadHelper.prepare(mediaItem)
-  └─ HlsMediaSource.prepareSource → DefaultHlsPlaylistTracker.start
-       ├─ load multivariant playlist        (parser: createPlaylistParser())
-       └─ load variant[0] media playlist    (parser: createPlaylistParser(mv, prev))
-            └─ CapturingPlaylistParserFactory observes HlsMediaPlaylist
-                 └─ segment.drmInitData (Widevine PSSH) → capturedVideoKey
-  └─ onPrepared
-       ├─ build Format(drmInitData = capturedVideoKey)
-       ├─ OfflineLicenseHelper(MuxDrmCallback).downloadLicense(format) → keySetId
-       └─ keySetId persisted on DownloadRequest (§8.1)
-... later, offline ...
-MuxPlayer.play(mediaItem)
-  └─ MuxDrmSessionManagerProvider → DefaultDrmSessionManager.setMode(MODE_PLAYBACK, keySetId)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App
+    participant DH as DownloadHelper
+    participant Src as HlsMediaSource and Tracker
+    participant Cap as CapturingPlaylistParserFactory
+    participant Lic as OfflineLicenseHelper
+    participant Idx as DownloadIndex
+    participant Prov as MuxDrmSessionManagerProvider
+
+    rect rgb(245, 245, 245)
+    Note over App,Idx: download time — acquire license
+    App->>DH: prepare(mediaItem)
+    DH->>Src: prepareSource / tracker.start
+    Src->>Src: load multivariant playlist
+    Src->>Cap: parse variant[0] media playlist
+    Cap-->>Cap: segment.drmInitData becomes capturedVideoKey
+    Src-->>DH: onPrepared
+    DH->>Lic: downloadLicense(Format with capturedVideoKey)
+    Lic-->>DH: keySetId
+    DH->>Idx: persist DownloadRequest.keySetId
+    end
+
+    rect rgb(235, 242, 250)
+    Note over App,Prov: later — offline playback
+    App->>Prov: get(mediaItem)
+    Prov->>Idx: keySetId for playbackId
+    Idx-->>Prov: keySetId
+    Prov-->>App: DrmSessionManager in MODE_PLAYBACK
+    end
 ```
 
 ## 6. Limitations / caveats
@@ -245,24 +262,24 @@ other — the only contract between them is a serializable **`DownloadRequest`**
   background lifecycle + notifications; `DownloadService.sendAddDownload(...)` is the usual way
   the request reaches `downloadManager.addDownload(...)`.
 
-```
-DownloadHelper (plan)                       DownloadManager (execute)
-─────────────────────                       ─────────────────────────
-Factory().create(hlsSource).prepare(cb)
-  onPrepared:
-    select tracks (default: top video)
-    [acquire license → keySetId]   ← OUR step; neither component does it
-    getDownloadRequest(data) ─────►  DownloadRequest {id, uri, streamKeys, keySetId, …}
-  release()                            │
-                                       ▼  (via DownloadService.sendAddDownload)
-                                   addDownload(request)
-                                    ├─ persist → DownloadIndex (SQLite)
-                                    ├─ queue; honor Requirements
-                                    └─ downloaderFactory.createDownloader(request)
-                                         └─ HlsDownloader.download()
-                                              ├─ load streamKey-filtered playlists
-                                              └─ write segments → Cache
-                                   Download: QUEUED→DOWNLOADING→COMPLETED → Listener / notifications
+```mermaid
+flowchart LR
+    subgraph plan [DownloadHelper — plan]
+        direction TB
+        p1["prepare(callback)"] --> p2["onPrepared: select tracks, top video"]
+        p2 --> p3["acquire license — our step → keySetId"]
+        p3 --> p4["getDownloadRequest → DownloadRequest<br/>id, uri, streamKeys, keySetId"]
+    end
+    p4 -->|"DownloadService.sendAddDownload"| add["addDownload(request)"]
+    subgraph exec [DownloadManager — execute]
+        direction TB
+        add --> idx[("DownloadIndex, SQLite")]
+        add --> q["queue and Requirements"]
+        q --> dl["HlsDownloader.download"]
+        dl --> seg["load streamKey-filtered playlists"]
+        dl --> cache[("Cache")]
+        dl --> st["state: QUEUED → DOWNLOADING → COMPLETED"]
+    end
 ```
 
 **The two sides must share the same `Cache`.** The manager's `DownloaderFactory` is built with a
@@ -309,6 +326,45 @@ com.mux.player.offline/
   MuxOfflineLicense.kt                // provider extensions: offlineLicenseHelper(), createDownloadHelper()
   MuxDownloadService.kt               // concrete DownloadService, declared in the SDK manifest (§9.6)
   MuxOfflineDownloads.kt              // customer-facing facade; prefers MuxDownloadService (§9.7)
+```
+
+Component view — how the facade, store, and service wire together (dashed arrows are dependency
+/ "uses"; the two inner boxes are the reuse boundary):
+
+```mermaid
+flowchart TB
+    Customer(["Customer app"])
+
+    subgraph offline["package com.mux.player.offline"]
+        direction TB
+        subgraph mux["Mux example — liftable (rewrite DRM bits)"]
+            direction TB
+            Facade["MuxOfflineDownloads<br/>facade"]
+            Lic["MuxOfflineLicense<br/>provider extensions:<br/>createDownloadHelper, offlineLicenseHelper"]
+            Callback["MuxDrmDownloadCallback<br/>DownloadHelper.Callback"]
+            Service["MuxDownloadService<br/>declared in SDK manifest"]
+        end
+        subgraph core["reusable — Media3 types only"]
+            direction TB
+            Factory["createHlsDownloadHelper"]
+            Capture["CapturingPlaylistParserFactory<br/>PSSH observer"]
+            Store["OfflineDownloadStore (singleton)<br/>DatabaseProvider · SimpleCache · DownloadManager<br/>ioExecutor · httpDataSourceFactory"]
+        end
+    end
+
+    Provider["MuxDrmSessionManagerProvider<br/>existing · com.mux.player.media"]
+
+    Customer -->|"startDownload(mediaItem)"| Facade
+    Facade -->|"createDownloadHelper()"| Lic
+    Facade -->|"sendAddDownload"| Service
+    Lic -.->|"extension on"| Provider
+    Lic --> Factory
+    Lic --> Callback
+    Factory --> Capture
+    Factory -.->|"cacheDataSourceFactory"| Store
+    Callback -.->|"reads capturedVideoKey"| Capture
+    Callback -.->|"offlineLicenseHelper → OfflineLicenseHelper"| Provider
+    Service -.->|"getDownloadManager"| Store
 ```
 
 ### 9.1 Storage — `OfflineDownloadStore`
