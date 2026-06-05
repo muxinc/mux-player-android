@@ -18,6 +18,10 @@ capturing the Widevine PSSH from the HLS playlist parser. The parts that look un
 a parser, leaving chunkless preparation on — exist for reasons laid out in the **Background (§2)**;
 read that first if the *why* matters more than the *what*.
 
+This section is ordered **call-site first**: the customer-visible entry points (§1.1 facade, §1.2
+`createDownloadHelper`) and the SDK-provided service (§1.3), then the internal implementation
+(§1.4–§1.7).
+
 All offline code lives in one new sub-package — **`com.mux.player.offline`** — in this module
 (no new Gradle module). Reuse in non-Mux Media3 integrations is **by example**: the reusable
 plumbing depends only on Media3 types, and the Mux-specific logic is isolated in `Mux*`-named
@@ -29,13 +33,13 @@ is by **file name + dependency surface**, not a compile-time boundary — the na
 com.mux.player.offline/
   ── reusable as-is (Media3 types only) ──
   CapturingPlaylistParserFactory.kt   // PSSH observer (§2.4)
-  OfflineDownloadStore.kt             // DatabaseProvider + SimpleCache(NoOpEvictor) + DownloadManager
-  OfflineDownloads.kt                 // createHlsDownloadHelper(...)
+  OfflineDownloadStore.kt             // DatabaseProvider + SimpleCache(NoOpEvictor) + DownloadManager (§1.7)
+  OfflineDownloads.kt                 // internal createHlsDownloadHelper(...) (§1.6)
   ── liftable Mux example (rewrite the DRM bits) ──
   MuxDrmDownloadCallback.kt           // DownloadHelper.Callback (§2.4 flow)
   MuxOfflineLicense.kt                // provider extensions: offlineLicenseHelper(), createDownloadHelper()
-  MuxDownloadService.kt               // concrete DownloadService, declared in the SDK manifest (§1.6)
-  MuxOfflineDownloads.kt              // customer-facing facade; prefers MuxDownloadService (§1.7)
+  MuxDownloadService.kt               // concrete DownloadService, declared in the SDK manifest (§1.3)
+  MuxOfflineDownloads.kt              // customer-facing facade; prefers MuxDownloadService (§1.1)
 ```
 
 Component view — how the facade, store, and service wire together (dashed arrows are dependency
@@ -56,7 +60,7 @@ flowchart TB
         end
         subgraph core["reusable — Media3 types only"]
             direction TB
-            Factory["createHlsDownloadHelper"]
+            Factory["createHlsDownloadHelper (internal)"]
             Capture["CapturingPlaylistParserFactory<br/>PSSH observer"]
             Store["OfflineDownloadStore (singleton)<br/>DatabaseProvider · SimpleCache · DownloadManager<br/>ioExecutor · httpDataSourceFactory"]
         end
@@ -77,118 +81,45 @@ flowchart TB
     Service -.->|"getDownloadManager"| Store
 ```
 
-### 1.1 Storage — `OfflineDownloadStore`
+### 1.1 `MuxOfflineDownloads` — customer-facing facade
 
-Process-wide singleton owning the Media3 storage primitives. `SimpleCache` permits one instance
-per directory (so this must be a singleton), and it is a **separate cache from the smart-cache**
-(`MuxPlayerCache`), using `NoOpCacheEvictor` so downloads are never LRU-evicted.
+The primary public surface — most customers use nothing else. It **prefers `MuxDownloadService`**:
+`startDownload` runs the §1.2 path and auto-enqueues the resulting `DownloadRequest` via the
+service; control and observation route through the same service / the store's `DownloadManager`.
+It owns a default `MuxDrmSessionManagerProvider`, so the customer passes only a `MediaItem`.
 
 ```kotlin
-class OfflineDownloadStore private constructor(
-    val databaseProvider: DatabaseProvider,    // StandaloneDatabaseProvider — shared
-    val downloadCache: Cache,                   // SimpleCache(dir, NoOpCacheEvictor(), databaseProvider)
-    val downloadManager: DownloadManager,       // DownloadManager(ctx, DefaultDownloadIndex(databaseProvider), …)
-    val ioExecutor: Executor,                   // opinionated infra — used by §1.5
-    val httpDataSourceFactory: DataSource.Factory, // default upstream for playlist/segment fetch
-) {
-    /** Backs both segment download and offline playback reads. Defaults upstream to httpDataSourceFactory. */
-    fun cacheDataSourceFactory(
-        upstream: DataSource.Factory = httpDataSourceFactory,
-    ): CacheDataSource.Factory
+object MuxOfflineDownloads {
+    /** Prepare + acquire license + enqueue to MuxDownloadService. id = playbackId. */
+    fun startDownload(context: Context, mediaItem: MediaItem)
 
-    companion object { fun get(context: Context): OfflineDownloadStore }
+    fun remove(context: Context, contentId: String)        // DownloadService.sendRemoveDownload(…, MuxDownloadService::class)
+    fun pauseAll(context: Context)                          // sendPauseDownloads
+    fun resumeAll(context: Context)                         // sendResumeDownloads
+    fun downloadManager(context: Context): DownloadManager  // for addListener / DownloadIndex queries
 }
 ```
 
-The **license is not stored here** — for single-key v1 it rides `DownloadRequest.keySetId` in
-the `DownloadIndex` the `DownloadManager` already owns (§2.2). The store is also where the
-**opinionated infra lives** (the IO `Executor` and the default upstream HTTP factory) so §1.5
-needn't inject them, and **`MuxDownloadService` (§1.6) draws its `DownloadManager` from here**.
-
-### 1.2 Wired helper — `createHlsDownloadHelper`
-
-Builds a `DownloadHelper` with the observer parser, DRM provider, and download cache wired in.
-`capture` is an explicit (defaulted) param so a caller — or §1.5 — can share one instance
-between the helper and the callback.
-
 ```kotlin
-fun createHlsDownloadHelper(
-    context: Context,
-    mediaItem: MediaItem,
-    drmProvider: DrmSessionManagerProvider,         // base type — reusable
-    store: OfflineDownloadStore,
-    upstream: DataSource.Factory,
-    renderersFactory: RenderersFactory = DefaultRenderersFactory(context),
-    capture: CapturingPlaylistParserFactory = CapturingPlaylistParserFactory(),
-): DownloadHelper =
-    DownloadHelper.Factory()
-        .setRenderersFactory(renderersFactory)
-        .create(
-            HlsMediaSource.Factory(store.cacheDataSourceFactory(upstream))
-                .setPlaylistParserFactory(capture)
-                .setDrmSessionManagerProvider(drmProvider)
-                .createMediaSource(mediaItem)
-        )
+// caller's whole world:
+MuxOfflineDownloads.startDownload(context, mediaItem)
+MuxOfflineDownloads.downloadManager(context).addListener(myListener)   // observe progress/state
 ```
 
-### 1.3 Callback — `MuxDrmDownloadCallback`
+Customers who want the `DownloadHelper` directly (e.g. custom track selection) drop to
+`provider.createDownloadHelper` (§1.2); everything below that (§1.4–§1.7) is internal.
 
-Implements `DownloadHelper.Callback`. `onPrepared` wraps the track-selection and PSSH-discovery
-complexity, acquires the license off the caller thread, and emits a ready-to-enqueue
-`DownloadRequest`.
+### 1.2 `createDownloadHelper` (provider extension) — the public factory
 
-```kotlin
-class MuxDrmDownloadCallback(
-    private val capture: CapturingPlaylistParserFactory,
-    private val drmProvider: MuxDrmSessionManagerProvider,
-    private val mediaItem: MediaItem,
-    private val ioExecutor: Executor,
-    private val onReady: (DownloadRequest) -> Unit,
-    private val onError: (IOException) -> Unit,
-) : DownloadHelper.Callback {
-    override fun onPrepared(helper: DownloadHelper, tracksInfoAvailable: Boolean) {
-        // 1. select tracks — top video (+ default audio); audio renditions deferred (§4)
-        // 2. videoKey = capture.videoKey  (the #EXT-X-KEY PSSH; §2.4)
-        // 3. ioExecutor: drmProvider.offlineLicenseHelper(mediaItem)?.downloadLicense(format) → keySetId
-        // 4. request = helper.getDownloadRequest(data).copyWithKeySetId(keySetId)
-        // 5. onReady(request); helper.release()
-    }
-    override fun onPrepareError(helper: DownloadHelper, e: IOException) = onError(e)
-}
-```
-
-Acquisition runs on `ioExecutor` because `onPrepared` is delivered on the caller's looper and
-`OfflineLicenseHelper.downloadLicense` blocks. DRM content with a null `capture.videoKey` is an
-error path (→ `onError`).
-
-### 1.4 License seam — `offlineLicenseHelper` (provider extension)
-
-Extension on `MuxDrmSessionManagerProvider`, reusing its public `drmHttpDataSourceFactory` /
-`logger` + the `MediaItem` getters + the public `MuxDrmCallback`. Leaves the online provider
-untouched; no real duplication.
-
-```kotlin
-internal fun MuxDrmSessionManagerProvider.offlineLicenseHelper(mediaItem: MediaItem): OfflineLicenseHelper? {
-    val playbackId = mediaItem.getPlaybackId() ?: return null
-    val drmToken = mediaItem.getDrmToken() ?: return null
-    val sm = DefaultDrmSessionManager.Builder()
-        .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
-        .build(MuxDrmCallback(drmHttpDataSourceFactory, mediaItem.getLicenseUrlHost(), drmToken, playbackId, logger))
-    return OfflineLicenseHelper(sm, DrmSessionEventListener.EventDispatcher())
-}
-```
-
-### 1.5 Convenience — `createDownloadHelper` (provider extension)
-
-Mirrors §1.4: a second extension on `MuxDrmSessionManagerProvider` that returns a
-fully-configured, already-preparing `DownloadHelper` — it constructs the shared
-`CapturingPlaylistParserFactory`, wires it into **both** the helper and `MuxDrmDownloadCallback`,
-and kicks off `prepare`. The provider becomes the single Mux entry point for offline, the way
-`get()` is for online.
+The customer-facing way to get a configured `DownloadHelper`. Like the §1.5 license seam, it is an
+extension on `MuxDrmSessionManagerProvider`; it returns a fully-configured, already-preparing
+`DownloadHelper` — constructing the shared `CapturingPlaylistParserFactory`, wiring it into
+**both** the helper and `MuxDrmDownloadCallback` (§1.4), and kicking off `prepare`. The provider
+is the single Mux entry point for offline, the way `get()` is for online.
 
 **Opinionated about infra:** the `Executor`, `OfflineDownloadStore`, upstream `DataSource.Factory`,
 and `RenderersFactory` are *not* injected — they come from `OfflineDownloadStore.get(context)`
-(§1.1) and a `DefaultRenderersFactory(context)`. The signature is just the item + result hooks.
+(§1.7) and a `DefaultRenderersFactory(context)`. The signature is just the item + result hooks.
 
 ```kotlin
 fun MuxDrmSessionManagerProvider.createDownloadHelper(
@@ -210,14 +141,14 @@ fun MuxDrmSessionManagerProvider.createDownloadHelper(
 }
 ```
 
-The low-level `createHlsDownloadHelper` (§1.2) keeps all four injectable for callers who need to
-override; `createDownloadHelper` is the opinionated path.
+`createDownloadHelper` is the public factory; the internal `createHlsDownloadHelper` (§1.6) keeps
+the four infra params injectable for in-module callers that need to override them.
 
-### 1.6 `MuxDownloadService` — SDK-provided
+### 1.3 `MuxDownloadService` — SDK-provided
 
 The SDK ships a concrete `DownloadService` and **declares it in the library manifest**, so it
 merges into the consuming app with no app-side registration. Its `DownloadManager` comes from
-`OfflineDownloadStore`, so the service and the rest of the SDK act on the same index/cache.
+`OfflineDownloadStore` (§1.7), so the service and the rest of the SDK act on the same index/cache.
 
 **Notifications are fully opinionated — no customization hook.** The SDK owns the channel, the
 progress notification, and the terminal (completed/failed) notifications. The progress
@@ -265,33 +196,107 @@ Manifest merge adds the `<service>` plus `FOREGROUND_SERVICE`, `FOREGROUND_SERVI
 and `RECEIVE_BOOT_COMPLETED` to **every** consumer of the SDK — accepted as the cost of
 one-module + "SDK provides it".
 
-### 1.7 `MuxOfflineDownloads` — customer-facing facade
+### 1.4 `MuxDrmDownloadCallback` — implementation
 
-The one public surface a customer touches. It **prefers `MuxDownloadService`**: `startDownload`
-runs the §1.5 path and auto-enqueues the resulting `DownloadRequest` via the service; control
-and observation route through the same service / the store's `DownloadManager`. It owns a
-default `MuxDrmSessionManagerProvider` so the customer passes only a `MediaItem`.
+Implements `DownloadHelper.Callback`. `onPrepared` wraps the track-selection and PSSH-discovery
+complexity, acquires the license off the caller thread, and emits a ready-to-enqueue
+`DownloadRequest`.
 
 ```kotlin
-object MuxOfflineDownloads {
-    /** Prepare + acquire license + enqueue to MuxDownloadService. id = playbackId. */
-    fun startDownload(context: Context, mediaItem: MediaItem)
-
-    fun remove(context: Context, contentId: String)        // DownloadService.sendRemoveDownload(…, MuxDownloadService::class)
-    fun pauseAll(context: Context)                          // sendPauseDownloads
-    fun resumeAll(context: Context)                         // sendResumeDownloads
-    fun downloadManager(context: Context): DownloadManager  // for addListener / DownloadIndex queries
+class MuxDrmDownloadCallback(
+    private val capture: CapturingPlaylistParserFactory,
+    private val drmProvider: MuxDrmSessionManagerProvider,
+    private val mediaItem: MediaItem,
+    private val ioExecutor: Executor,
+    private val onReady: (DownloadRequest) -> Unit,
+    private val onError: (IOException) -> Unit,
+) : DownloadHelper.Callback {
+    override fun onPrepared(helper: DownloadHelper, tracksInfoAvailable: Boolean) {
+        // 1. select tracks — top video (+ default audio); audio renditions deferred (§4)
+        // 2. videoKey = capture.videoKey  (the #EXT-X-KEY PSSH; §2.4)
+        // 3. ioExecutor: drmProvider.offlineLicenseHelper(mediaItem)?.downloadLicense(format) → keySetId
+        // 4. request = helper.getDownloadRequest(data).copyWithKeySetId(keySetId)
+        // 5. onReady(request); helper.release()
+    }
+    override fun onPrepareError(helper: DownloadHelper, e: IOException) = onError(e)
 }
 ```
 
+Acquisition runs on `ioExecutor` because `onPrepared` is delivered on the caller's looper and
+`OfflineLicenseHelper.downloadLicense` blocks. DRM content with a null `capture.videoKey` is an
+error path (→ `onError`).
+
+### 1.5 License seam — `offlineLicenseHelper` (provider extension)
+
+Extension on `MuxDrmSessionManagerProvider`, reusing its public `drmHttpDataSourceFactory` /
+`logger` + the `MediaItem` getters + the public `MuxDrmCallback`. Leaves the online provider
+untouched; no real duplication.
+
 ```kotlin
-// caller's whole world:
-MuxOfflineDownloads.startDownload(context, mediaItem)
-MuxOfflineDownloads.downloadManager(context).addListener(myListener)   // observe progress/state
+internal fun MuxDrmSessionManagerProvider.offlineLicenseHelper(mediaItem: MediaItem): OfflineLicenseHelper? {
+    val playbackId = mediaItem.getPlaybackId() ?: return null
+    val drmToken = mediaItem.getDrmToken() ?: return null
+    val sm = DefaultDrmSessionManager.Builder()
+        .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
+        .build(MuxDrmCallback(drmHttpDataSourceFactory, mediaItem.getLicenseUrlHost(), drmToken, playbackId, logger))
+    return OfflineLicenseHelper(sm, DrmSessionEventListener.EventDispatcher())
+}
 ```
 
-The mid-level `provider.createDownloadHelper` (§1.5) and the low-level pieces (§1.2–1.3) stay
-public for integrations that don't want the service or need custom track selection.
+### 1.6 Wired helper — `createHlsDownloadHelper` (internal)
+
+**Internal**, not part of the public API — the public factory is `createDownloadHelper` (§1.2).
+Builds a `DownloadHelper` with the observer parser, DRM provider, and download cache wired in.
+`capture` is an explicit (defaulted) param so an in-module caller — or §1.2 — can share one
+instance between the helper and the callback.
+
+```kotlin
+internal fun createHlsDownloadHelper(
+    context: Context,
+    mediaItem: MediaItem,
+    drmProvider: DrmSessionManagerProvider,         // base type — reusable
+    store: OfflineDownloadStore,
+    upstream: DataSource.Factory,
+    renderersFactory: RenderersFactory = DefaultRenderersFactory(context),
+    capture: CapturingPlaylistParserFactory = CapturingPlaylistParserFactory(),
+): DownloadHelper =
+    DownloadHelper.Factory()
+        .setRenderersFactory(renderersFactory)
+        .create(
+            HlsMediaSource.Factory(store.cacheDataSourceFactory(upstream))
+                .setPlaylistParserFactory(capture)
+                .setDrmSessionManagerProvider(drmProvider)
+                .createMediaSource(mediaItem)
+        )
+```
+
+### 1.7 Storage — `OfflineDownloadStore`
+
+Process-wide singleton owning the Media3 storage primitives. `SimpleCache` permits one instance
+per directory (so this must be a singleton), and it is a **separate cache from the smart-cache**
+(`MuxPlayerCache`), using `NoOpCacheEvictor` so downloads are never LRU-evicted.
+
+```kotlin
+class OfflineDownloadStore private constructor(
+    val databaseProvider: DatabaseProvider,    // StandaloneDatabaseProvider — shared
+    val downloadCache: Cache,                   // SimpleCache(dir, NoOpCacheEvictor(), databaseProvider)
+    val downloadManager: DownloadManager,       // DownloadManager(ctx, DefaultDownloadIndex(databaseProvider), …)
+    val ioExecutor: Executor,                   // opinionated infra — used by §1.2
+    val httpDataSourceFactory: DataSource.Factory, // default upstream for playlist/segment fetch
+) {
+    /** Backs both segment download and offline playback reads. Defaults upstream to httpDataSourceFactory. */
+    fun cacheDataSourceFactory(
+        upstream: DataSource.Factory = httpDataSourceFactory,
+    ): CacheDataSource.Factory
+
+    companion object { fun get(context: Context): OfflineDownloadStore }
+}
+```
+
+The **license is not stored here** — for single-key v1 it rides `DownloadRequest.keySetId` in
+the `DownloadIndex` the `DownloadManager` already owns (§2.2). The store is also where the
+**opinionated infra lives** (the IO `Executor` and the default upstream HTTP factory) so §1.2
+needn't inject them, and **`MuxDownloadService` (§1.3) draws its `DownloadManager` from here**.
 
 ## 2. Background: the added PSSH-extraction logic
 
@@ -327,7 +332,7 @@ serializable **`DownloadRequest`**.
   them to a SQLite `DownloadIndex`, runs a queue (retries, `Requirements`), creates a `Downloader`
   per request via `downloaderFactory.createDownloader(request)` (`:1015`), emits `Download` state.
 - **`DownloadService`** — foreground `Service` wrapper; `DownloadService.sendAddDownload(...)` is the
-  usual way the request reaches `addDownload(...)`. (The SDK ships one — §1.6.)
+  usual way the request reaches `addDownload(...)`. (The SDK ships one — §1.3.)
 
 ```mermaid
 flowchart LR
@@ -430,7 +435,7 @@ fun HlsMediaPlaylist.widevineInitData(): DrmInitData? =
     }
 ```
 
-**Wiring** (the source side of §1.2/§1.5):
+**Wiring** (the source side of §1.6/§1.2):
 
 ```kotlin
 @Volatile var capturedVideoKey: DrmInitData? = null   // single key; parser runs on a loader thread
@@ -443,7 +448,7 @@ HlsMediaSource.Factory(dataSourceFactory)
     .createMediaSource(mediaItem)
 ```
 
-**License acquisition** reuses `MuxDrmCallback` (the §1.4 seam) so it hits the same Mux endpoint;
+**License acquisition** reuses `MuxDrmCallback` (the §1.5 seam) so it hits the same Mux endpoint;
 `OfflineLicenseHelper.downloadLicense(Format(capturedVideoKey))` returns the `keySetId`.
 
 **Playback restore.** Thread the stored `keySetId` into `MuxDrmSessionManagerProvider` so its
@@ -502,7 +507,7 @@ sequenceDiagram
   and renew via `renewLicense(...)` for any license that carries an expiry.
 - **`MuxDrmCallback` construction at download time** needs `playbackId` / `drmToken` /
   custom-domain from the `MediaItem` — confirmed available via the existing `MediaItem`
-  extension getters, so §1.4 builds the callback directly.
+  extension getters, so §1.5 builds the callback directly.
 
 ## 4. Deferred: encrypted audio (multi-key)
 
@@ -547,42 +552,23 @@ All read the **same** source: the segment-level `DrmInitData` decoded from `#EXT
   single video variant regardless — the §2.4 observer reading `variants[0]` is correct (§3).
 - ~~Confirm `MuxDrmCallback`'s inputs are reachable from the `MediaItem`.~~ **Resolved:**
   `playbackId` / `drmToken` / custom-domain are available via the existing `MediaItem` extension
-  getters; §1.4 builds the callback from them.
+  getters; §1.5 builds the callback from them.
 - ~~Does the `drmToken` authorize a persistent/offline license?~~ **Resolved:** yes — the Mux DRM
   service issues persistent offline licenses, so the acquired `keySetId` is durable (§3).
 
 **Storage / lifecycle:**
-- Cache + index live in `OfflineDownloadStore` (§1.1); license rides `DownloadRequest.keySetId`
+- Cache + index live in `OfflineDownloadStore` (§1.7); license rides `DownloadRequest.keySetId`
   (§2.2). Remaining: renewal (`OfflineLicenseHelper.renewLicense`) and deletion when content is
   removed (evict cache + remove Download).
 
-**Download stack — decided (SDK provides `MuxDownloadService`, §1.6):**
+**Download stack — decided (SDK provides `MuxDownloadService`, §1.3):**
 - **Scheduler:** `PlatformScheduler` (JobScheduler; resumes across reboot/network, needs only
   `RECEIVE_BOOT_COMPLETED`).
 - **Manifest merge:** accepted — the `<service>` + `FOREGROUND_SERVICE*` / `RECEIVE_BOOT_COMPLETED`
   permissions merge into all SDK consumers.
 - **Notifications:** fully opinionated and SDK-owned — channel, progress, and terminal
-  (completed/failed) notifications, no customization hook (§1.6).
+  (completed/failed) notifications, no customization hook (§1.3).
 
 **Deferred (only if audio gets encrypted, §4):**
 - Does Mux's license server return a multi-key license (all KIDs in one response)? Decides
   whether the custom multi-key `DrmSessionManager` is ever needed.
-
-## 7. Media3 1.10.1 verification
-
-Every behavior this design relies on was diffed against 1.10.1 and is **unchanged**:
-
-| Fact | 1.9.2 → 1.10.1 |
-|---|---|
-| `deriveVideoFormat` doesn't set `drmInitData` (chunkless strips it) | unchanged (only `.setColorInfo(...)` added) |
-| `getPlaylistProtectionSchemes` strips PSSH data | identical |
-| `createTrackGroupArrayWithDrmInfo` only stamps crypto type | identical |
-| `HlsPlaylistParser` is `final`; `HlsDownloader.setManifestParser` takes the concrete type | unchanged |
-| `parseDrmSchemeData` Widevine PSSH extraction | logic unchanged (only a `MatcherCache` perf param threaded in) |
-| Tracker auto-loads only the primary media playlist | unchanged (now wrapped in `HlsRedundantGroup`, but still `variantRedundantGroups.get(0)`) |
-| `DownloadHelper.Factory.create(MediaSource)` injection point; `forMediaItem` deprecated | unchanged |
-| `OfflineLicenseHelper` API | identical |
-
-Only HLS changes in 1.10 are unrelated: **redundant/failover stream** support (new
-`HlsRedundantGroup`), a parse-perf `MatcherCache`, and HDR `colorInfo` on derived video formats.
-The sole consequence for this doc is that `DefaultHlsPlaylistTracker` line numbers shift.
