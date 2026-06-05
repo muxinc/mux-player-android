@@ -90,7 +90,8 @@ It owns a default `MuxDrmSessionManagerProvider`, so the customer passes only a 
 
 ```kotlin
 object MuxOfflineDownloads {
-    /** Prepare + acquire license + enqueue to MuxDownloadService. id = playbackId. */
+    /** Downloads the top video variant + every audio & subtitle rendition; acquires the license;
+     *  enqueues to MuxDownloadService. id = playbackId. */
     fun startDownload(context: Context, mediaItem: MediaItem)
 
     fun remove(context: Context, playbackId: String)       // DownloadService.sendRemoveDownload(…, MuxDownloadService::class)
@@ -212,7 +213,7 @@ class MuxDrmDownloadCallback(
     private val onError: (IOException) -> Unit,
 ) : DownloadHelper.Callback {
     override fun onPrepared(helper: DownloadHelper, tracksInfoAvailable: Boolean) {
-        // 1. select tracks — top video (+ default audio); audio renditions deferred (§4)
+        // 1. select tracks — top video + EVERY audio & subtitle rendition (see "Track selection" below)
         // 2. videoKey = capture.videoKey  (the #EXT-X-KEY PSSH; §2.4)
         // 3. ioExecutor: drmProvider.offlineLicenseHelper(mediaItem)?.downloadLicense(format) → keySetId
         // 4. request = helper.getDownloadRequest(mediaItem.getPlaybackId(), data)  // id = playbackId, NOT the default uri id
@@ -222,6 +223,32 @@ class MuxDrmDownloadCallback(
     override fun onPrepareError(helper: DownloadHelper, e: IOException) = onError(e)
 }
 ```
+
+**Track selection (step 1) — top video + every audio & subtitle rendition.** `DownloadHelper`'s
+default selection already picks the top video (forced highest bitrate) + one default audio. The
+callback then adds the rest: for each audio and text renderer, a `SelectionOverride` per track
+group, so **every** rendition is included. `getDownloadRequest()` unions these into the request's
+`streamKeys`, and `SegmentDownloader` downloads exactly those (`SegmentDownloader.java:225`).
+
+```kotlin
+val mti = helper.getMappedTrackInfo(0)
+for (r in 0 until mti.rendererCount) {
+    val type = mti.getRendererType(r)
+    if (type != C.TRACK_TYPE_AUDIO && type != C.TRACK_TYPE_TEXT) continue   // keep default top video
+    val groups = mti.getTrackGroups(r)
+    for (g in 0 until groups.length) {                       // each rendition = one group
+        helper.addTrackSelectionForSingleRenderer(
+            /* periodIndex = */ 0, r,
+            DownloadHelper.DEFAULT_TRACK_SELECTOR_PARAMETERS,
+            listOf(SelectionOverride(g, /* track = */ 0)),
+        )
+    }
+}
+```
+
+Audio and subtitles are **clear** today, so this affects only which *media* is fetched — the key
+story is unchanged (one video key, §2.4). Per-rendition *keys* would only arise if audio became
+encrypted (§4).
 
 Acquisition runs on `ioExecutor` because `onPrepared` is delivered on the caller's looper and
 `OfflineLicenseHelper.downloadLicense` blocks. DRM content with a null `capture.videoKey` is an
@@ -400,7 +427,7 @@ serializable **`DownloadRequest`**.
 flowchart LR
     subgraph plan [DownloadHelper — plan]
         direction TB
-        p1["prepare(callback)"] --> p2["onPrepared: select tracks, top video"]
+        p1["prepare(callback)"] --> p2["onPrepared: top video + all audio/subtitle renditions"]
         p2 --> p3["acquire license — our step → keySetId"]
         p3 --> p4["getDownloadRequest → DownloadRequest<br/>id, uri, streamKeys, keySetId"]
     end
@@ -573,24 +600,22 @@ sequenceDiagram
 
 ## 4. Deferred: encrypted audio (multi-key)
 
-**Audio is not encrypted today**, so v1 is single-key: one video key, captured per §2.4. This
-section *records but does not design* what changes if audio is encrypted later. With CMAF, each
-audio track is a separate `#EXT-X-MEDIA` rendition with its own media playlist and `#EXT-X-KEY`,
-so the problem becomes **1 video key + N audio keys**. This would be **a refactor no matter how
-v1 is built**, so we are deliberately not optimizing for it now. Sketch for reference:
+v1 already **downloads** every audio and subtitle rendition (§1.4) — but they're **clear**, so
+there is still only one key (video). This section records what changes if **audio becomes
+encrypted**. With CMAF each audio rendition is a separate `#EXT-X-MEDIA` with its own media
+playlist and `#EXT-X-KEY`, so the problem becomes **1 video key + N audio keys** — a refactor no
+matter how v1 is built, so we don't optimize for it now. Sketch:
 
-- **Download all audio renditions.** `DownloadHelper` selects one default audio; to grab every
-  rendition, after `onPrepared` add a `SelectionOverride` per audio track group via
-  `addTrackSelectionForSingleRenderer(...)` (`DownloadHelper.java:827`). `getDownloadRequest()`
-  unions selections into `streamKeys`; `SegmentDownloader` filters to exactly those
-  (`SegmentDownloader.java:225`).
+- **Selection is already done.** v1 selects the top video + all audio + all subtitle renditions
+  for download (§1.4); that doesn't change. What changes is needing a *key* per encrypted audio
+  rendition.
 - **Acquisition.** The §2.4 observer can't reach audio playlists — the tracker auto-loads only the
-  primary, and `HlsPlaylistParser` is `final` (`:76`) so `HlsDownloader`'s parses can't be
-  wrapped. Instead parse each *selected* media playlist
-  (`multivariant.copy(streamKeys).mediaPlaylistUrls`) through the **shared
-  `CacheDataSource.Factory`** so fetches dedup against the segment download, and acquire one
-  license per key.
-- **Storage.** A `Map<keyId, keySetId>` keyed by Widevine KID, instead of one `keySetId`.
+  primary, and `HlsPlaylistParser` is `final` (`:76`) so `HlsDownloader`'s parses can't be wrapped.
+  Instead parse each *selected* audio media playlist
+  (`multivariant.copy(streamKeys).mediaPlaylistUrls`) through the **shared `CacheDataSource.Factory`**
+  so fetches dedup against the segment download, and acquire one license per key.
+- **Storage.** A `Map<keyId, keySetId>` keyed by Widevine KID, instead of the single
+  `DownloadRequest.keySetId` (§2.2).
 - **Playback (the real cost).** `DefaultDrmSessionManager` and `DownloadRequest.keySetId` each
   hold exactly one `keySetId`, so multi-key needs a custom `DrmSessionManager` that maps each
   incoming `format.drmInitData`/KID to its stored `keySetId` and opens a restore session per key.
