@@ -20,7 +20,7 @@ read that first if the *why* matters more than the *what*.
 
 This section is ordered **call-site first**: the customer-visible entry points (§1.1 facade, §1.2
 `createDownloadHelper`) and the SDK-provided service (§1.3), then the internal implementation
-(§1.4–§1.7).
+(§1.4–§1.7), and download lifecycle — remove / keyset release / playback restore — in §1.8.
 
 All offline code lives in one new sub-package — **`com.mux.player.offline`** — in this module
 (no new Gradle module). Reuse in non-Mux Media3 integrations is **by example**: the reusable
@@ -93,7 +93,7 @@ object MuxOfflineDownloads {
     /** Prepare + acquire license + enqueue to MuxDownloadService. id = playbackId. */
     fun startDownload(context: Context, mediaItem: MediaItem)
 
-    fun remove(context: Context, contentId: String)        // DownloadService.sendRemoveDownload(…, MuxDownloadService::class)
+    fun remove(context: Context, playbackId: String)       // DownloadService.sendRemoveDownload(…, MuxDownloadService::class)
     fun pauseAll(context: Context)                          // sendPauseDownloads
     fun resumeAll(context: Context)                         // sendResumeDownloads
     fun downloadManager(context: Context): DownloadManager  // for addListener / DownloadIndex queries
@@ -297,6 +297,46 @@ The **license is not stored here** — for single-key v1 it rides `DownloadReque
 the `DownloadIndex` the `DownloadManager` already owns (§2.2). The store is also where the
 **opinionated infra lives** (the IO `Executor` and the default upstream HTTP factory) so §1.2
 needn't inject them, and **`MuxDownloadService` (§1.3) draws its `DownloadManager` from here**.
+
+### 1.8 Managing downloads & keysets (lifecycle)
+
+**Removal is writer-safe through the `DownloadManager` — never hand-delete the cache.** The
+manager keeps at most one `Task` per download id (`activeTasks`, `DownloadManager.java:693`) on a
+single handler thread. `removeDownload` moves the download to `STATE_REMOVING`, and
+`syncRemovingDownload` **cancels the in-flight download task and waits for it to stop before**
+starting the remove task, which runs `Downloader.remove()` → `cache.removeResource(...)` for every
+segment + the playlist (`SegmentDownloader.java:371,379`). A writing task and a deleting task for
+the same id therefore can never overlap, and bytes written during the
+`sendRemoveDownload`→process window are cleaned up by that same remove task. **Media deletion is
+race-free and already performed by removal** — there is nothing extra to delete.
+
+> ⚠️ Reaching into the `Cache`/filesystem from `remove()` would run on the **caller** thread,
+> outside the manager's serialization, racing the active download. If cleanup beyond
+> `Downloader.remove()` is ever needed, do it in `DownloadManager.Listener.onDownloadRemoved(...)`
+> (manager thread, post-removal) — never synchronously in `remove()`.
+
+**`remove(playbackId)`** captures the keySetId before the index entry is gone, deletes media via
+the manager, then releases the DRM keyset:
+
+```kotlin
+fun remove(context: Context, playbackId: String) {
+    val store = OfflineDownloadStore.get(context)
+    store.ioExecutor.execute {
+        val keySetId = store.downloadManager.downloadIndex.getDownload(playbackId)?.request?.keySetId
+        DownloadService.sendRemoveDownload(context, MuxDownloadService::class.java, playbackId, /* foreground = */ false)
+        keySetId?.let { releaseOfflineLicense(playbackId, it) }   // OfflineLicenseHelper.releaseLicense, MODE_RELEASE
+    }
+}
+```
+
+`releaseLicense` (`OfflineLicenseHelper.java:258`, MODE_RELEASE) touches MediaDrm + the license
+server, **not the disk cache**, so it cannot race cache writes — its order relative to
+`sendRemoveDownload` is irrelevant for safety. Its open wrinkle (the license-server creds aren't
+persisted in `DownloadRequest`, and the `drmToken` may be expired at removal time) is in §6.
+
+**Playback restore** is the mirror image: resolve the `keySetId` from the `DownloadIndex` by
+`playbackId` and hand it to `MuxDrmSessionManagerProvider` for `setMode(MODE_PLAYBACK, keySetId)`
+(§2.4). The store already exposes `downloadManager` (hence the index) for this lookup.
 
 ## 2. Background: the added PSSH-extraction logic
 
@@ -558,8 +598,12 @@ All read the **same** source: the segment-level `DrmInitData` decoded from `#EXT
 
 **Storage / lifecycle:**
 - Cache + index live in `OfflineDownloadStore` (§1.7); license rides `DownloadRequest.keySetId`
-  (§2.2). Remaining: renewal (`OfflineLicenseHelper.renewLicense`) and deletion when content is
-  removed (evict cache + remove Download).
+  (§2.2). Removal is writer-safe via `DownloadManager.removeDownload` (§1.8); renewal for
+  expiry-bearing licenses via `OfflineLicenseHelper.renewLicense` (§3).
+- **Keyset release on removal needs license-server creds not persisted in `DownloadRequest`**
+  (§1.8). Options: stash what's needed in `DownloadRequest.data` (persisted) to rebuild
+  `MuxDrmCallback`, vs. drop the local reference and accept a Widevine secure-store leak — and the
+  `drmToken` may be expired at removal time (server-policy question for the Mux DRM service).
 
 **Download stack — decided (SDK provides `MuxDownloadService`, §1.3):**
 - **Scheduler:** `PlatformScheduler` (JobScheduler; resumes across reboot/network, needs only
