@@ -95,19 +95,24 @@ It owns a default `MuxDrmSessionManagerProvider`, so the customer passes only a 
 
 ```kotlin
 object MuxOfflineDownloads {
+    // downloading & lifecycle — Java-callable via MuxOfflineDownloads.INSTANCE.*
     /** Downloads the top video variant + every audio & subtitle rendition; acquires the license;
      *  enqueues to MuxDownloadService. id = playbackId. */
     fun startDownload(context: Context, mediaItem: MediaItem)
-
-    fun remove(context: Context, playbackId: String)       // delete media + drop keyset (§1.8)
+    fun remove(context: Context, playbackId: String)        // delete media + drop keyset (§1.8)
     fun pauseAll(context: Context)                          // sendPauseDownloads
     fun resumeAll(context: Context)                         // sendResumeDownloads
-
-    // enumeration — keyed by playbackId (§1.9). suspend: each hits the SQLite index off-thread.
-    suspend fun downloads(context: Context): List<MuxDownload>
-    suspend fun downloaded(context: Context): List<MuxDownload>     // STATE_COMPLETED only
-    suspend fun download(context: Context, playbackId: String): MuxDownload?            // null if absent
     fun addListener(context: Context, listener: MuxDownload.Listener)   // live progress (non-blocking)
+
+    // enumeration (Kotlin) — keyed by playbackId (§1.9). suspend: each hits the SQLite index off-thread.
+    suspend fun downloads(context: Context): List<MuxDownload>
+    suspend fun downloaded(context: Context): List<MuxDownload>        // STATE_COMPLETED only
+    suspend fun download(context: Context, playbackId: String): MuxDownload?           // null if absent
+
+    // enumeration (Java) — same reads, returning Guava ListenableFuture (resolved on the store's ioExecutor)
+    fun downloadsFuture(context: Context): ListenableFuture<List<MuxDownload>>
+    fun downloadedFuture(context: Context): ListenableFuture<List<MuxDownload>>
+    fun downloadFuture(context: Context, playbackId: String): ListenableFuture<MuxDownload?>
 }
 ```
 
@@ -430,6 +435,15 @@ a background dispatcher (the store's `ioExecutor`) and maps `Download → MuxDow
 `request.id`. There is **no `isDownloaded`** — a `null` from `download(playbackId)` is the "not
 downloaded" signal. `addListener` (non-suspend) wraps `DownloadManager.Listener` for live progress
 of active downloads.
+
+**Java compat.** Each `suspend` read has a `*Future` twin — `downloadsFuture` / `downloadedFuture`
+/ `downloadFuture` — returning a Guava `ListenableFuture`. Both forms share one internal blocking
+query submitted to the store's `ioExecutor` (no coroutines on the Java path). Guava is already on
+the classpath via Media3 (whose own APIs use `ListenableFuture`); `CompletableFuture` is API 24,
+above our `minSdk 23`, so it's not an option. The facade stays a plain `object` with **no
+`@JvmStatic`** — Java calls via `MuxOfflineDownloads.INSTANCE.*`, which keeps the methods *instance*
+methods so they're mockable with standard tooling (`mockkObject` / inline Mockito) instead of
+requiring static mocking.
 
 **Offline playback — synchronous `MediaItem`, resolved by `MuxMediaSourceFactory`.** For
 mux-player-android users, MediaSource creation is wrapped entirely; the app never builds an offline
