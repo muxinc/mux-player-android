@@ -5,12 +5,12 @@ plugins {
 
 android {
   namespace = "com.mux.player.media3"
-  compileSdk = 36
+  compileSdk = 37
 
   defaultConfig {
     minSdk = 23
     //noinspection EditedTargetSdkVersion
-    targetSdk = 36
+    targetSdk = 37
     versionCode = 1
     versionName = "1.0"
 
