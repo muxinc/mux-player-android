@@ -44,7 +44,7 @@ android {
   sourceSets {
     getByName("androidTest") {
       // Important, can't get asset file in instrumentation test without this
-      assets.srcDir("src/main/assets")
+      assets.directories += "src/main/assets"
     }
   }
 
