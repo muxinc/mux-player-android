@@ -56,23 +56,23 @@ android {
 
 dependencies {
   implementation fileTree(dir: "libs", include: ["*.jar"])
-  implementation 'androidx.appcompat:appcompat:1.4.0'
-  implementation 'com.google.android.material:material:1.9.0'
-  implementation 'androidx.constraintlayout:constraintlayout:2.0.3'
-  implementation 'androidx.navigation:navigation-fragment:2.5.3'
-  implementation 'androidx.navigation:navigation-ui:2.5.3'
+  implementation libs.androidx.appcompat
+  implementation libs.material
+  implementation libs.androidx.constraintlayout
+  implementation libs.androidx.navigation.fragment
+  implementation libs.androidx.navigation.ui
 
-  androidTestImplementation 'androidx.test:runner:1.5.2'
-  androidTestImplementation 'androidx.test:rules:1.3.0'
+  androidTestImplementation libs.androidx.test.runner
+  androidTestImplementation libs.androidx.test.rules
   // Optional -- Hamcrest library
-  androidTestImplementation 'org.hamcrest:hamcrest-library:1.3'
+  androidTestImplementation libs.hamcrest.library
   // Optional -- UI testing with Espresso
-  androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+  androidTestImplementation libs.androidx.test.espresso.core
   // Optional -- UI testing with UI Automator
-  androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.2.0'
-  androidTestImplementation 'androidx.test.ext:junit:1.1.2'
+  androidTestImplementation libs.androidx.test.uiautomator
+  androidTestImplementation libs.androidx.test.ext.junit
 
-  api 'org.checkerframework:checker-qual:3.33.0'
+  api libs.checker.qual
   // Automated tests should always test the local module and not the maven dependency.
   implementation project(":library")
 }

@@ -1,7 +1,7 @@
 // TODO: Update this to kotlin after updating the distribution plugin extension
 plugins {
-  id 'com.android.library'
-  id 'com.mux.gradle.android.mux-android-distribution'
+  alias libs.plugins.android.library
+  alias libs.plugins.mux.android.distribution
 }
 
 android {
@@ -71,24 +71,21 @@ muxDistribution {
 
 dependencies {
 
-  def media3Version = "1.10.1"
-  def muxDataVariant = "at_1_10"
-  def muxDataVersion = "1.12.0"
-  api "androidx.media3:media3-common:${media3Version}"
-  api "androidx.media3:media3-exoplayer:${media3Version}"
-  api "androidx.media3:media3-ui:${media3Version}"
-  api "androidx.media3:media3-exoplayer-hls:${media3Version}"
-  api "androidx.media3:media3-cast:${media3Version}"
+  api libs.media3.common
+  api libs.media3.exoplayer
+  api libs.media3.ui
+  api libs.media3.exoplayer.hls
+  api libs.media3.cast
 
-  api("com.mux.stats.sdk.muxstats:data-media3-$muxDataVariant:${muxDataVersion}")
+  api libs.mux.data.media3
 
-  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0"
+  implementation libs.kotlinx.coroutines.android
 
-  testImplementation 'junit:junit:4.13.2'
-  testImplementation 'androidx.test.ext:junit:1.3.0'
-  testImplementation "io.mockk:mockk:1.14.11"
-  testImplementation 'org.robolectric:robolectric:4.16.1'
+  testImplementation libs.junit
+  testImplementation libs.androidx.test.ext.junit
+  testImplementation libs.mockk
+  testImplementation libs.robolectric
 
-  androidTestImplementation 'androidx.test.ext:junit:1.3.0'
-  androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
+  androidTestImplementation libs.androidx.test.ext.junit
+  androidTestImplementation libs.androidx.test.espresso.core
 }
