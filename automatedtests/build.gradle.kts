@@ -1,50 +1,50 @@
-apply plugin: 'com.android.application'
-
+plugins {
+  alias(libs.plugins.android.application)
+}
 
 android {
   namespace = "com.mux.player.media3"
   compileSdk = 37
 
   defaultConfig {
-    applicationId "com.mux.player.media3"
-    minSdkVersion 23
+    applicationId = "com.mux.player.media3"
+    minSdk = 23
     //noinspection EditedTargetSdkVersion
     targetSdk = 37
-    versionCode 1
-    versionName "1.0"
-    multiDexEnabled true
-    testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    versionCode = 1
+    versionName = "1.0"
+    multiDexEnabled = true
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     buildConfigField("boolean", "SHOULD_REPORT_INSTRUMENTATION_TEST_EVENTS_TO_SERVER", "true")
     buildConfigField("String", "INSTRUMENTATION_TEST_ENVIRONMENT_KEY", "\"YOUR_KEY_HERE\"")
   }
 
   buildFeatures {
-    buildConfig true
+    buildConfig = true
   }
 
   buildTypes {
     debug {
-      minifyEnabled false
+      isMinifyEnabled = false
     }
   }
-
 
   testOptions {
     // Changes the directory where Gradle saves test reports. By default, Gradle saves test reports
     // in the path_to_your_project/module_name/build/outputs/reports/ directory.
     // '$rootDir' sets the path relative to the root directory of the current project.
-    reportDir "./automated_test_results/reports"
+    reportDir = "./automated_test_results/reports"
     // Changes the directory where Gradle saves test results. By default, Gradle saves test results
     // in the path_to_your_project/module_name/build/outputs/test-results/ directory.
     // '$rootDir' sets the path relative to the root directory of the current project.
-    resultsDir "./automated_test_results/results"
+    resultsDir = "./automated_test_results/results"
   }
 
   sourceSets {
-    androidTest {
+    getByName("androidTest") {
       // Important, can't get asset file in instrumentation test without this
-      assets.srcDirs += 'src/main/assets'
+      assets.directories += "src/main/assets"
     }
   }
 
@@ -55,24 +55,24 @@ android {
 }
 
 dependencies {
-  implementation fileTree(dir: "libs", include: ["*.jar"])
-  implementation 'androidx.appcompat:appcompat:1.4.0'
-  implementation 'com.google.android.material:material:1.9.0'
-  implementation 'androidx.constraintlayout:constraintlayout:2.0.3'
-  implementation 'androidx.navigation:navigation-fragment:2.5.3'
-  implementation 'androidx.navigation:navigation-ui:2.5.3'
+  implementation(fileTree("libs") { include("*.jar") })
+  implementation(libs.androidx.appcompat)
+  implementation(libs.material)
+  implementation(libs.androidx.constraintlayout)
+  implementation(libs.androidx.navigation.fragment)
+  implementation(libs.androidx.navigation.ui)
 
-  androidTestImplementation 'androidx.test:runner:1.5.2'
-  androidTestImplementation 'androidx.test:rules:1.3.0'
+  androidTestImplementation(libs.androidx.test.runner)
+  androidTestImplementation(libs.androidx.test.rules)
   // Optional -- Hamcrest library
-  androidTestImplementation 'org.hamcrest:hamcrest-library:1.3'
+  androidTestImplementation(libs.hamcrest.library)
   // Optional -- UI testing with Espresso
-  androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+  androidTestImplementation(libs.androidx.test.espresso.core)
   // Optional -- UI testing with UI Automator
-  androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.2.0'
-  androidTestImplementation 'androidx.test.ext:junit:1.1.2'
+  androidTestImplementation(libs.androidx.test.uiautomator)
+  androidTestImplementation(libs.androidx.test.ext.junit)
 
-  api 'org.checkerframework:checker-qual:3.33.0'
+  api(libs.checker.qual)
   // Automated tests should always test the local module and not the maven dependency.
-  implementation project(":library")
+  implementation(project(":library"))
 }
