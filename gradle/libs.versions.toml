@@ -2,6 +2,7 @@
 agp = "9.2.1"
 kotlin = "2.2.10"
 muxAndroidDistribution = "1.4.0"
+dokka = "2.2.0"
 
 coreKtx = "1.13.1"
 appcompat = "1.7.0"
@@ -56,6 +57,7 @@ hamcrest-library = { module = "org.hamcrest:hamcrest-library", version.ref = "ha
 checker-qual = { module = "org.checkerframework:checker-qual", version.ref = "checkerQual" }
 
 [plugins]
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

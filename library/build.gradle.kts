@@ -69,6 +69,12 @@ muxDistribution {
   }
 }
 
+tasks.register("dokkaHtml") {
+  group = "documentation"
+  description = "Alias for dokkaGenerateHtml (Dokka v2)."
+  dependsOn("dokkaGenerateHtml")
+}
+
 dependencies {
   api(libs.media3.common)
   api(libs.media3.exoplayer)
