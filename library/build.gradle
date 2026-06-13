@@ -1,18 +1,15 @@
 // TODO: Update this to kotlin after updating the distribution plugin extension
 plugins {
   id 'com.android.library'
-  id 'org.jetbrains.kotlin.android'
   id 'com.mux.gradle.android.mux-android-distribution'
 }
 
 android {
   namespace 'com.mux.player'
-  compileSdk = 36
+  compileSdk = 37
 
   defaultConfig {
     minSdk = 23
-    //noinspection EditedTargetSdkVersion
-    targetSdk = 36
 
     testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     consumerProguardFiles "consumer-rules.pro"
@@ -29,9 +26,6 @@ android {
   compileOptions {
     sourceCompatibility JavaVersion.VERSION_1_8
     targetCompatibility JavaVersion.VERSION_1_8
-  }
-  kotlinOptions {
-    jvmTarget = '1.8'
   }
 }
 
