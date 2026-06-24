@@ -120,7 +120,7 @@ class MuxDataSource private constructor(
 
     val upstreamBytes = openAndInitFromRemote(revalidateSpec, revalidatingDataSource)
 
-    return if (upstream.responseCode != 304) {
+    return if (revalidatingDataSource.responseCode != 304) {
       // Entry wasn't valid anymore, but we did a GET so the body's ready to read and we're done
 
       // todo - we *could* delete the row here, but consider that stale items can be used if
@@ -130,7 +130,6 @@ class MuxDataSource private constructor(
       upstreamBytes
     } else {
       // Entry was still valid, so read from cache instead
-      upstream.close()
       revalidatingDataSource.close()
 
       openAndInitFromCache(readHandle)
