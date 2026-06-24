@@ -12,6 +12,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.HttpDataSource.HttpDataSourceException
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
+import androidx.media3.datasource.TransferListener
 import com.google.common.net.HttpHeaders
 import com.mux.player.internal.cache.MuxPlayerCache
 import com.mux.player.internal.cache.MuxPlayerCache.ReadHandle
@@ -24,9 +25,9 @@ import java.net.URL
 
 @OptIn(UnstableApi::class)
 class MuxDataSource private constructor(
-  private val upstreamSrcFac: HttpDataSource.Factory,
+  upstreamSrcFac: HttpDataSource.Factory,
   private val muxPlayerCache: MuxPlayerCache,
-) : BaseDataSource(false) {
+) : DataSource {
 
   /**
    * Creates a new instance of [MuxDataSource]. The upstream data source will be invoked for any
@@ -48,7 +49,9 @@ class MuxDataSource private constructor(
   private var dataSpec: DataSpec? = null
 
   private var respondingFromCache: Boolean = false
-  private var upstream: HttpDataSource? = null // only present if we need to request something
+  private val upstream = upstreamSrcFac.createDataSource()
+  private val revalidatingDataSource = RevalidatingDataSource.Factory().createDataSource()
+
   private var cacheReader: ReadHandle? = null
   private var cacheWriter: WriteHandle? = null
 
@@ -73,6 +76,11 @@ class MuxDataSource private constructor(
     }
   }
 
+  override fun addTransferListener(transferListener: TransferListener) {
+    upstream.addTransferListener(transferListener)
+    revalidatingDataSource.addTransferListener(transferListener)
+  }
+
   override fun open(dataSpec: DataSpec): Long {
     this.dataSpec = dataSpec;
 
@@ -81,7 +89,7 @@ class MuxDataSource private constructor(
 
     return if (readHandle == null) {
       // cache miss
-      openAndInitFromRemote(dataSpec, upstreamSrcFac)
+      openAndInitFromRemote(dataSpec, upstream)
     } else if (muxPlayerCache.revalidateRequired(nowUtc, readHandle)) {
       // need to revalidate
       openAndInitRevalidating(dataSpec, readHandle)
@@ -96,7 +104,8 @@ class MuxDataSource private constructor(
   override fun close() {
     cacheReader?.close()
     cacheWriter?.close()
-    upstream?.close()
+    upstream.close()
+    revalidatingDataSource.close()
   }
 
   private fun openAndInitRevalidating(dataSpec: DataSpec, readHandle: ReadHandle): Long {
@@ -109,8 +118,7 @@ class MuxDataSource private constructor(
       .setHttpRequestHeaders(revalidateRequestHeaders)
       .build()
 
-    val upstreamBytes = openAndInitFromRemote(revalidateSpec, RevalidatingDataSource.Factory())
-    val upstream = this.upstream!! // set by initAndOpenUpstream
+    val upstreamBytes = openAndInitFromRemote(revalidateSpec, revalidatingDataSource)
 
     return if (upstream.responseCode != 304) {
       // Entry wasn't valid anymore, but we did a GET so the body's ready to read and we're done
@@ -123,21 +131,18 @@ class MuxDataSource private constructor(
     } else {
       // Entry was still valid, so read from cache instead
       upstream.close()
-      this.upstream = null
+      revalidatingDataSource.close()
 
       openAndInitFromCache(readHandle)
     }
   }
 
-  private fun openAndInitFromRemote(dataSpec: DataSpec, fac: HttpDataSource.Factory): Long {
+  private fun openAndInitFromRemote(dataSpec: DataSpec, remoteDataSrc: HttpDataSource): Long {
     respondingFromCache = false
-    val upstream = fac.createDataSource()
-
-    this.upstream = upstream
-    val available = upstream.open(dataSpec)
+    val available = remoteDataSrc.open(dataSpec)
     cacheWriter = muxPlayerCache.startWriting(
       dataSpec.uri.toString(),
-      upstream.responseHeaders,
+      remoteDataSrc.responseHeaders,
     )
     return available
   }
