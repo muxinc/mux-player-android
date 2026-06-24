@@ -130,6 +130,7 @@ class MuxDataSource private constructor(
       upstreamBytes
     } else {
       // Entry was still valid, so read from cache instead
+      upstream.close()
       revalidatingDataSource.close()
 
       openAndInitFromCache(readHandle)
