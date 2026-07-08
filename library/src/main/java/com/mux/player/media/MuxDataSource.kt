@@ -25,7 +25,7 @@ import java.net.URL
 
 @OptIn(UnstableApi::class)
 class MuxDataSource private constructor(
-  upstreamSrcFac: HttpDataSource.Factory,
+  private val upstreamSrcFac: HttpDataSource.Factory,
   private val muxPlayerCache: MuxPlayerCache,
 ) : DataSource {
 
@@ -49,11 +49,11 @@ class MuxDataSource private constructor(
   private var dataSpec: DataSpec? = null
 
   private var respondingFromCache: Boolean = false
-  private val upstream = upstreamSrcFac.createDataSource()
-  private val revalidatingDataSource = RevalidatingDataSource.Factory().createDataSource()
-
+  private var upstream: HttpDataSource? = null // only present if we need to request something
   private var cacheReader: ReadHandle? = null
   private var cacheWriter: WriteHandle? = null
+
+  private val transferListeners = mutableListOf<TransferListener>()
 
   override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
     return if (respondingFromCache) {
@@ -77,8 +77,7 @@ class MuxDataSource private constructor(
   }
 
   override fun addTransferListener(transferListener: TransferListener) {
-    upstream.addTransferListener(transferListener)
-    revalidatingDataSource.addTransferListener(transferListener)
+    transferListeners += transferListener
   }
 
   override fun open(dataSpec: DataSpec): Long {
@@ -89,7 +88,7 @@ class MuxDataSource private constructor(
 
     return if (readHandle == null) {
       // cache miss
-      openAndInitFromRemote(dataSpec, upstream)
+      openAndInitFromRemote(dataSpec, upstreamSrcFac)
     } else if (muxPlayerCache.revalidateRequired(nowUtc, readHandle)) {
       // need to revalidate
       openAndInitRevalidating(dataSpec, readHandle)
@@ -104,8 +103,7 @@ class MuxDataSource private constructor(
   override fun close() {
     cacheReader?.close()
     cacheWriter?.close()
-    upstream.close()
-    revalidatingDataSource.close()
+    upstream?.close()
   }
 
   private fun openAndInitRevalidating(dataSpec: DataSpec, readHandle: ReadHandle): Long {
@@ -118,9 +116,10 @@ class MuxDataSource private constructor(
       .setHttpRequestHeaders(revalidateRequestHeaders)
       .build()
 
-    val upstreamBytes = openAndInitFromRemote(revalidateSpec, revalidatingDataSource)
+    val upstreamBytes = openAndInitFromRemote(revalidateSpec, RevalidatingDataSource.Factory())
+    val upstream = this.upstream!! // set by openAndInitFromRemote
 
-    return if (revalidatingDataSource.responseCode != 304) {
+    return if (upstream.responseCode != 304) {
       // Entry wasn't valid anymore, but we did a GET so the body's ready to read and we're done
 
       // todo - we *could* delete the row here, but consider that stale items can be used if
@@ -131,18 +130,21 @@ class MuxDataSource private constructor(
     } else {
       // Entry was still valid, so read from cache instead
       upstream.close()
-      revalidatingDataSource.close()
+      this.upstream = null
 
       openAndInitFromCache(readHandle)
     }
   }
 
-  private fun openAndInitFromRemote(dataSpec: DataSpec, remoteDataSrc: HttpDataSource): Long {
+  private fun openAndInitFromRemote(dataSpec: DataSpec, fac: HttpDataSource.Factory): Long {
     respondingFromCache = false
-    val available = remoteDataSrc.open(dataSpec)
+    val upstream = createDataSource(fac)
+
+    this.upstream = upstream
+    val available = upstream.open(dataSpec)
     cacheWriter = muxPlayerCache.startWriting(
       dataSpec.uri.toString(),
-      remoteDataSrc.responseHeaders,
+      upstream.responseHeaders,
     )
     return available
   }
@@ -151,6 +153,16 @@ class MuxDataSource private constructor(
     respondingFromCache = true
     this.cacheReader = readHandle
     return readHandle.fileSize
+  }
+
+  /**
+   * Creates a delegate [HttpDataSource] from the given factory, transitively adding all of our
+   * registered [TransferListener]s so that bandwidth from the delegate is still metered.
+   */
+  private fun createDataSource(fac: HttpDataSource.Factory): HttpDataSource {
+    val dataSource = fac.createDataSource()
+    transferListeners.forEach { dataSource.addTransferListener(it) }
+    return dataSource
   }
 }
 
