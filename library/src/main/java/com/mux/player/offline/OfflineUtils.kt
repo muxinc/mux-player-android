@@ -26,9 +26,7 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.source.WrappingMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.upstream.ParsingLoadable
-import com.mux.player.internal.getDrmToken
-import com.mux.player.internal.getLicenseUrlHost
-import com.mux.player.internal.getPlaybackId
+import com.mux.player.media.MediaItems.MUX_VIDEO_DEFAULT_DOMAIN
 import com.mux.player.media.MuxDrmCallback
 import com.mux.player.media.MuxDrmSessionManagerProvider
 import java.io.IOException
@@ -66,26 +64,28 @@ fun createMuxHlsDownloadHelper(
  * The offline-DRM license seam (design §1.5): builds an [OfflineLicenseHelper] that acquires a
  * *persistent* Widevine license from the same Mux endpoint the online provider uses, reusing the
  * provider's public [MuxDrmSessionManagerProvider.drmHttpDataSourceFactory] /
- * [MuxDrmSessionManagerProvider.logger], the [MediaItem] getters, and [MuxDrmCallback].
- *
- * Returns null for a [mediaItem] that isn't DRM-configured (no `playbackId` / `drmToken`).
+ * [MuxDrmSessionManagerProvider.logger] and [MuxDrmCallback].
  *
  * NOTE: [OfflineLicenseHelper.downloadLicense] blocks, so call it off the caller's looper (the
  * callback below runs it on its `ioExecutor`). Release the helper when done.
+ *
+ * @param playbackId the Mux playback ID being downloaded.
+ * @param drmToken a DRM token authorizing a persistent (offline) license for [playbackId].
+ * @param licenseEndpointHost the Mux license server host, e.g. `license.mux.com`.
  */
 @OptIn(UnstableApi::class)
 internal fun MuxDrmSessionManagerProvider.offlineLicenseHelper(
-  mediaItem: MediaItem,
-): OfflineLicenseHelper? {
-  val playbackId = mediaItem.getPlaybackId() ?: return null
-  val drmToken = mediaItem.getDrmToken() ?: return null
+  playbackId: String,
+  drmToken: String,
+  licenseEndpointHost: String = "license.$MUX_VIDEO_DEFAULT_DOMAIN",
+): OfflineLicenseHelper {
   val sessionManager = DefaultDrmSessionManager.Builder()
     .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
     .setMultiSession(false)
     .build(
       MuxDrmCallback(
         drmHttpDataSourceFactory,
-        licenseEndpointHost = mediaItem.getLicenseUrlHost(),
+        licenseEndpointHost = licenseEndpointHost,
         drmToken = drmToken,
         playbackId = playbackId,
         logger = logger,
@@ -110,12 +110,17 @@ internal fun MuxDrmSessionManagerProvider.offlineLicenseHelper(
  *
  * @param mediaSource the same capturing source passed to [createMuxHlsDownloadHelper]; its captures
  *   are complete by the time this callback fires.
+ * @param playbackId the Mux playback ID being downloaded; used as the [DownloadRequest] id.
+ * @param drmToken a DRM token authorizing a persistent license, or null for clear content.
+ * @param licenseEndpointHost the Mux license server host, e.g. `license.mux.com`.
  */
 @OptIn(UnstableApi::class)
 class MuxDownloadCallback(
   private val mediaSource: MuxOfflineCmafHlsMediaSource,
   private val drmProvider: MuxDrmSessionManagerProvider,
-  private val mediaItem: MediaItem,
+  private val playbackId: String,
+  private val drmToken: String?,
+  private val licenseEndpointHost: String = "license.$MUX_VIDEO_DEFAULT_DOMAIN",
   private val ioExecutor: Executor,
   private val onReady: (DownloadRequest) -> Unit,
   private val onError: (IOException) -> Unit,
@@ -133,7 +138,7 @@ class MuxDownloadCallback(
     if (videoDrmInitData != null) {
       acquireLicenseAsync(helper, videoDrmInitData)
     } else {
-      onReady(helper.getDownloadRequest(requireNotNull(mediaItem.getPlaybackId()), null))
+      onReady(helper.getDownloadRequest(playbackId, null))
     }
   }
 
@@ -146,10 +151,7 @@ class MuxDownloadCallback(
     ioExecutor.execute {
       try {
         val keySetId = acquireLicense(videoDrmInitData)
-        val request = helper.getDownloadRequest(
-          requireNotNull(mediaItem.getPlaybackId()),
-          null
-        ).copyWithKeySetId(keySetId)
+        val request = helper.getDownloadRequest(playbackId, null).copyWithKeySetId(keySetId)
         onReady(request)
       } catch (e: IOException) {
         onError(e)
@@ -164,8 +166,9 @@ class MuxDownloadCallback(
 
   /** Acquires a persistent offline license for [videoDrmInitData], returning its `keySetId`. */
   private fun acquireLicense(videoDrmInitData: DrmInitData): ByteArray {
-    val licenseHelper = drmProvider.offlineLicenseHelper(mediaItem)
-      ?: throw IOException("mediaItem is not DRM-configured (missing playbackId/drmToken)")
+    val token = drmToken
+      ?: throw IOException("cannot acquire an offline license without a DRM token")
+    val licenseHelper = drmProvider.offlineLicenseHelper(playbackId, token, licenseEndpointHost)
     return try {
       val format = Format.Builder().setDrmInitData(videoDrmInitData).build()
       licenseHelper.downloadLicense(format)
