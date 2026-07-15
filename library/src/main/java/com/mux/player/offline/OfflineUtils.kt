@@ -35,7 +35,7 @@ import java.util.concurrent.Executor
 
 // TODO: Many of these functions should be internal-viz
 // Preliminary Design Note: it's my hope that most of the logic a custom integration would need will
-//  be here, and could be lifted out without our storage or playback-oriented code
+//  be here, and could be lifted out without our storage, playback, or task-management code
 
 /**
  * Creates a [DownloadHelper] that can download Mux Video HLS streams, including DRM-protected ones.
@@ -61,13 +61,12 @@ fun createMuxHlsDownloadHelper(
     .create(mediaSource)
 
 /**
- * The offline-DRM license seam (design §1.5): builds an [OfflineLicenseHelper] that acquires a
- * *persistent* Widevine license from the same Mux endpoint the online provider uses, reusing the
- * provider's public [MuxDrmSessionManagerProvider.drmHttpDataSourceFactory] /
+ * Builds an [OfflineLicenseHelper] that acquires a *persistent* Widevine license from the same
+ * Mux endpoint the online provider uses, reusing the provider's public
+ * [MuxDrmSessionManagerProvider.drmHttpDataSourceFactory] /
  * [MuxDrmSessionManagerProvider.logger] and [MuxDrmCallback].
  *
- * NOTE: [OfflineLicenseHelper.downloadLicense] blocks, so call it off the caller's looper (the
- * callback below runs it on its `ioExecutor`). Release the helper when done.
+ * NOTE: [OfflineLicenseHelper.downloadLicense] blocks, so call it off the caller's looper
  *
  * @param playbackId the Mux playback ID being downloaded.
  * @param drmToken a DRM token authorizing a persistent (offline) license for [playbackId].
@@ -95,7 +94,7 @@ internal fun MuxDrmSessionManagerProvider.offlineLicenseHelper(
 }
 
 /**
- * The offline-download prepare callback
+ * Offline-download prepare callback that works with Mux's CMAF HLS VOD streams, including DRM ones
  *
  * 1. selects all audio and subtitle renditions for download
  * 2. reads the captured video [DrmInitData] off [mediaSource] — the multivariant
