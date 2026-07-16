@@ -4,6 +4,8 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.media.MediaDrm
+import android.os.Handler
+import android.os.HandlerThread
 import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Timeline
@@ -35,7 +37,10 @@ import com.mux.player.offline.MuxOfflineCmafHlsMediaSource
 import com.mux.player.offline.createMuxHlsDownloadHelper
 import com.mux.player.util.LoggingHttpDataSource
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.android.asCoroutineDispatcher
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -57,7 +62,8 @@ class OfflineDownloadInstrumentationTests {
     private val DRM_TOKEN = ""
     private val DRM_PLAYBACK_ID = ""
 
-    private val CLEARTEXT_PLAYBACK_ID = "KyU4B3aJB01jjk00EmZBkp9nRkeaZyTblN3EwmjhIqkcw"
+    private val CLEARTEXT_PLAYBACK_ID = "5ICwECLW8900gMTi5eaOkWdYvOkGhtKyBY02uRCT6FOyE" // cmaf
+    //private val CLEARTEXT_PLAYBACK_ID = "KyU4B3aJB01jjk00EmZBkp9nRkeaZyTblN3EwmjhIqkcw"
     //private val CLEARTEXT_PLAYBACK_ID = "zyII9g3ndjv9jOQi7JQh37oAUfLok2kvtdHmlGBPuVc" //long
 
     private val CACHE_SUBDIR = "test_downloads"
@@ -106,7 +112,12 @@ class OfflineDownloadInstrumentationTests {
 
   @Test
   fun testCleartextDownload() = runTest {
-    val mediaItem = MediaItems.fromMuxPlaybackId(playbackId = CLEARTEXT_PLAYBACK_ID)
+//    val mediaItem = MediaItems.fromMuxPlaybackId(playbackId = CLEARTEXT_PLAYBACK_ID)
+    val mediaItem = MediaItems.fromMuxPlaybackId(
+      playbackId = CLEARTEXT_PLAYBACK_ID,
+//      assetStartTime = 0.0,
+//      assetEndTime = 35.0
+    )
     val clearTextDrmSessionManagerProvider = { _: MediaItem -> DrmSessionManager.DRM_UNSUPPORTED }
     val fileMediaSource = MuxOfflineCmafHlsMediaSource.create(
       dataSourceFactory = LoggingHttpDataSource.Factory(DefaultHttpDataSource.Factory(), tag = "MediaSrcHttp", logging = false),
@@ -198,16 +209,25 @@ class OfflineDownloadInstrumentationTests {
     // TODO: Probably do something else, like query the download index or something?
     // prepare the disk media source to inspect the downloaded content
     val completedPrepareFromDisk = CompletableDeferred<Timeline>()
-    diskMediaSource.prepareSource(
-      /* caller = */ { _, timeline ->
-        Log.d(TAG, "Timeline: $timeline")
-      },
-      /* mediaTransferListener = */ null,
-      /* playerId = */ PlayerId("test-player")
-    )
+    val prepareThread = HandlerThread("test-download").also { it.start() }
+    launch(Handler(prepareThread.looper).asCoroutineDispatcher("test-download")) {
+      try {
+        diskMediaSource.prepareSource(
+          /* caller = */ { _, timeline ->
+            Log.d(TAG, "Timeline: $timeline")
+            completedPrepareFromDisk.complete(timeline)
+          },
+          /* mediaTransferListener = */ null,
+          /* playerId = */ PlayerId("test-player")
+        )
+      } catch(e: Throwable) {
+        completedPrepareFromDisk.completeExceptionally(RuntimeException("prepare failed", e))
+      }
+    }
 
-    completedPrepareFromDisk.await()
+    val timeline = completedPrepareFromDisk.await()
     Log.i(TAG, "Download test complete")
+    prepareThread.quitSafely()
   }
 
   @Test
