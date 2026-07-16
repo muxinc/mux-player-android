@@ -19,7 +19,6 @@ import com.mux.player.media.MuxDrmCallback
 import com.mux.player.media.MuxDrmSessionManagerProvider
 import java.util.UUID
 
-// TODO: Many of these functions should be internal-viz
 // Preliminary Design Note: it's my hope that most of the logic a custom integration would need will
 //  be here, and could be lifted out without our storage, playback, or task-management code
 
