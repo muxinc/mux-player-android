@@ -130,9 +130,9 @@ class MuxDownloadCallback(
       selectAllAudioAndTextRenditions(helper)
     }
 
-    // Widevine PSSH, either an EXT-X-SESSION-KEY (multi-key) or the video EXT-X-KEY (single-key)
-    val videoDrmInitData = mediaSource.capturedMultivariantPlaylist?.drmInitData
-      ?: mediaSource.selectedMediaPlaylists.firstNotNullOfOrNull { it.drmInitData }
+    // either from EXT-X-SESSION-KEYs (multi-key) or the video's EXT-X-KEY (single-key)
+    val videoDrmInitData = mediaSource.capturedMultivariantPlaylist?.capturedWidevinePssh
+      ?: mediaSource.selectedMediaPlaylists.firstNotNullOfOrNull { it.capturedDrmInitData }
 
     if (videoDrmInitData != null) {
       acquireLicenseAsync(helper, videoDrmInitData)
@@ -286,14 +286,14 @@ class MuxOfflineCmafHlsMediaSource private constructor(
   /** A media playlist paired with the [DrmInitData] from its (single) `#EXT-X-KEY`. */
   @OptIn(UnstableApi::class)
   data class CapturedMediaPlaylist(
-    val drmInitData: DrmInitData?,
+    val capturedDrmInitData: DrmInitData?,
     val playlist: HlsMediaPlaylist,
   )
 
   /** A multivariant playlist paired with the [DrmInitData] from its `#EXT-X-SESSION-KEY`. */
   @OptIn(UnstableApi::class)
   data class CapturedMultivariantPlaylist(
-    val drmInitData: DrmInitData?,
+    val capturedWidevinePssh: DrmInitData?,
     val playlist: HlsMultivariantPlaylist,
   )
 
@@ -324,13 +324,13 @@ class MuxOfflineCmafHlsMediaSource private constructor(
       val parserFactory = CapturingHlsPlaylistParserFactory(
         onMainManifest = { multivariant ->
           captures.multivariant = CapturedMultivariantPlaylist(
-            drmInitData = multivariant.firstSessionKeyDrmInitData(),
+            capturedWidevinePssh = multivariant.firstSessionKeyDrmInitData(),
             playlist = multivariant,
           )
         },
         onMediaPlaylist = { media ->
           captures.media[media.baseUri] = CapturedMediaPlaylist(
-            drmInitData = media.firstSegmentDrmInitData(),
+            capturedDrmInitData = media.firstSegmentDrmInitData(),
             playlist = media,
           )
         },
