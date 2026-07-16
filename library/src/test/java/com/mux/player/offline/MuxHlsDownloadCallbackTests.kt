@@ -14,6 +14,7 @@ import androidx.media3.exoplayer.source.TrackGroupArray
 import androidx.media3.exoplayer.trackselection.MappingTrackSelector
 import com.mux.player.AbsRobolectricTest
 import com.mux.player.media.MuxDrmSessionManagerProvider
+import io.mockk.Called
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -48,12 +49,13 @@ class MuxHlsDownloadCallbackTests : AbsRobolectricTest() {
       every { capturedMultivariantPlaylist } returns null
       every { selectedMediaPlaylists } returns emptyList()
     }
+    val drmProvider = mockk<MuxDrmSessionManagerProvider>(relaxed = true)
 
     var ready: DownloadRequest? = null
     var errored: IOException? = null
     val callback = MuxHlsDownloadCallback(
       mediaSource = mediaSource,
-      drmProvider = mockk(relaxed = true),
+      drmProvider = drmProvider,
       playbackId = playbackId,
       drmToken = null,
       ioExecutor = directExecutor(),
@@ -67,6 +69,8 @@ class MuxHlsDownloadCallbackTests : AbsRobolectricTest() {
     assertEquals("request should be keyed by playbackId", playbackId, ready?.id)
     assertNull("clear content should carry no keySetId", ready?.keySetId)
     verify(exactly = 1) { helper.getDownloadRequest(playbackId, null) }
+    // clear content must never reach for a license
+    verify { drmProvider wasNot Called }
   }
 
   @Test

@@ -16,12 +16,15 @@ import androidx.media3.exoplayer.offline.DownloadIndex
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.getDrmToken
 import com.mux.player.internal.getPlaybackId
 import com.mux.player.media.MediaItems
+import com.mux.player.media.MuxDrmSessionManagerProvider
 import com.mux.player.offline.MuxHlsDownloadCallback
 import com.mux.player.offline.MuxOfflineCmafHlsMediaSource
 import com.mux.player.offline.createMuxHlsDownloadHelper
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -85,7 +88,11 @@ class OfflineDownloadInstrumentationTests {
     val downloadHelper = createMuxHlsDownloadHelper(appContext, fileMediaSource)
     downloadHelper.prepare(MuxHlsDownloadCallback(
       fileMediaSource,
-      drmProvider = clearTextDrmSessionManagerProvider,
+      // DrmSessionManagerProvider shouldn't be touched (tested in unit tests)
+      drmProvider = MuxDrmSessionManagerProvider(
+        DefaultHttpDataSource.Factory(),
+        createLogcatLogger()
+      ),
       playbackId = mediaItem.getPlaybackId()!!, // MediaItems.fromMuxPlaybackId tested elsewhere
       drmToken = null,
       ioExecutor = ioExecutor,
