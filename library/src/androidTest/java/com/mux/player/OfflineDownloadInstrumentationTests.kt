@@ -4,21 +4,30 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.media.MediaDrm
+import androidx.media3.common.MediaItem
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.DefaultDatabaseProvider
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
+import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.offline.DefaultDownloadIndex
 import androidx.media3.exoplayer.offline.DownloadIndex
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.mux.player.internal.getDrmToken
+import com.mux.player.internal.getPlaybackId
+import com.mux.player.media.MediaItems
+import com.mux.player.offline.MuxHlsDownloadCallback
+import com.mux.player.offline.MuxOfflineCmafHlsMediaSource
+import com.mux.player.offline.createMuxHlsDownloadHelper
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
 @RunWith(AndroidJUnit4::class)
@@ -28,6 +37,7 @@ class OfflineDownloadInstrumentationTests {
   private lateinit var testDatabaseProvider: DatabaseProvider
   private lateinit var testCache: SimpleCache
   private lateinit var downloadIndex: DownloadIndex
+  private lateinit var ioExecutor: Executor
 
   // TODO: Doesn't need to be a field
   private lateinit var mediaDrm: MediaDrm
@@ -39,6 +49,8 @@ class OfflineDownloadInstrumentationTests {
     ensureEmptyCacheDir()
 
     val openHelper = TestDbHelper(appContext)
+
+    ioExecutor = Executors.newFixedThreadPool(4)
     testDatabaseProvider = DefaultDatabaseProvider(openHelper)
     testCache = SimpleCache(
       /*cacheDir=*/ File(appContext.filesDir, CACHE_SUBDIR),
@@ -51,7 +63,7 @@ class OfflineDownloadInstrumentationTests {
       /*databaseProvider=*/ testDatabaseProvider,
       /*cache=*/ testCache,
       /*upstreamFactory=*/ DefaultHttpDataSource.Factory(),
-      /*executor=*/ Executors.newCachedThreadPool()
+      /*executor=*/ ioExecutor
     )
   }
 
@@ -61,7 +73,25 @@ class OfflineDownloadInstrumentationTests {
   }
 
   @Test
-  fun testCleartextDownload() {
+  fun testCleartextDownload() = runTest {
+    val mediaItem = MediaItems.fromMuxPlaybackId(playbackId = CLEARTEXT_PLAYBACK_ID)
+    val clearTextDrmSessionManagerProvider = { _: MediaItem -> DrmSessionManager.DRM_UNSUPPORTED }
+    val fileMediaSource = MuxOfflineCmafHlsMediaSource.create(
+      dataSourceFactory = DefaultHttpDataSource.Factory(),
+      mediaItem = mediaItem,
+      drmSessionManagerProvider = clearTextDrmSessionManagerProvider
+    )
+
+    val downloadHelper = createMuxHlsDownloadHelper(appContext, fileMediaSource)
+    downloadHelper.prepare(MuxHlsDownloadCallback(
+      fileMediaSource,
+      drmProvider = clearTextDrmSessionManagerProvider,
+      playbackId = mediaItem.getPlaybackId()!!, // MediaItems.fromMuxPlaybackId tested elsewhere
+      drmToken = null,
+      ioExecutor = ioExecutor,
+      onReady = { },
+      onError = { }
+    ))
   }
 
   @Test

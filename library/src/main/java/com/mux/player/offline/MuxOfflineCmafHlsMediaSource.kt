@@ -26,8 +26,9 @@ import java.util.concurrent.ConcurrentHashMap
 @OptIn(UnstableApi::class)
 class MuxOfflineCmafHlsMediaSource private constructor(
   wrapped: HlsMediaSource,
-  private val captures: Captures,
 ) : WrappingMediaSource(wrapped) {
+
+  private val captures: Captures = Captures()
 
   /**
    * A snapshot of the media playlists parsed so far, each paired with its `#EXT-X-KEY`
@@ -105,7 +106,7 @@ class MuxOfflineCmafHlsMediaSource private constructor(
         }
         .createMediaSource(mediaItem)
 
-      return MuxOfflineCmafHlsMediaSource(wrapped, captures)
+      return MuxOfflineCmafHlsMediaSource(wrapped)
     }
   }
 }
