@@ -138,7 +138,8 @@ class OfflineDownloadInstrumentationTests {
         download: Download,
         finalException: Exception?
       ) {
-        Log.d(TAG, "download state changed:\n\tstate:${download.state}")
+        Log.d(TAG, "download state (id ${download.request.id}) changed:" +
+            "\n\tstate:${downloadStateName(download.state)}")
         when (download.state) {
           Download.STATE_COMPLETED -> {
             Log.d(TAG, "download complete")
@@ -176,6 +177,7 @@ class OfflineDownloadInstrumentationTests {
 
     Log.d(TAG, "testClearTextDownload(): Starting download")
     mediaDownloadManager.addDownload(downloadRequest)
+    mediaDownloadManager.resumeDownloads()
 
     val completedDownload = downloadComplete.await()
 
@@ -212,6 +214,18 @@ class OfflineDownloadInstrumentationTests {
 
   private fun deleteCachedWidevineLicenses() {
     TODO("drm tests not yet implemented")
+  }
+
+  /** Human-readable name for a [Download.state] value, for logging/assertion messages. */
+  private fun downloadStateName(state: Int): String = when (state) {
+    Download.STATE_QUEUED -> "STATE_QUEUED"
+    Download.STATE_STOPPED -> "STATE_STOPPED"
+    Download.STATE_DOWNLOADING -> "STATE_DOWNLOADING"
+    Download.STATE_COMPLETED -> "STATE_COMPLETED"
+    Download.STATE_FAILED -> "STATE_FAILED"
+    Download.STATE_REMOVING -> "STATE_REMOVING"
+    Download.STATE_RESTARTING -> "STATE_RESTARTING"
+    else -> "UNKNOWN($state)"
   }
 
   private fun ensureEmptyCacheDir() {
