@@ -51,7 +51,7 @@ class MuxHlsDownloadCallback(
     }
 
     // either from EXT-X-SESSION-KEYs (multi-key) or the video's EXT-X-KEY (single-key)
-    val videoDrmInitData = mediaSource.capturedMultivariantPlaylist?.capturedWidevinePssh
+    val videoDrmInitData = mediaSource.capturedMultivariantPlaylist?.capturedWidevineData
       ?: mediaSource.selectedMediaPlaylists.firstNotNullOfOrNull { it.capturedDrmInitData }
 
     if (videoDrmInitData != null) {

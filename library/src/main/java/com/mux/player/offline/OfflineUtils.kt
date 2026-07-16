@@ -17,6 +17,7 @@ import androidx.media3.exoplayer.offline.DownloadHelper
 import com.mux.player.media.MediaItems.MUX_VIDEO_DEFAULT_DOMAIN
 import com.mux.player.media.MuxDrmCallback
 import com.mux.player.media.MuxDrmSessionManagerProvider
+import java.util.UUID
 
 // TODO: Many of these functions should be internal-viz
 // Preliminary Design Note: it's my hope that most of the logic a custom integration would need will
@@ -88,7 +89,29 @@ internal fun MuxDrmSessionManagerProvider.offlineLicenseHelper(
 fun HlsMediaPlaylist.firstSegmentDrmInitData(): DrmInitData? =
   segments.firstOrNull()?.drmInitData
 
-/** The [DrmInitData] decoded from the multivariant playlist's `#EXT-X-SESSION-KEY`, if any. */
+/**
+ *  The first Widevine [DrmInitData] decoded from the multivariant playlist's `#EXT-X-SESSION-KEY`,
+ *  if any.
+ *  (Unlike with media playlists, session-key pssh's aren't bundled into a single DrmInitData)
+ */
 @OptIn(UnstableApi::class)
-fun HlsMultivariantPlaylist.firstSessionKeyDrmInitData(): DrmInitData? =
-  sessionKeyDrmInitData.firstOrNull()
+fun HlsMultivariantPlaylist.firstWidevineSessionKeyDrmInitData(): DrmInitData? =
+  sessionKeyDrmInitData.firstOrNull { drmInitData ->
+    drmInitData.findSessionKeySchemeData(uuid = C.WIDEVINE_UUID) != null
+  }
+
+@OptIn(UnstableApi::class)
+private fun DrmInitData.findSessionKeySchemeData(uuid: UUID): DrmInitData.SchemeData? {
+  if (schemeDataCount <= 0) {
+    return null
+  }
+
+  for (i in 0 until schemeDataCount) {
+    val schemeData = get(i)
+    if (schemeData.uuid == uuid) {
+      return schemeData
+    }
+  }
+
+  return null
+}

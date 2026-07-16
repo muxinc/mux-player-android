@@ -52,7 +52,7 @@ class MuxOfflineCmafHlsMediaSource private constructor(
   /** A multivariant playlist paired with the [DrmInitData] from its `#EXT-X-SESSION-KEY`. */
   @OptIn(UnstableApi::class)
   data class CapturedMultivariantPlaylist(
-    val capturedWidevinePssh: DrmInitData?,
+    val capturedWidevineData: DrmInitData?,
     val playlist: HlsMultivariantPlaylist,
   )
 
@@ -83,7 +83,7 @@ class MuxOfflineCmafHlsMediaSource private constructor(
       val parserFactory = CapturingHlsPlaylistParserFactory(
         onMainManifest = { multivariant ->
           captures.multivariant = CapturedMultivariantPlaylist(
-            capturedWidevinePssh = multivariant.firstSessionKeyDrmInitData(),
+            capturedWidevineData = multivariant.firstWidevineSessionKeyDrmInitData(),
             playlist = multivariant,
           )
         },
