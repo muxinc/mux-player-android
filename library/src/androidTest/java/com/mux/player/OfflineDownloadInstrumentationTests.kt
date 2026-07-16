@@ -112,7 +112,10 @@ class OfflineDownloadInstrumentationTests {
 
   @Test
   fun testCleartextDownload() = runTest {
-    val mediaItem = MediaItems.fromMuxPlaybackId(playbackId = CLEARTEXT_PLAYBACK_ID)
+    val mediaItem = MediaItems.fromMuxPlaybackId(
+      playbackId = CLEAR_CMAF_PLAYBACK_ID
+//      playbackId = CLEARTEXT_PLAYBACK_ID,
+    )
 //    val mediaItem = MediaItems.fromMuxPlaybackId(
 //      playbackId = CLEAR_CMAF_PLAYBACK_ID,
 //      assetStartTime = 0.0,
