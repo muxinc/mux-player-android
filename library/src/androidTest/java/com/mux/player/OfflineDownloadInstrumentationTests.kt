@@ -62,8 +62,8 @@ class OfflineDownloadInstrumentationTests {
     private val DRM_TOKEN = ""
     private val DRM_PLAYBACK_ID = ""
 
-    private val CLEARTEXT_PLAYBACK_ID = "5ICwECLW8900gMTi5eaOkWdYvOkGhtKyBY02uRCT6FOyE" // cmaf
-    //private val CLEARTEXT_PLAYBACK_ID = "KyU4B3aJB01jjk00EmZBkp9nRkeaZyTblN3EwmjhIqkcw"
+    private val CLEAR_CMAF_PLAYBACK_ID = "5ICwECLW8900gMTi5eaOkWdYvOkGhtKyBY02uRCT6FOyE" // cmaf
+    private val CLEARTEXT_PLAYBACK_ID = "KyU4B3aJB01jjk00EmZBkp9nRkeaZyTblN3EwmjhIqkcw"
     //private val CLEARTEXT_PLAYBACK_ID = "zyII9g3ndjv9jOQi7JQh37oAUfLok2kvtdHmlGBPuVc" //long
 
     private val CACHE_SUBDIR = "test_downloads"
@@ -112,12 +112,12 @@ class OfflineDownloadInstrumentationTests {
 
   @Test
   fun testCleartextDownload() = runTest {
-//    val mediaItem = MediaItems.fromMuxPlaybackId(playbackId = CLEARTEXT_PLAYBACK_ID)
-    val mediaItem = MediaItems.fromMuxPlaybackId(
-      playbackId = CLEARTEXT_PLAYBACK_ID,
+    val mediaItem = MediaItems.fromMuxPlaybackId(playbackId = CLEARTEXT_PLAYBACK_ID)
+//    val mediaItem = MediaItems.fromMuxPlaybackId(
+//      playbackId = CLEAR_CMAF_PLAYBACK_ID,
 //      assetStartTime = 0.0,
 //      assetEndTime = 35.0
-    )
+//    )
     val clearTextDrmSessionManagerProvider = { _: MediaItem -> DrmSessionManager.DRM_UNSUPPORTED }
     val fileMediaSource = MuxOfflineCmafHlsMediaSource.create(
       dataSourceFactory = LoggingHttpDataSource.Factory(DefaultHttpDataSource.Factory(), tag = "MediaSrcHttp", logging = false),
