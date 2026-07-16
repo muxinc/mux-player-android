@@ -8,15 +8,10 @@ import androidx.media3.common.Format
 import androidx.media3.common.TrackGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.drm.OfflineLicenseHelper
-import androidx.media3.exoplayer.hls.playlist.HlsMediaPlaylist
-import androidx.media3.exoplayer.hls.playlist.HlsMultivariantPlaylist
-import androidx.media3.exoplayer.hls.playlist.HlsPlaylist
-import androidx.media3.exoplayer.hls.playlist.HlsPlaylistParserFactory
 import androidx.media3.exoplayer.offline.DownloadHelper
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.source.TrackGroupArray
 import androidx.media3.exoplayer.trackselection.MappingTrackSelector
-import androidx.media3.exoplayer.upstream.ParsingLoadable
 import com.mux.player.AbsRobolectricTest
 import com.mux.player.media.MuxDrmSessionManagerProvider
 import io.mockk.every
@@ -31,75 +26,16 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.util.concurrent.Executor
 
 @OptIn(UnstableApi::class)
-class OfflineUtilsTests : AbsRobolectricTest() {
+class MuxHlsDownloadCallbackTests : AbsRobolectricTest() {
 
   @After
   fun tearDown() {
     unmockkAll()
   }
-
-  // --- CapturingHlsPlaylistParserFactory -----------------------------------------------------
-
-  @Test
-  fun `the no-arg parser reports a parsed multivariant playlist to onMainManifest`() {
-    val parsed = mockk<HlsMultivariantPlaylist>(relaxed = true)
-    var reportedMain: HlsMultivariantPlaylist? = null
-    var reportedMedia: HlsMediaPlaylist? = null
-
-    val factory = capturingFactory(
-      innerResult = parsed,
-      onMainManifest = { reportedMain = it },
-      onMediaPlaylist = { reportedMedia = it },
-    )
-
-    val result = factory.createPlaylistParser().parse(Uri.EMPTY, emptyStream())
-
-    assertSame("the delegate's parsed playlist is returned unchanged", parsed, result)
-    assertSame("multivariant playlists go to onMainManifest", parsed, reportedMain)
-    assertNull("onMediaPlaylist should not fire for a multivariant playlist", reportedMedia)
-  }
-
-  @Test
-  fun `the no-arg parser reports a parsed media playlist to onMediaPlaylist`() {
-    val parsed = mockk<HlsMediaPlaylist>(relaxed = true)
-    var reportedMain: HlsMultivariantPlaylist? = null
-    var reportedMedia: HlsMediaPlaylist? = null
-
-    val factory = capturingFactory(
-      innerResult = parsed,
-      onMainManifest = { reportedMain = it },
-      onMediaPlaylist = { reportedMedia = it },
-    )
-
-    factory.createPlaylistParser().parse(Uri.EMPTY, emptyStream())
-
-    assertSame("media playlists go to onMediaPlaylist", parsed, reportedMedia)
-    assertNull("onMainManifest should not fire for a media playlist", reportedMain)
-  }
-
-  @Test
-  fun `the multivariant-scoped parser reports media playlists to onMediaPlaylist`() {
-    val parsed = mockk<HlsMediaPlaylist>(relaxed = true)
-    var reportedMedia: HlsMediaPlaylist? = null
-
-    val factory = capturingFactory(
-      innerResult = parsed,
-      onMainManifest = { },
-      onMediaPlaylist = { reportedMedia = it },
-    )
-
-    // the overload the tracker uses for playlists referenced by a multivariant playlist
-    factory.createPlaylistParser(mockk(relaxed = true), null).parse(Uri.EMPTY, emptyStream())
-
-    assertSame(parsed, reportedMedia)
-  }
-
-  // --- MuxDownloadCallback -------------------------------------------------------------------
 
   @Test
   fun `clear content emits a request keyed by playbackId with no keySetId`() {
@@ -115,7 +51,7 @@ class OfflineUtilsTests : AbsRobolectricTest() {
 
     var ready: DownloadRequest? = null
     var errored: IOException? = null
-    val callback = MuxDownloadCallback(
+    val callback = MuxHlsDownloadCallback(
       mediaSource = mediaSource,
       drmProvider = mockk(relaxed = true),
       playbackId = playbackId,
@@ -139,7 +75,7 @@ class OfflineUtilsTests : AbsRobolectricTest() {
     val thrown = IOException("prepare failed")
 
     var errored: IOException? = null
-    val callback = MuxDownloadCallback(
+    val callback = MuxHlsDownloadCallback(
       mediaSource = mockk(relaxed = true),
       drmProvider = mockk(relaxed = true),
       playbackId = "id",
@@ -183,7 +119,7 @@ class OfflineUtilsTests : AbsRobolectricTest() {
 
     var ready: DownloadRequest? = null
     var errored: IOException? = null
-    val callback = MuxDownloadCallback(
+    val callback = MuxHlsDownloadCallback(
       mediaSource = mediaSource,
       drmProvider = drmProvider,
       playbackId = playbackId,
@@ -215,7 +151,7 @@ class OfflineUtilsTests : AbsRobolectricTest() {
 
     var ready: DownloadRequest? = null
     var errored: IOException? = null
-    val callback = MuxDownloadCallback(
+    val callback = MuxHlsDownloadCallback(
       mediaSource = mediaSource,
       drmProvider = mockk(relaxed = true),
       playbackId = "id",
@@ -253,7 +189,7 @@ class OfflineUtilsTests : AbsRobolectricTest() {
       every { selectedMediaPlaylists } returns emptyList()
     }
 
-    val callback = MuxDownloadCallback(
+    val callback = MuxHlsDownloadCallback(
       mediaSource = mediaSource,
       drmProvider = mockk(relaxed = true),
       playbackId = playbackId,
@@ -275,27 +211,6 @@ class OfflineUtilsTests : AbsRobolectricTest() {
     verify(exactly = 0) { helper.addTrackSelectionForSingleRenderer(0, 0, any(), any()) }
   }
 
-  // --- helpers -------------------------------------------------------------------------------
-
-  private fun capturingFactory(
-    innerResult: HlsPlaylist,
-    onMainManifest: (HlsMultivariantPlaylist) -> Unit,
-    onMediaPlaylist: (HlsMediaPlaylist) -> Unit,
-  ): CapturingHlsPlaylistParserFactory {
-    val innerParser = mockk<ParsingLoadable.Parser<HlsPlaylist>> {
-      every { parse(any(), any()) } returns innerResult
-    }
-    val delegate = mockk<HlsPlaylistParserFactory> {
-      every { createPlaylistParser() } returns innerParser
-      every { createPlaylistParser(any(), any()) } returns innerParser
-    }
-    return CapturingHlsPlaylistParserFactory(
-      delegate = delegate,
-      onMainManifest = onMainManifest,
-      onMediaPlaylist = onMediaPlaylist,
-    )
-  }
-
   private fun widevineInitData(): DrmInitData =
     DrmInitData(DrmInitData.SchemeData(C.WIDEVINE_UUID, "video/mp4", byteArrayOf(1, 2, 3)))
 
@@ -304,8 +219,6 @@ class OfflineUtilsTests : AbsRobolectricTest() {
       TrackGroup(Format.Builder().setSampleMimeType("audio/mp4a-latm").build()),
       TrackGroup(Format.Builder().setSampleMimeType("audio/mp4a-latm").build()),
     )
-
-  private fun emptyStream() = ByteArrayInputStream(ByteArray(0))
 
   private fun directExecutor() = Executor { it.run() }
 
