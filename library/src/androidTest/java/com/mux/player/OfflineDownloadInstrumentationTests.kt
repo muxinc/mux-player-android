@@ -23,6 +23,7 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.scheduler.Requirements
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.getDrmToken
@@ -32,6 +33,7 @@ import com.mux.player.media.MuxDrmSessionManagerProvider
 import com.mux.player.offline.MuxHlsDownloadCallback
 import com.mux.player.offline.MuxOfflineCmafHlsMediaSource
 import com.mux.player.offline.createMuxHlsDownloadHelper
+import com.mux.player.util.LoggingHttpDataSource
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -55,7 +57,8 @@ class OfflineDownloadInstrumentationTests {
     private val DRM_TOKEN = ""
     private val DRM_PLAYBACK_ID = ""
 
-    private val CLEARTEXT_PLAYBACK_ID = "zyII9g3ndjv9jOQi7JQh37oAUfLok2kvtdHmlGBPuVc"
+    private val CLEARTEXT_PLAYBACK_ID = "KyU4B3aJB01jjk00EmZBkp9nRkeaZyTblN3EwmjhIqkcw"
+    //private val CLEARTEXT_PLAYBACK_ID = "zyII9g3ndjv9jOQi7JQh37oAUfLok2kvtdHmlGBPuVc" //long
 
     private val CACHE_SUBDIR = "test_downloads"
     private val DB_NAME = "test_download.db" // TODO: Maybe I won't need
@@ -90,7 +93,7 @@ class OfflineDownloadInstrumentationTests {
       /*context=*/ appContext,
       /*databaseProvider=*/ testDatabaseProvider,
       /*cache=*/ testCache,
-      /*upstreamFactory=*/ DefaultHttpDataSource.Factory(),
+      /*upstreamFactory=*/ LoggingHttpDataSource.Factory(DefaultHttpDataSource.Factory(), tag = "DownloadHttp", logging = false),
       /*executor=*/ ioExecutor
     )
     mediaDownloadManager.requirements = Requirements(0) // no requirements for starting
@@ -106,7 +109,7 @@ class OfflineDownloadInstrumentationTests {
     val mediaItem = MediaItems.fromMuxPlaybackId(playbackId = CLEARTEXT_PLAYBACK_ID)
     val clearTextDrmSessionManagerProvider = { _: MediaItem -> DrmSessionManager.DRM_UNSUPPORTED }
     val fileMediaSource = MuxOfflineCmafHlsMediaSource.create(
-      dataSourceFactory = DefaultHttpDataSource.Factory(),
+      dataSourceFactory = LoggingHttpDataSource.Factory(DefaultHttpDataSource.Factory(), tag = "MediaSrcHttp", logging = false),
       mediaItem = mediaItem,
       drmSessionManagerProvider = clearTextDrmSessionManagerProvider
     )
@@ -118,7 +121,7 @@ class OfflineDownloadInstrumentationTests {
       fileMediaSource,
       // DrmSessionManagerProvider shouldn't be touched (tested in unit tests)
       drmProvider = MuxDrmSessionManagerProvider(
-        DefaultHttpDataSource.Factory(),
+        LoggingHttpDataSource.Factory(DefaultHttpDataSource.Factory(), tag = "DrmHttp"),
         createLogcatLogger()
       ),
       playbackId = mediaItem.getPlaybackId()!!, // MediaItems.fromMuxPlaybackId tested elsewhere
