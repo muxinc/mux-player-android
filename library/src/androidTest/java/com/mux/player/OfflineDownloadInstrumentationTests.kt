@@ -6,11 +6,14 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.media.MediaDrm
 import android.util.Log
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Timeline
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.DefaultDatabaseProvider
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
+import androidx.media3.exoplayer.analytics.PlayerId
 import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.offline.DefaultDownloadIndex
 import androidx.media3.exoplayer.offline.Download
@@ -18,6 +21,7 @@ import androidx.media3.exoplayer.offline.DownloadIndex
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.scheduler.Requirements
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mux.player.internal.createLogcatLogger
@@ -38,9 +42,24 @@ import java.io.File
 import java.lang.Exception
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import kotlin.math.log
 
 @RunWith(AndroidJUnit4::class)
 class OfflineDownloadInstrumentationTests {
+
+  companion object {
+    val TAG = "OfflineDownloadInstrumentationTests"
+
+    // TODO: Could run this in CI for real if we supply tokens to the CI machine
+    private val PLAY_TOKEN = ""
+    private val DRM_TOKEN = ""
+    private val DRM_PLAYBACK_ID = ""
+
+    private val CLEARTEXT_PLAYBACK_ID = "zyII9g3ndjv9jOQi7JQh37oAUfLok2kvtdHmlGBPuVc"
+
+    private val CACHE_SUBDIR = "test_downloads"
+    private val DB_NAME = "test_download.db" // TODO: Maybe I won't need
+  }
 
   private lateinit var mediaDownloadManager: DownloadManager
   private lateinit var testDatabaseProvider: DatabaseProvider
@@ -92,8 +111,8 @@ class OfflineDownloadInstrumentationTests {
       drmSessionManagerProvider = clearTextDrmSessionManagerProvider
     )
 
+    Log.d(TAG, "testCleartextDownload(): Preparing Download")
     val preparationComplete = CompletableDeferred<DownloadRequest>()
-
     val downloadHelper = createMuxHlsDownloadHelper(appContext, fileMediaSource)
     downloadHelper.prepare(MuxHlsDownloadCallback(
       fileMediaSource,
@@ -106,7 +125,7 @@ class OfflineDownloadInstrumentationTests {
       drmToken = null,
       ioExecutor = ioExecutor,
       onReady = { preparationComplete.complete(it) },
-      onError = { preparationComplete.completeExceptionally(it) }
+      onError = { preparationComplete.completeExceptionally(Exception("Download prep failed", it)) }
     ))
 
     // Throws here if there was an error selecting tracks
@@ -119,26 +138,26 @@ class OfflineDownloadInstrumentationTests {
         download: Download,
         finalException: Exception?
       ) {
-        Log.d(logTag(), "download state changed:\n\tstate:${download.state}")
+        Log.d(TAG, "download state changed:\n\tstate:${download.state}")
         when (download.state) {
           Download.STATE_COMPLETED -> {
-            Log.d(logTag(), "download complete")
+            Log.d(TAG, "download complete")
             downloadComplete.complete(download)
           }
           Download.STATE_DOWNLOADING -> {
-            Log.d(logTag(), "downloading: ${download.percentDownloaded}% (${download.bytesDownloaded} bytes)")
+            Log.d(TAG, "downloading: ${download.percentDownloaded}% (${download.bytesDownloaded} bytes)")
           }
           Download.STATE_FAILED -> {
             // contract guarantees finalException when state is failed
             downloadComplete.completeExceptionally(
-              finalException ?: AssertionError("failed without exception")
+              RuntimeException("Download failed", finalException)
             )
           }
         }
       }
 
       override fun onInitialized(downloadManager: DownloadManager) {
-        Log.v(logTag(), "DownloadManager onInitialized()1")
+        Log.v(TAG, "DownloadManager onInitialized()1")
       }
 
       override fun onRequirementsStateChanged(
@@ -155,11 +174,35 @@ class OfflineDownloadInstrumentationTests {
       }
     })
 
+    Log.d(TAG, "testClearTextDownload(): Starting download")
     mediaDownloadManager.addDownload(downloadRequest)
 
     val completedDownload = downloadComplete.await()
 
-    // TODO: Assert on this completed download
+    Log.d(TAG, "testClearTextDownload(): Preparing disk media src")
+    val diskMediaItem = completedDownload.request.toMediaItem()
+    val diskMediaSource = DefaultMediaSourceFactory(appContext)
+      .setDataSourceFactory(
+        CacheDataSource.Factory()
+          .setCache(testCache)
+          .setUpstreamDataSourceFactory(null) // Entire media should be downloaded
+          .setCacheWriteDataSinkFactory(null) // don't write, since we read everything from cache
+      )
+      .createMediaSource(diskMediaItem)
+
+    // TODO: Probably do something else, like query the download index or something?
+    // prepare the disk media source to inspect the downloaded content
+    val completedPrepareFromDisk = CompletableDeferred<Timeline>()
+    diskMediaSource.prepareSource(
+      /* caller = */ { _, timeline ->
+        Log.d(TAG, "Timeline: $timeline")
+      },
+      /* mediaTransferListener = */ null,
+      /* playerId = */ PlayerId("test-player")
+    )
+
+    completedPrepareFromDisk.await()
+    Log.i(TAG, "Download test complete")
   }
 
   @Test
@@ -195,25 +238,13 @@ class OfflineDownloadInstrumentationTests {
     cacheDirFile.mkdirs()
   }
 
-  companion object {
-    // TODO: Could run this in CI for real if we supply tokens to the CI machine
-    private val PLAY_TOKEN = ""
-    private val DRM_TOKEN = ""
-    private val DRM_PLAYBACK_ID = ""
-
-    private val CLEARTEXT_PLAYBACK_ID = "zyII9g3ndjv9jOQi7JQh37oAUfLok2kvtdHmlGBPuVc"
-
-    private val CACHE_SUBDIR = "test_downloads"
-    private val DB_NAME = "test_download.db" // TODO: Maybe I won't need
-  }
-
   private class TestDbHelper(
     context: Context
   ): SQLiteOpenHelper(
     context,
     null, // In-mem index (media files still saved on-disk)
     null,
-    0
+    1
   ) {
     override fun onCreate(p0: SQLiteDatabase?) {
       // SimpleCache creates tables
