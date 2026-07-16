@@ -13,8 +13,9 @@ import androidx.media3.exoplayer.source.WrappingMediaSource
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * An [androidx.media3.exoplayer.hls.HlsMediaSource] (wrapped, since [androidx.media3.exoplayer.hls.HlsMediaSource] is final) that uses a
- * [CapturingHlsPlaylistParserFactory] to capture, as the source prepares:
+ * A WrappingMediaSource that wraps an HlsMediaSource and captures the playlists is parses, along
+ * with their DrmInitData. If the HLS stream had widevine protection data, it will be captured
+ * and accessible via [selectedMediaPlaylists] and [capturedMultivariantPlaylist]
  *
  * Build one with [create]. The captures are populated from the tracker's loader threads (one per
  * media playlist, so concurrently) during preparation, and are held in thread-safe containers keyed
@@ -57,9 +58,11 @@ class MuxOfflineCmafHlsMediaSource private constructor(
   )
 
   /** Thread-safe sink shared with the parser-factory callbacks. */
-  internal class Captures {
-    /** Keyed by playlist [androidx.media3.exoplayer.hls.playlist.HlsPlaylist.baseUri]: concurrent puts from per-bundle loader threads are
-     *  safe, and re-parses of the same rendition (live refresh) overwrite rather than duplicate. */
+  private class Captures {
+    /** Keyed by playlist [androidx.media3.exoplayer.hls.playlist.HlsPlaylist.baseUri]: concurrent
+     *  puts from per-bundle loader threads are safe, and subsequent parses of the same rendition
+     *  (live refresh) overwrite existing entries
+     */
     val media = ConcurrentHashMap<String, CapturedMediaPlaylist>()
 
     /** Only one multivariant playlist exists, so a single safely-published reference is enough. */

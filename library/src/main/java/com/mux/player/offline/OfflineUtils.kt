@@ -59,7 +59,7 @@ fun createMuxHlsDownloadHelper(
  * @param licenseEndpointHost the Mux license server host, e.g. `license.mux.com`.
  */
 @OptIn(UnstableApi::class)
-internal fun MuxDrmSessionManagerProvider.offlineLicenseHelper(
+fun MuxDrmSessionManagerProvider.offlineLicenseHelper(
   playbackId: String,
   drmToken: String,
   licenseEndpointHost: String = "license.$MUX_VIDEO_DEFAULT_DOMAIN",
