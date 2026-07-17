@@ -40,6 +40,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -154,6 +155,16 @@ class OfflineDownloadInstrumentationTests {
 
   @Test
   fun testDrmDownload() = runTest {
+    // If there's no DRM/playback tokens this test
+    assumeTrue(
+      "DRM Token should be provided to do this test",
+      DRM_TOKEN.isNotEmpty()
+    )
+    assumeTrue(
+      "Playback Token should be provided to do this test",
+      PLAY_TOKEN.isNotEmpty()
+    )
+
     testMediaItemCase(
       mediaItem = MediaItems.fromMuxPlaybackId(
         playbackId = DRM_PLAYBACK_ID,

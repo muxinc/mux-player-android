@@ -59,11 +59,15 @@ class MuxHlsDownloadCallback(
       ?: mediaSource.selectedMediaPlaylists.firstNotNullOfOrNull { it.capturedDrmInitData }
 
     if (videoDrmInitData != null) {
-      acquireLicenseAsync(helper, videoDrmInitData) {
-        buildRequest(uri, generateStreamKeys(helper, mvp), it)
-      }
+//      acquireLicenseAsync(helper, videoDrmInitData) {
+//        buildRequest(uri, generateStreamKeys(helper, mvp), it)
+//      }
+      val baseRequest = buildRequest(uri, generateStreamKeys(helper, mvp))
+      // after building the base request we can release. License data will be added async
+      helper.release()
+      acquireLicenseAsync(helper, videoDrmInitData, baseRequest)
     } else {
-      onReady(buildRequest(uri, generateStreamKeys(helper, mvp), null))
+      onReady(buildRequest(uri, generateStreamKeys(helper, mvp)))
       helper.release()
     }
   }
@@ -76,32 +80,31 @@ class MuxHlsDownloadCallback(
   private fun buildRequest(
     uri: Uri,
     streamKeys: List<StreamKey>,
-    keySetId: ByteArray?
+//    keySetId: ByteArray?
   ): DownloadRequest {
     return DownloadRequest.Builder(playbackId, uri)
       .setMimeType(MimeTypes.APPLICATION_M3U8)
       .setStreamKeys(streamKeys)
       .build()
-      .let { if (keySetId != null) it.copyWithKeySetId(keySetId) else it }
+//      .let { if (keySetId != null) it.copyWithKeySetId(keySetId) else it }
   }
 
   private fun acquireLicenseAsync(
     helper: DownloadHelper,
     videoDrmInitData: DrmInitData,
-    buildRequest: (ByteArray) -> DownloadRequest
+    baseRequest: DownloadRequest,
   ) {
     ioExecutor.execute {
       try {
         val keySetId = acquireLicense(videoDrmInitData)
-        val request = buildRequest(keySetId)
-        onReady(request)
+        onReady(baseRequest.copyWithKeySetId(keySetId))
       } catch (e: IOException) {
         onError(e)
       } catch (e: Exception) {
         onError(IOException(e))
-      } finally {
-        helper.release()
-      }
+      } //finally {
+        //helper.release()
+      //}
     }
   }
 
