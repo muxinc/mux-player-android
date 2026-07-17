@@ -49,6 +49,21 @@ class LoggingHttpDataSource(
 
     override fun createDataSource(): HttpDataSource =
       LoggingHttpDataSource(delegateFactory.createDataSource(), tag, logging)
+  class Factory(
+    private val delegateFactory: HttpDataSource.Factory,
+    private val tag: String = TAG,
+    /** When false, created sources are transparent pass-throughs that log nothing. */
+    var logging: Boolean = true,
+  ) : HttpDataSource.Factory {
+    override fun createDataSource(): HttpDataSource =
+      LoggingHttpDataSource(delegateFactory.createDataSource(), tag, logging)
+
+    override fun setDefaultRequestProperties(
+      defaultRequestProperties: MutableMap<String, String>
+    ): HttpDataSource.Factory {
+      delegateFactory.setDefaultRequestProperties(defaultRequestProperties)
+      return this
+    }
   }
 
   companion object {
