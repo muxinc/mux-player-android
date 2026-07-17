@@ -16,7 +16,6 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.offline.DefaultDownloadIndex
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadIndex
@@ -34,7 +33,6 @@ import com.mux.player.offline.MuxHlsDownloadCallback
 import com.mux.player.offline.MuxOfflineCmafHlsMediaSource
 import com.mux.player.offline.createMuxHlsDownloadHelper
 import com.mux.player.util.LoggingHttpDataSource
-import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -66,7 +64,8 @@ class OfflineDownloadInstrumentationTests {
     private const val CLEAR_MULTI_LANG_PLAYBACK_ID = "3x5wDUHxkd8NkEfspLUK3OpSQEJe3pom"
 
     // warning: excessively verbose
-    private const val LOG_NETWORK_REQUESTS = false
+    private const val LOG_MEDIA_REQUESTS = false
+    private const val LOG_DRM_REQUESTS = true
     private const val CACHE_SUBDIR = "test_downloads"
   }
 
@@ -102,7 +101,7 @@ class OfflineDownloadInstrumentationTests {
       /*upstreamFactory=*/ LoggingHttpDataSource.Factory(
         DefaultHttpDataSource.Factory(),
         tag = "DownloadHttp",
-        logging = LOG_NETWORK_REQUESTS
+        logging = LOG_MEDIA_REQUESTS
       ),
       /*executor=*/ ioExecutor
     )
@@ -154,21 +153,33 @@ class OfflineDownloadInstrumentationTests {
     )
   }
 
+  @Test
+  fun testDrmDownload() {
+
+  }
+
   // Download something using the DownloadHelper and OfflineLicenseHelpers and assert expected tracks
   suspend fun testMediaItemCase(
     mediaItem: MediaItem,
     expectedAudioTrackIds: List<String> = listOf(),
     expectedSubtitleIds: List<String> = listOf()
   ) {
-    val clearTextDrmSessionManagerProvider = { _: MediaItem -> DrmSessionManager.DRM_UNSUPPORTED }
+    val drmSessionManagerProvider = MuxDrmSessionManagerProvider(
+      drmHttpDataSourceFactory = LoggingHttpDataSource.Factory(
+        delegateFactory = DefaultHttpDataSource.Factory(),
+        tag = TAG,
+        logging = LOG_DRM_REQUESTS,
+      ),
+      logger = createLogcatLogger()
+    )
     val fileMediaSource = MuxOfflineCmafHlsMediaSource.create(
       dataSourceFactory = LoggingHttpDataSource.Factory(
         DefaultHttpDataSource.Factory(),
         tag = "MediaSrcHttp",
-        logging = LOG_NETWORK_REQUESTS
+        logging = LOG_MEDIA_REQUESTS
       ),
       mediaItem = mediaItem,
-      drmSessionManagerProvider = clearTextDrmSessionManagerProvider
+      drmSessionManagerProvider = drmSessionManagerProvider
     )
 
     Log.d(TAG, "testCleartextDownload(): Preparing Download")
@@ -178,24 +189,15 @@ class OfflineDownloadInstrumentationTests {
       MuxHlsDownloadCallback(
         fileMediaSource,
         // DrmSessionManagerProvider shouldn't be touched (tested in unit tests)
-        drmProvider = MuxDrmSessionManagerProvider(
-          LoggingHttpDataSource.Factory(
-            DefaultHttpDataSource.Factory(),
-            tag = "DrmHttp",
-            logging = LOG_NETWORK_REQUESTS
-          ),
-          createLogcatLogger()
-        ),
+        drmProvider = drmSessionManagerProvider,
         playbackId = mediaItem.getPlaybackId()!!, // MediaItems.fromMuxPlaybackId tested elsewhere
         drmToken = null,
         ioExecutor = ioExecutor,
         onReady = { preparationComplete.complete(it) },
-        onError = {
-          preparationComplete.completeExceptionally(
-            Exception("Download prep failed", it)
-          )
+        onError = { preparationComplete.completeExceptionally(Exception("Download prep failed", it))
         }
-      ))
+      )
+    )
 
     // Throws here if there was an error selecting tracks
     val downloadRequest = preparationComplete.await()
@@ -218,10 +220,8 @@ class OfflineDownloadInstrumentationTests {
           }
 
           Download.STATE_DOWNLOADING -> {
-            Log.d(
-              TAG,
-              "downloading: ${download.percentDownloaded}% (${download.bytesDownloaded} bytes)"
-            )
+            Log.d(TAG, "downloading:" +
+                " ${download.percentDownloaded}% (${download.bytesDownloaded} bytes)")
           }
 
           Download.STATE_FAILED -> {
@@ -304,11 +304,6 @@ class OfflineDownloadInstrumentationTests {
       expectedSubtitleIds.sorted(),
       tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }.map { it.mediaTrackGroup.id }.sorted()
     )
-  }
-
-  @Test
-  fun testDrmDownload() {
-
   }
 
   private fun deleteCachedWidevineLicenses() {
