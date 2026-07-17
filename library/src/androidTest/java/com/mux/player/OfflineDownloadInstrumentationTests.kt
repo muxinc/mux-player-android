@@ -4,18 +4,18 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.media.MediaDrm
-import android.os.Handler
-import android.os.HandlerThread
 import android.util.Log
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.Timeline
+import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.DefaultDatabaseProvider
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
-import androidx.media3.exoplayer.analytics.PlayerId
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.offline.DefaultDownloadIndex
 import androidx.media3.exoplayer.offline.Download
@@ -34,12 +34,14 @@ import com.mux.player.offline.MuxHlsDownloadCallback
 import com.mux.player.offline.MuxOfflineCmafHlsMediaSource
 import com.mux.player.offline.createMuxHlsDownloadHelper
 import com.mux.player.util.LoggingHttpDataSource
+import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.android.asCoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,12 +61,13 @@ class OfflineDownloadInstrumentationTests {
     private val DRM_TOKEN = ""
     private val DRM_PLAYBACK_ID = ""
 
-    private val CLEAR_CMAF_PLAYBACK_ID = "5ICwECLW8900gMTi5eaOkWdYvOkGhtKyBY02uRCT6FOyE" // cmaf
-    private val CLEAR_PLAYBACK_ID = "KyU4B3aJB01jjk00EmZBkp9nRkeaZyTblN3EwmjhIqkcw"
-    private val CLEAR_MULTI_LANG_PLAYBACK_ID = "3x5wDUHxkd8NkEfspLUK3OpSQEJe3pom"
+    private const val CLEAR_CMAF_PLAYBACK_ID = "5ICwECLW8900gMTi5eaOkWdYvOkGhtKyBY02uRCT6FOyE"
+    private const val CLEAR_PLAYBACK_ID = "KyU4B3aJB01jjk00EmZBkp9nRkeaZyTblN3EwmjhIqkcw"
+    private const val CLEAR_MULTI_LANG_PLAYBACK_ID = "3x5wDUHxkd8NkEfspLUK3OpSQEJe3pom"
 
-    private val CACHE_SUBDIR = "test_downloads"
-    private val DB_NAME = "test_download.db" // TODO: Maybe I won't need
+    // warning: excessively verbose
+    private const val LOG_NETWORK_REQUESTS = false
+    private const val CACHE_SUBDIR = "test_downloads"
   }
 
   private lateinit var testDownloadManager: DownloadManager
@@ -96,7 +99,7 @@ class OfflineDownloadInstrumentationTests {
       /*context=*/ appContext,
       /*databaseProvider=*/ testDatabaseProvider,
       /*cache=*/ testCache,
-      /*upstreamFactory=*/ LoggingHttpDataSource.Factory(DefaultHttpDataSource.Factory(), tag = "DownloadHttp", logging = false),
+      /*upstreamFactory=*/ LoggingHttpDataSource.Factory(DefaultHttpDataSource.Factory(), tag = "DownloadHttp", logging = LOG_NETWORK_REQUESTS),
       /*executor=*/ ioExecutor
     )
     testDownloadManager.requirements = Requirements(0) // no requirements for starting
@@ -129,17 +132,30 @@ class OfflineDownloadInstrumentationTests {
   }
 
   @Test
-  fun testCleartextMutliLangMutliLang() = runTest {
+  fun testCleartextMutliLang() = runTest {
     val mediaItem = MediaItems.fromMuxPlaybackId(
       playbackId = CLEAR_MULTI_LANG_PLAYBACK_ID
     )
-    testMediaItemCase(mediaItem)
+    testMediaItemCase(
+      mediaItem,
+      expectedAudioTrackIds = listOf("main:audio", "audio:Français"),
+      expectedSubtitleIds = listOf("subtitle:English", "subtitle:Français"),
+    )
   }
 
-  suspend fun testMediaItemCase(mediaItem: MediaItem) {
+  // Download something using the DownloadHelper and OfflineLicenseHelpers and assert expected tracks
+  suspend fun testMediaItemCase(
+    mediaItem: MediaItem,
+    expectedAudioTrackIds: List<String> = listOf(),
+    expectedSubtitleIds: List<String> = listOf()
+  ) {
     val clearTextDrmSessionManagerProvider = { _: MediaItem -> DrmSessionManager.DRM_UNSUPPORTED }
     val fileMediaSource = MuxOfflineCmafHlsMediaSource.create(
-      dataSourceFactory = LoggingHttpDataSource.Factory(DefaultHttpDataSource.Factory(), tag = "MediaSrcHttp", logging = false),
+      dataSourceFactory = LoggingHttpDataSource.Factory(
+        DefaultHttpDataSource.Factory(),
+        tag = "MediaSrcHttp",
+        logging = LOG_NETWORK_REQUESTS
+      ),
       mediaItem = mediaItem,
       drmSessionManagerProvider = clearTextDrmSessionManagerProvider
     )
@@ -147,18 +163,30 @@ class OfflineDownloadInstrumentationTests {
     Log.d(TAG, "testCleartextDownload(): Preparing Download")
     val preparationComplete = CompletableDeferred<DownloadRequest>()
     val downloadHelper = createMuxHlsDownloadHelper(appContext, fileMediaSource)
-    downloadHelper.prepare(MuxHlsDownloadCallback(
+    downloadHelper.prepare(
+      MuxHlsDownloadCallback(
       fileMediaSource,
       // DrmSessionManagerProvider shouldn't be touched (tested in unit tests)
       drmProvider = MuxDrmSessionManagerProvider(
-        LoggingHttpDataSource.Factory(DefaultHttpDataSource.Factory(), tag = "DrmHttp"),
+        LoggingHttpDataSource.Factory(
+          DefaultHttpDataSource.Factory(),
+          tag = "DrmHttp",
+          logging = LOG_NETWORK_REQUESTS
+        ),
         createLogcatLogger()
       ),
       playbackId = mediaItem.getPlaybackId()!!, // MediaItems.fromMuxPlaybackId tested elsewhere
       drmToken = null,
       ioExecutor = ioExecutor,
       onReady = { preparationComplete.complete(it) },
-      onError = { preparationComplete.completeExceptionally(Exception("Download prep failed", it)) }
+      onError = {
+        preparationComplete.completeExceptionally(
+          Exception(
+            "Download prep failed",
+            it
+          )
+        )
+      }
     ))
 
     // Throws here if there was an error selecting tracks
@@ -171,16 +199,23 @@ class OfflineDownloadInstrumentationTests {
         download: Download,
         finalException: Exception?
       ) {
-        Log.d(TAG, "download state (id ${download.request.id}) changed:" +
-            "\n\tstate:${downloadStateName(download.state)}")
+        Log.d(
+          TAG, "download state (id ${download.request.id}) changed:" +
+              "\n\tstate:${downloadStateName(download.state)}"
+        )
         when (download.state) {
           Download.STATE_COMPLETED -> {
             Log.d(TAG, "download complete")
             downloadComplete.complete(download)
           }
+
           Download.STATE_DOWNLOADING -> {
-            Log.d(TAG, "downloading: ${download.percentDownloaded}% (${download.bytesDownloaded} bytes)")
+            Log.d(
+              TAG,
+              "downloading: ${download.percentDownloaded}% (${download.bytesDownloaded} bytes)"
+            )
           }
+
           Download.STATE_FAILED -> {
             // contract guarantees finalException when state is failed
             downloadComplete.completeExceptionally(
@@ -225,30 +260,42 @@ class OfflineDownloadInstrumentationTests {
       )
       .createMediaSource(diskMediaItem)
 
-    // TODO: Probably do something else, like query the download index or something?
-    // prepare the disk media source to inspect the downloaded content
-    val completedPrepareFromDisk = CompletableDeferred<Timeline>()
-    val prepareThread = HandlerThread("test-download").also { it.start() }
-
+    val completedPrepareFromDisk = CompletableDeferred<Tracks>()
     coroutineScope {
-      launch(Handler(prepareThread.looper).asCoroutineDispatcher("test-download")) {
+      launch(Dispatchers.Main) {
+        val player = ExoPlayer.Builder(appContext).build()
         try {
-          diskMediaSource.prepareSource(
-            /* caller = */ { _, timeline ->
-              completedPrepareFromDisk.complete(timeline)
-            },
-            /* mediaTransferListener = */ null,
-            /* playerId = */ PlayerId("test-player")
-          )
+          player.addMediaSource(diskMediaSource)
+          player.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+              Log.d(TAG, "onPlaybackStateChanged: $playbackState")
+            }
+
+            override fun onTracksChanged(tracks: Tracks) {
+              completedPrepareFromDisk.complete(tracks)
+              player.release()
+            }
+          })
+          player.prepare()
         } catch (e: Throwable) {
-          completedPrepareFromDisk.completeExceptionally(RuntimeException("prepare failed", e))
+          completedPrepareFromDisk.completeExceptionally(e)
         }
       }
     }
 
-    val timeline = completedPrepareFromDisk.await()
-    Log.i(TAG, "Download test complete")
-    prepareThread.quitSafely()
+    val tracks = completedPrepareFromDisk.await()
+
+    assertEquals(
+      "Expected audio tracks available",
+      expectedAudioTrackIds.sorted(),
+      tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }.map { it.mediaTrackGroup.id }.sorted()
+    )
+
+    assertEquals(
+      "Expected subtitle tracks available",
+      expectedSubtitleIds.sorted(),
+      tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }.map { it.mediaTrackGroup.id }.sorted()
+    )
   }
 
   @Test
