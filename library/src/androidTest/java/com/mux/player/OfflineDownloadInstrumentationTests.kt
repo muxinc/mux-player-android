@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.database.DatabaseProvider
@@ -291,8 +292,10 @@ class OfflineDownloadInstrumentationTests {
       )
       .createMediaSource(diskMediaItem)
 
+    // prepare an ExoPlayer from the downloaded asset so we can assert against its loaded tracks
     val completedPrepareFromDisk = CompletableDeferred<Tracks>()
     coroutineScope {
+      // use ExoPlayer from the main thread (simpler than configuring a new applicationLooper)
       launch(Dispatchers.Main) {
         val player = ExoPlayer.Builder(appContext).build()
         try {
@@ -301,10 +304,17 @@ class OfflineDownloadInstrumentationTests {
             override fun onPlaybackStateChanged(playbackState: Int) {
               Log.d(TAG, "onPlaybackStateChanged: $playbackState")
             }
-
             override fun onTracksChanged(tracks: Tracks) {
               completedPrepareFromDisk.complete(tracks)
-              player.release()
+              releaseOnNextLoop()
+            }
+            override fun onPlayerError(error: PlaybackException) {
+              completedPrepareFromDisk.completeExceptionally(error)
+              releaseOnNextLoop()
+            }
+            private fun releaseOnNextLoop() {
+              // gotta release after track selection in the listener but not during the call itself
+              launch(Dispatchers.Main) { player.release() }
             }
           })
           player.prepare()
