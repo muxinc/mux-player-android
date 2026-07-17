@@ -5,13 +5,12 @@ import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.DrmInitData
 import androidx.media3.common.Format
-import androidx.media3.common.TrackGroup
+import androidx.media3.common.StreamKey
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.drm.OfflineLicenseHelper
+import androidx.media3.exoplayer.hls.playlist.HlsMultivariantPlaylist
 import androidx.media3.exoplayer.offline.DownloadHelper
 import androidx.media3.exoplayer.offline.DownloadRequest
-import androidx.media3.exoplayer.source.TrackGroupArray
-import androidx.media3.exoplayer.trackselection.MappingTrackSelector
 import com.mux.player.AbsRobolectricTest
 import com.mux.player.media.MuxDrmSessionManagerProvider
 import io.mockk.Called
@@ -41,12 +40,13 @@ class MuxHlsDownloadCallbackTests : AbsRobolectricTest() {
   @Test
   fun `clear content emits a request keyed by playbackId with no keySetId`() {
     val playbackId = "fake-playback-id"
-    val baseRequest = DownloadRequest.Builder(playbackId, MANIFEST_URI).build()
-    val helper = mockk<DownloadHelper>(relaxed = true) {
-      every { getDownloadRequest(any<String>(), any()) } returns baseRequest
-    }
+    val helper = mockk<DownloadHelper>(relaxed = true)
     val mediaSource = mockk<MuxOfflineCmafHlsMediaSource>(relaxed = true) {
-      every { capturedMultivariantPlaylist } returns null
+      every { capturedMultivariantPlaylist } returns
+          capturedMultivariant(
+            widevineData = null,
+            playlist = multivariantPlaylist(audios = listOf(rendition("audio"))),
+          )
       every { selectedMediaPlaylists } returns emptyList()
     }
     val drmProvider = mockk<MuxDrmSessionManagerProvider>(relaxed = true)
@@ -67,8 +67,8 @@ class MuxHlsDownloadCallbackTests : AbsRobolectricTest() {
 
     assertNull("clear content should not fail", errored)
     assertEquals("request should be keyed by playbackId", playbackId, ready?.id)
+    assertEquals("request should target the manifest uri", MANIFEST_URI, ready?.uri)
     assertNull("clear content should carry no keySetId", ready?.keySetId)
-    verify(exactly = 1) { helper.getDownloadRequest(playbackId, null) }
     // clear content must never reach for a license
     verify { drmProvider wasNot Called }
   }
@@ -102,13 +102,10 @@ class MuxHlsDownloadCallbackTests : AbsRobolectricTest() {
     val keySetId = "++keyset".toByteArray()
     val sessionKeyInitData = widevineInitData()
 
-    val baseRequest = DownloadRequest.Builder(playbackId, MANIFEST_URI).build()
-    val helper = mockk<DownloadHelper>(relaxed = true) {
-      every { getDownloadRequest(any<String>(), any()) } returns baseRequest
-    }
+    val helper = mockk<DownloadHelper>(relaxed = true)
     val mediaSource = mockk<MuxOfflineCmafHlsMediaSource>(relaxed = true) {
       every { capturedMultivariantPlaylist } returns
-          MuxOfflineCmafHlsMediaSource.CapturedMultivariantPlaylist(sessionKeyInitData, mockk())
+          capturedMultivariant(widevineData = sessionKeyInitData, playlist = multivariantPlaylist())
       // present too, but the session key wins
       every { selectedMediaPlaylists } returns
           listOf(MuxOfflineCmafHlsMediaSource.CapturedMediaPlaylist(widevineInitData(), mockk()))
@@ -149,7 +146,7 @@ class MuxHlsDownloadCallbackTests : AbsRobolectricTest() {
     val helper = mockk<DownloadHelper>(relaxed = true)
     val mediaSource = mockk<MuxOfflineCmafHlsMediaSource>(relaxed = true) {
       every { capturedMultivariantPlaylist } returns
-          MuxOfflineCmafHlsMediaSource.CapturedMultivariantPlaylist(widevineInitData(), mockk())
+          capturedMultivariant(widevineData = widevineInitData(), playlist = multivariantPlaylist())
       every { selectedMediaPlaylists } returns emptyList()
     }
 
@@ -173,55 +170,105 @@ class MuxHlsDownloadCallbackTests : AbsRobolectricTest() {
   }
 
   @Test
-  fun `every audio and subtitle group is selected, and the top video is left alone`() {
+  fun `stream keys select the top-bitrate variant with its matching audio and subtitle renditions`() {
     val playbackId = "id"
-    val baseRequest = DownloadRequest.Builder(playbackId, MANIFEST_URI).build()
-
-    // renderer 0 = video (skipped), renderer 1 = audio with two renditions (groups)
-    val mappedTrackInfo = mockk<MappingTrackSelector.MappedTrackInfo>(relaxed = true) {
-      every { rendererCount } returns 2
-      every { getRendererType(0) } returns C.TRACK_TYPE_VIDEO
-      every { getRendererType(1) } returns C.TRACK_TYPE_AUDIO
-      every { getTrackGroups(1) } returns twoTrackGroups()
-    }
-    val helper = mockk<DownloadHelper>(relaxed = true) {
-      every { getMappedTrackInfo(0) } returns mappedTrackInfo
-      every { getDownloadRequest(any<String>(), any()) } returns baseRequest
-    }
+    // per-tier bundled audio (like Mux): each variant binds its own audio group; subs shared
+    val variants = listOf(
+      variant(bitrate = 900_000, audioGroup = "audio-lo", subtitleGroup = "subs"),
+      variant(bitrate = 5_000_000, audioGroup = "audio-hi", subtitleGroup = "subs"), // top
+      variant(bitrate = 1_800_000, audioGroup = "audio-med", subtitleGroup = "subs"),
+    )
+    val audios = listOf(
+      rendition("audio-lo"),  // 0
+      rendition("audio-hi"),  // 1  <- belongs to the top variant
+      rendition("audio-med"), // 2
+    )
+    val subtitles = listOf(rendition("subs")) // 0
     val mediaSource = mockk<MuxOfflineCmafHlsMediaSource>(relaxed = true) {
-      every { capturedMultivariantPlaylist } returns null
+      every { capturedMultivariantPlaylist } returns
+          capturedMultivariant(
+            widevineData = null,
+            playlist = multivariantPlaylist(variants = variants, audios = audios, subtitles = subtitles),
+          )
       every { selectedMediaPlaylists } returns emptyList()
     }
 
+    var ready: DownloadRequest? = null
     val callback = MuxHlsDownloadCallback(
       mediaSource = mediaSource,
       drmProvider = mockk(relaxed = true),
       playbackId = playbackId,
       drmToken = null,
       ioExecutor = directExecutor(),
-      onReady = { },
+      onReady = { ready = it },
       onError = { },
     )
 
-    callback.onPrepared(helper, /* tracksInfoAvailable = */ true)
+    callback.onPrepared(mockk(relaxed = true), /* tracksInfoAvailable = */ true)
 
-    // one selection per audio rendition (group), on the audio renderer
-    verify(exactly = 2) {
-      helper.addTrackSelectionForSingleRenderer(
-        0, 1, DownloadHelper.DEFAULT_TRACK_SELECTOR_PARAMETERS, any()
-      )
-    }
-    // the video renderer is never overridden — it keeps the default top-bitrate selection
-    verify(exactly = 0) { helper.addTrackSelectionForSingleRenderer(0, 0, any(), any()) }
+    assertEquals(
+      "top variant (idx 1) + its audio group (idx 1) + subtitle (idx 0), and nothing else",
+      setOf(
+        StreamKey(HlsMultivariantPlaylist.GROUP_INDEX_VARIANT, 1),
+        StreamKey(HlsMultivariantPlaylist.GROUP_INDEX_AUDIO, 1),
+        StreamKey(HlsMultivariantPlaylist.GROUP_INDEX_SUBTITLE, 0),
+      ),
+      ready?.streamKeys?.toSet(),
+    )
   }
 
   private fun widevineInitData(): DrmInitData =
     DrmInitData(DrmInitData.SchemeData(C.WIDEVINE_UUID, "video/mp4", byteArrayOf(1, 2, 3)))
 
-  private fun twoTrackGroups(): TrackGroupArray =
-    TrackGroupArray(
-      TrackGroup(Format.Builder().setSampleMimeType("audio/mp4a-latm").build()),
-      TrackGroup(Format.Builder().setSampleMimeType("audio/mp4a-latm").build()),
+  private fun capturedMultivariant(
+    widevineData: DrmInitData?,
+    playlist: HlsMultivariantPlaylist,
+  ): MuxOfflineCmafHlsMediaSource.CapturedMultivariantPlaylist =
+    MuxOfflineCmafHlsMediaSource.CapturedMultivariantPlaylist(widevineData, playlist)
+
+  private fun variant(
+    bitrate: Int,
+    audioGroup: String? = "audio",
+    subtitleGroup: String? = null,
+  ): HlsMultivariantPlaylist.Variant =
+    HlsMultivariantPlaylist.Variant(
+      /* url = */ Uri.parse("https://stream.mux.com/v_$bitrate.m3u8"),
+      /* format = */ Format.Builder().setPeakBitrate(bitrate).build(),
+      /* videoGroupId = */ null,
+      /* audioGroupId = */ audioGroup,
+      /* subtitleGroupId = */ subtitleGroup,
+      /* captionGroupId = */ null,
+      /* pathwayId = */ null,
+      /* stableVariantId = */ null,
+    )
+
+  private fun rendition(group: String, name: String = "Default"): HlsMultivariantPlaylist.Rendition =
+    HlsMultivariantPlaylist.Rendition(
+      /* url = */ Uri.parse("https://stream.mux.com/$group.m3u8"),
+      /* format = */ Format.Builder().build(),
+      /* groupId = */ group,
+      /* name = */ name,
+      /* stableRenditionId = */ null,
+    )
+
+  private fun multivariantPlaylist(
+    variants: List<HlsMultivariantPlaylist.Variant> = listOf(variant(bitrate = 1_000_000)),
+    audios: List<HlsMultivariantPlaylist.Rendition> = emptyList(),
+    subtitles: List<HlsMultivariantPlaylist.Rendition> = emptyList(),
+  ): HlsMultivariantPlaylist =
+    HlsMultivariantPlaylist(
+      /* baseUri = */ MANIFEST_URI.toString(),
+      /* tags = */ emptyList(),
+      /* variants = */ variants,
+      /* videos = */ emptyList(),
+      /* audios = */ audios,
+      /* subtitles = */ subtitles,
+      /* closedCaptions = */ emptyList(),
+      /* muxedAudioFormat = */ null,
+      /* muxedCaptionFormats = */ emptyList(),
+      /* hasIndependentSegments = */ false,
+      /* variableDefinitions = */ emptyMap(),
+      /* sessionKeyDrmInitData = */ emptyList(),
     )
 
   private fun directExecutor() = Executor { it.run() }

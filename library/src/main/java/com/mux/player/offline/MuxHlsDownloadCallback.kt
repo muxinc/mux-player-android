@@ -65,9 +65,8 @@ class MuxHlsDownloadCallback(
         buildRequest(uri, generateStreamKeys(helper, mvp), it)
       }
     } else {
-      onReady(
-        buildRequest(uri, generateStreamKeys(helper, mvp), null)
-      )
+      onReady(buildRequest(uri, generateStreamKeys(helper, mvp), null))
+      helper.release()
     }
   }
 
