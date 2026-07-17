@@ -25,10 +25,8 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.scheduler.Requirements
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mux.player.internal.createLogcatLogger
-import com.mux.player.internal.getDrmToken
 import com.mux.player.internal.getPlaybackId
 import com.mux.player.media.MediaItems
 import com.mux.player.media.MuxDrmSessionManagerProvider
@@ -38,9 +36,9 @@ import com.mux.player.offline.createMuxHlsDownloadHelper
 import com.mux.player.util.LoggingHttpDataSource
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.android.asCoroutineDispatcher
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -49,7 +47,6 @@ import java.io.File
 import java.lang.Exception
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
-import kotlin.math.log
 
 @RunWith(AndroidJUnit4::class)
 class OfflineDownloadInstrumentationTests {
@@ -63,15 +60,14 @@ class OfflineDownloadInstrumentationTests {
     private val DRM_PLAYBACK_ID = ""
 
     private val CLEAR_CMAF_PLAYBACK_ID = "5ICwECLW8900gMTi5eaOkWdYvOkGhtKyBY02uRCT6FOyE" // cmaf
-    private val CLEARTEXT_PLAYBACK_ID = "KyU4B3aJB01jjk00EmZBkp9nRkeaZyTblN3EwmjhIqkcw"
+    private val CLEAR_PLAYBACK_ID = "KyU4B3aJB01jjk00EmZBkp9nRkeaZyTblN3EwmjhIqkcw"
     private val CLEAR_MULTI_LANG_PLAYBACK_ID = "3x5wDUHxkd8NkEfspLUK3OpSQEJe3pom"
-    //private val CLEARTEXT_PLAYBACK_ID = "zyII9g3ndjv9jOQi7JQh37oAUfLok2kvtdHmlGBPuVc" //long
 
     private val CACHE_SUBDIR = "test_downloads"
     private val DB_NAME = "test_download.db" // TODO: Maybe I won't need
   }
 
-  private lateinit var mediaDownloadManager: DownloadManager
+  private lateinit var testDownloadManager: DownloadManager
   private lateinit var testDatabaseProvider: DatabaseProvider
   private lateinit var testCache: SimpleCache
   private lateinit var downloadIndex: DownloadIndex
@@ -96,31 +92,51 @@ class OfflineDownloadInstrumentationTests {
       /*databaseProvider=*/ testDatabaseProvider
     )
     downloadIndex = DefaultDownloadIndex(testDatabaseProvider)
-    mediaDownloadManager = DownloadManager(
+    testDownloadManager = DownloadManager(
       /*context=*/ appContext,
       /*databaseProvider=*/ testDatabaseProvider,
       /*cache=*/ testCache,
       /*upstreamFactory=*/ LoggingHttpDataSource.Factory(DefaultHttpDataSource.Factory(), tag = "DownloadHttp", logging = false),
       /*executor=*/ ioExecutor
     )
-    mediaDownloadManager.requirements = Requirements(0) // no requirements for starting
+    testDownloadManager.requirements = Requirements(0) // no requirements for starting
   }
 
   @After
   fun cleanUp() {
+    testCache.release()
+    testDownloadManager.release()
+
     ensureEmptyCacheDir()
   }
 
   @Test
-  fun testCleartextDownload() = runTest {
+  fun testCleartextSimple() = runTest {
+    val mediaItem = MediaItems.fromMuxPlaybackId(
+      playbackId = CLEAR_PLAYBACK_ID
+    )
+    testMediaItemCase(mediaItem)
+  }
+
+  @Test
+  fun testCleartextCmaf() = runTest {
+    val mediaItem = MediaItems.fromMuxPlaybackId(
+      playbackId = CLEAR_CMAF_PLAYBACK_ID,
+      assetStartTime = 0.0,
+      assetEndTime = 60.0
+    )
+    testMediaItemCase(mediaItem)
+  }
+
+  @Test
+  fun testCleartextMutliLangMutliLang() = runTest {
     val mediaItem = MediaItems.fromMuxPlaybackId(
       playbackId = CLEAR_MULTI_LANG_PLAYBACK_ID
     )
-//    val mediaItem = MediaItems.fromMuxPlaybackId(
-//      playbackId = CLEAR_CMAF_PLAYBACK_ID,
-//      assetStartTime = 0.0,
-//      assetEndTime = 30.0
-//    )
+    testMediaItemCase(mediaItem)
+  }
+
+  suspend fun testMediaItemCase(mediaItem: MediaItem) {
     val clearTextDrmSessionManagerProvider = { _: MediaItem -> DrmSessionManager.DRM_UNSUPPORTED }
     val fileMediaSource = MuxOfflineCmafHlsMediaSource.create(
       dataSourceFactory = LoggingHttpDataSource.Factory(DefaultHttpDataSource.Factory(), tag = "MediaSrcHttp", logging = false),
@@ -149,7 +165,7 @@ class OfflineDownloadInstrumentationTests {
     val downloadRequest = preparationComplete.await()
 
     val downloadComplete = CompletableDeferred<Download>()
-    mediaDownloadManager.addListener(object : DownloadManager.Listener {
+    testDownloadManager.addListener(object : DownloadManager.Listener {
       override fun onDownloadChanged(
         downloadManager: DownloadManager,
         download: Download,
@@ -193,8 +209,8 @@ class OfflineDownloadInstrumentationTests {
     })
 
     Log.d(TAG, "testClearTextDownload(): Starting download")
-    mediaDownloadManager.addDownload(downloadRequest)
-    mediaDownloadManager.resumeDownloads()
+    testDownloadManager.addDownload(downloadRequest)
+    testDownloadManager.resumeDownloads()
 
     val completedDownload = downloadComplete.await()
 
@@ -213,18 +229,20 @@ class OfflineDownloadInstrumentationTests {
     // prepare the disk media source to inspect the downloaded content
     val completedPrepareFromDisk = CompletableDeferred<Timeline>()
     val prepareThread = HandlerThread("test-download").also { it.start() }
-    launch(Handler(prepareThread.looper).asCoroutineDispatcher("test-download")) {
-      try {
-        diskMediaSource.prepareSource(
-          /* caller = */ { _, timeline ->
-            Log.d(TAG, "Timeline: $timeline")
-            completedPrepareFromDisk.complete(timeline)
-          },
-          /* mediaTransferListener = */ null,
-          /* playerId = */ PlayerId("test-player")
-        )
-      } catch(e: Throwable) {
-        completedPrepareFromDisk.completeExceptionally(RuntimeException("prepare failed", e))
+
+    coroutineScope {
+      launch(Handler(prepareThread.looper).asCoroutineDispatcher("test-download")) {
+        try {
+          diskMediaSource.prepareSource(
+            /* caller = */ { _, timeline ->
+              completedPrepareFromDisk.complete(timeline)
+            },
+            /* mediaTransferListener = */ null,
+            /* playerId = */ PlayerId("test-player")
+          )
+        } catch (e: Throwable) {
+          completedPrepareFromDisk.completeExceptionally(RuntimeException("prepare failed", e))
+        }
       }
     }
 
