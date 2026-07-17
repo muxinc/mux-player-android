@@ -39,16 +39,6 @@ class LoggingHttpDataSource(
   }
 
   /** Wraps the [HttpDataSource]s produced by [delegateFactory] in a [LoggingHttpDataSource]. */
-  @OptIn(UnstableApi::class)
-  class Factory(
-    private val delegateFactory: HttpDataSource.Factory,
-    private val tag: String = TAG,
-    /** When false, created sources are transparent pass-throughs that log nothing. */
-    var logging: Boolean = true,
-  ) : HttpDataSource.Factory by delegateFactory {
-
-    override fun createDataSource(): HttpDataSource =
-      LoggingHttpDataSource(delegateFactory.createDataSource(), tag, logging)
   class Factory(
     private val delegateFactory: HttpDataSource.Factory,
     private val tag: String = TAG,
