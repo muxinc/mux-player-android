@@ -329,7 +329,7 @@ class OfflineDownloadInstrumentationTests {
   private fun ensureEmptyCacheDir() {
     fun deleteRecursively(file: File): Boolean {
       if (file.isDirectory) {
-        // !! is either an error or isDirectory returning true for a non-file. Both are abort cases
+        // !! is either an error or isDirectory returning true for a non-directory. Both are aborts
         for (file in file.listFiles()!!) {
           val deleted = file.deleteRecursively()
           if (!deleted) {
