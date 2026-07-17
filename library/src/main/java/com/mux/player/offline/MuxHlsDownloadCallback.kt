@@ -1,10 +1,15 @@
 package com.mux.player.offline
 
+import android.annotation.SuppressLint
+import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.DrmInitData
 import androidx.media3.common.Format
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.StreamKey
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.hls.playlist.HlsMultivariantPlaylist
 import androidx.media3.exoplayer.offline.DownloadHelper
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
@@ -45,19 +50,24 @@ class MuxHlsDownloadCallback(
   private val onError: (IOException) -> Unit,
 ) : DownloadHelper.Callback {
 
+  @SuppressLint("UseKtx") // String.toUri is not in our deps
   override fun onPrepared(helper: DownloadHelper, tracksInfoAvailable: Boolean) {
-    if (tracksInfoAvailable) {
-      selectAllAudioAndTextRenditions(helper)
-    }
+    // mvp guaranteed populated by onPrepared()
+    val mvp = mediaSource.capturedMultivariantPlaylist!!.playlist
+    val uri = Uri.parse(mvp.baseUri)
 
     // either from EXT-X-SESSION-KEYs (multi-key) or the video's EXT-X-KEY (single-key)
     val videoDrmInitData = mediaSource.capturedMultivariantPlaylist?.capturedWidevineData
       ?: mediaSource.selectedMediaPlaylists.firstNotNullOfOrNull { it.capturedDrmInitData }
 
     if (videoDrmInitData != null) {
-      acquireLicenseAsync(helper, videoDrmInitData)
+      acquireLicenseAsync(helper, videoDrmInitData) {
+        buildRequest(uri, generateStreamKeys(helper, mvp), it)
+      }
     } else {
-      onReady(helper.getDownloadRequest(playbackId, null))
+      onReady(
+        buildRequest(uri, generateStreamKeys(helper, mvp), null)
+      )
     }
   }
 
@@ -66,11 +76,27 @@ class MuxHlsDownloadCallback(
     onError(e)
   }
 
-  private fun acquireLicenseAsync(helper: DownloadHelper, videoDrmInitData: DrmInitData) {
+  private fun buildRequest(
+    uri: Uri,
+    streamKeys: List<StreamKey>,
+    keySetId: ByteArray?
+  ): DownloadRequest {
+    return DownloadRequest.Builder(playbackId, uri)
+      .setMimeType(MimeTypes.APPLICATION_M3U8)
+      .setStreamKeys(streamKeys)
+      .build()
+      .let { if (keySetId != null) it.copyWithKeySetId(keySetId) else it }
+  }
+
+  private fun acquireLicenseAsync(
+    helper: DownloadHelper,
+    videoDrmInitData: DrmInitData,
+    buildRequest: (ByteArray) -> DownloadRequest
+  ) {
     ioExecutor.execute {
       try {
         val keySetId = acquireLicense(videoDrmInitData)
-        val request = helper.getDownloadRequest(playbackId, null).copyWithKeySetId(keySetId)
+        val request = buildRequest(keySetId)
         onReady(request)
       } catch (e: IOException) {
         onError(e)
@@ -93,6 +119,42 @@ class MuxHlsDownloadCallback(
       licenseHelper.downloadLicense(format)
     } finally {
       licenseHelper.release()
+    }
+  }
+
+  /**
+   * Build stream keys for selecting the tracks to download. We do this manually because
+   * Mux's CMAF streams would crash DownloadHelper otherwise. DownloadHelper and HlsMediaPeriod have
+   * different pictures of how the audio renditions map to the variant list, so DownloadHelper tries
+   * to select tracks at nonexistent indicies
+   *
+   * We know how mux streams are formatted so we just set this up manually and skip DownloadHelper's
+   * track selection process to avoid the crash
+   */
+  private fun generateStreamKeys(
+    helper: DownloadHelper,
+    mvp: HlsMultivariantPlaylist
+  ): List<StreamKey> {
+    if (mvp.variants.isEmpty()) {
+      // strange case but ok
+      return listOf()
+    }
+    return buildList {
+      val topIndex = mvp.variants.indices.maxBy { mvp.variants[it].format.bitrate }
+      val topVideoVariant = mvp.variants[topIndex]
+      add(StreamKey(HlsMultivariantPlaylist.GROUP_INDEX_VARIANT, topIndex))
+
+      // select the audio/sub renditions that belongs to the top variant
+      mvp.audios.forEachIndexed { i, rendition ->
+        if (rendition.groupId == topVideoVariant.audioGroupId) {
+          add(StreamKey(HlsMultivariantPlaylist.GROUP_INDEX_AUDIO, i))
+        }
+      }
+      mvp.subtitles.forEachIndexed { i, rendition ->
+        if (rendition.groupId == topVideoVariant.subtitleGroupId) {
+          add(StreamKey(HlsMultivariantPlaylist.GROUP_INDEX_SUBTITLE, i))
+        }
+      }
     }
   }
 
