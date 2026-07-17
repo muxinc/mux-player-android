@@ -54,10 +54,9 @@ class OfflineDownloadInstrumentationTests {
   companion object {
     val TAG = "OfflineDownloadInstrumentationTests"
 
-    // TODO: Could run this in CI for real if we supply tokens to the CI machine
-    private val PLAY_TOKEN = ""
-    private val DRM_TOKEN = ""
-    private val DRM_PLAYBACK_ID = ""
+    private val PLAY_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InhmRnR6N2w1Zm1zWXViMURtTWprVTRvOVk0U0dBVW9HMDB0VlhjVzRrNzNVIn0.eyJhdWQiOiJ2Iiwic3ViIjoia1pjWW04MDFyR0JjY0g3eFk4VG9KbDc1aHJpTmtseTVLekJpZ1BLaUlkMkUiLCJleHAiOjE3ODQ5MTE3OTEsIm9mZmxpbmUiOnRydWUsImxpY2Vuc2VFeHBpcmF0aW9uIjo4NjQwMCwicGxheUR1cmF0aW9uIjo4NjQwMH0.tkwbaRA9FO91RVU1e7W_QrkjgAc7tYuATDt7pm4-cbW6JAg2lLw0XGtRp7gbre7Pi7C2Hg16hZQmEfJw7rwSxOu_xfI1dHcLyTKWZkJYjf7swIC9ChsaszbS1BihknAyE_Tpg3MoOUmt21Izl4OlzGzSF5SwuT4qwqMaHADOw-CA81pUCe3k9yGYQUVBaJ9ufjCtwISayhM5wJ99eY8XaqogPQirAscSm-XIvBBVUX1Xvbcpsm4vPN2nCnTHbb0sXGAQu3J4DAR8_Xks9Ep0UpCjxFaL9ImHvEzH4Q9-Z6I9NVwHNiOeNo_mcoYy_AatBdub0y5NUpYp1wJ5FZUCxg"
+    private val DRM_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InhmRnR6N2w1Zm1zWXViMURtTWprVTRvOVk0U0dBVW9HMDB0VlhjVzRrNzNVIn0.eyJhdWQiOiJkIiwic3ViIjoia1pjWW04MDFyR0JjY0g3eFk4VG9KbDc1aHJpTmtseTVLekJpZ1BLaUlkMkUiLCJleHAiOjE3ODQ5MTE4NTYsIm9mZmxpbmUiOnRydWUsImxpY2Vuc2VFeHBpcmF0aW9uIjo4NjQwMCwicGxheUR1cmF0aW9uIjo4NjQwMH0.CvEuxE9OhzNhA_JsjpUDs3GjSOKcGLrzx5oxMwU_Udaq7nM5CVM6M0KVgouW68xZmpzecdkcsuTU2clIBWPisnHOxipsOKOXH8SNY2HYpxrCSL9Goh9zfMekDk6IQC6C_DyOWAF-aZYoX1vwyDFlghEOfF0fXmy5X5XHFWylAOkWLx7iaPPcYGa2eqGKeEq0xzUfFdJCIDEa0mkuGZcT3mHVd_dtP-Vrtedn3z1gH19efSGfuIGmISdBFxPTe1m-1_AhaeWrDcXY5QEGCtB_ze0bw5lq7IXTDP_Ps_E5w8E1bKwADaIY0Z_YCAsObGJRc0ffUW0LRf1M_rIGVS_XpQ"
+    private val DRM_PLAYBACK_ID = "kZcYm801rGBccH7xY8ToJl75hriNkly5KzBigPKiId2E"
 
     private const val CLEAR_CMAF_PLAYBACK_ID = "5ICwECLW8900gMTi5eaOkWdYvOkGhtKyBY02uRCT6FOyE"
     private const val CLEAR_PLAYBACK_ID = "KyU4B3aJB01jjk00EmZBkp9nRkeaZyTblN3EwmjhIqkcw"
@@ -154,8 +153,15 @@ class OfflineDownloadInstrumentationTests {
   }
 
   @Test
-  fun testDrmDownload() {
-
+  fun testDrmDownload() = runTest {
+    testMediaItemCase(
+      mediaItem = MediaItems.fromMuxPlaybackId(
+        playbackId = DRM_PLAYBACK_ID,
+        playbackToken = PLAY_TOKEN,
+        drmToken = DRM_TOKEN,
+      ),
+      expectedAudioTrackIds = listOf("audio:default")
+    )
   }
 
   // Download something using the DownloadHelper and OfflineLicenseHelpers and assert expected tracks
