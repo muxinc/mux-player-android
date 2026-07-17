@@ -19,9 +19,6 @@ import com.mux.player.media.MuxDrmCallback
 import com.mux.player.media.MuxDrmSessionManagerProvider
 import java.util.UUID
 
-// Preliminary Design Note: it's my hope that most of the logic a custom integration would need will
-//  be here, and could be lifted out without our storage, playback, or task-management code
-
 /**
  * Creates a [DownloadHelper] that can download Mux Video HLS streams, including DRM-protected ones.
  *
