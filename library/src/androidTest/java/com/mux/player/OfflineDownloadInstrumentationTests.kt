@@ -97,10 +97,18 @@ class OfflineDownloadInstrumentationTests {
     downloadIndex = DefaultDownloadIndex(testDatabaseProvider)
     testDownloadManager = DownloadManager(
       /*context=*/ appContext,
-      /*databaseProvider=*/ testDatabaseProvider,
-      /*cache=*/ testCache,
-      /*upstreamFactory=*/ LoggingHttpDataSource.Factory(DefaultHttpDataSource.Factory(), tag = "DownloadHttp", logging = LOG_NETWORK_REQUESTS),
-      /*executor=*/ ioExecutor
+      /*databaseProvider=*/
+      testDatabaseProvider,
+      /*cache=*/
+      testCache,
+      /*upstreamFactory=*/
+      LoggingHttpDataSource.Factory(
+        DefaultHttpDataSource.Factory(),
+        tag = "DownloadHttp",
+        logging = LOG_NETWORK_REQUESTS
+      ),
+      /*executor=*/
+      ioExecutor
     )
     testDownloadManager.requirements = Requirements(0) // no requirements for starting
   }
@@ -172,29 +180,26 @@ class OfflineDownloadInstrumentationTests {
     val downloadHelper = createMuxHlsDownloadHelper(appContext, fileMediaSource)
     downloadHelper.prepare(
       MuxHlsDownloadCallback(
-      fileMediaSource,
-      // DrmSessionManagerProvider shouldn't be touched (tested in unit tests)
-      drmProvider = MuxDrmSessionManagerProvider(
-        LoggingHttpDataSource.Factory(
-          DefaultHttpDataSource.Factory(),
-          tag = "DrmHttp",
-          logging = LOG_NETWORK_REQUESTS
+        fileMediaSource,
+        // DrmSessionManagerProvider shouldn't be touched (tested in unit tests)
+        drmProvider = MuxDrmSessionManagerProvider(
+          LoggingHttpDataSource.Factory(
+            DefaultHttpDataSource.Factory(),
+            tag = "DrmHttp",
+            logging = LOG_NETWORK_REQUESTS
+          ),
+          createLogcatLogger()
         ),
-        createLogcatLogger()
-      ),
-      playbackId = mediaItem.getPlaybackId()!!, // MediaItems.fromMuxPlaybackId tested elsewhere
-      drmToken = null,
-      ioExecutor = ioExecutor,
-      onReady = { preparationComplete.complete(it) },
-      onError = {
-        preparationComplete.completeExceptionally(
-          Exception(
-            "Download prep failed",
-            it
+        playbackId = mediaItem.getPlaybackId()!!, // MediaItems.fromMuxPlaybackId tested elsewhere
+        drmToken = null,
+        ioExecutor = ioExecutor,
+        onReady = { preparationComplete.complete(it) },
+        onError = {
+          preparationComplete.completeExceptionally(
+            Exception("Download prep failed", it)
           )
-        )
-      }
-    ))
+        }
+      ))
 
     // Throws here if there was an error selecting tracks
     val downloadRequest = preparationComplete.await()
@@ -352,7 +357,7 @@ class OfflineDownloadInstrumentationTests {
 
   private class TestDbHelper(
     context: Context
-  ): SQLiteOpenHelper(
+  ) : SQLiteOpenHelper(
     context,
     null, // In-mem index (media files still saved on-disk)
     null,
