@@ -17,8 +17,8 @@ import java.util.concurrent.ConcurrentHashMap
  * with their DrmInitData. If the HLS stream had widevine protection data in the MVP or MP,
  * it will be discovered and available.
  *
- * DownloadHelper would otherwise look for protection-scheme data in the HlsMediaPeriod, where it's
- * stored without the actual PSSH
+ * DownloadHelper would otherwise look for protection-scheme data in the HlsMediaPlaylist, where
+ * it's stored without the actual PSSH
  *
  * This class should only be used to download VOD streams, not live. It assumes no playlist
  * refreshes or key rotation
