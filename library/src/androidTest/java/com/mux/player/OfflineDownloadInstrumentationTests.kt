@@ -118,17 +118,24 @@ class OfflineDownloadInstrumentationTests {
     val mediaItem = MediaItems.fromMuxPlaybackId(
       playbackId = CLEAR_PLAYBACK_ID
     )
-    testMediaItemCase(mediaItem)
+    testMediaItemCase(
+      mediaItem,
+      expectedAudioTrackIds = listOf("main:audio")
+    )
   }
 
   @Test
   fun testCleartextCmaf() = runTest {
+    // we have to test a CMAF asset because DownloadHelper misbehaves while selecting CMAF tracks
     val mediaItem = MediaItems.fromMuxPlaybackId(
       playbackId = CLEAR_CMAF_PLAYBACK_ID,
       assetStartTime = 0.0,
       assetEndTime = 60.0
     )
-    testMediaItemCase(mediaItem)
+    testMediaItemCase(
+      mediaItem,
+      expectedAudioTrackIds = listOf("audio:Default")
+    )
   }
 
   @Test
