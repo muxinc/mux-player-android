@@ -75,7 +75,6 @@ class OfflineDownloadInstrumentationTests {
   private lateinit var testDatabaseProvider: DatabaseProvider
   private lateinit var testCache: SimpleCache
   private lateinit var ioExecutor: Executor
-  private lateinit var ioExecutor: Executor
 
   private val appContext get() = InstrumentationRegistry.getInstrumentation().targetContext
 
