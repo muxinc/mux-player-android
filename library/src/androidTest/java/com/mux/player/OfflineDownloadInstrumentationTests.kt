@@ -107,7 +107,6 @@ class OfflineDownloadInstrumentationTests {
 
   @After
   fun cleanUp() {
-    testCache.release()
     testDownloadManager.release()
     testCache.release()
     dbHelper.close()
