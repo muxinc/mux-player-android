@@ -1,6 +1,7 @@
 plugins {
-  id("com.android.application") version "8.13.2" apply false
-  id("org.jetbrains.kotlin.android") version "2.1.20" apply false
-  id("com.android.library") version "8.13.2" apply false
-  id("com.mux.gradle.android.mux-android-distribution") version "1.3.0" apply false
+  alias(libs.plugins.android.application) apply false
+  alias(libs.plugins.kotlin.android) apply false
+  alias(libs.plugins.android.library) apply false
+  alias(libs.plugins.mux.android.distribution) apply false
+  alias(libs.plugins.dokka) apply false
 }

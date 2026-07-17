@@ -12,6 +12,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.HttpDataSource.HttpDataSourceException
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
+import androidx.media3.datasource.TransferListener
 import com.google.common.net.HttpHeaders
 import com.mux.player.internal.cache.MuxPlayerCache
 import com.mux.player.internal.cache.MuxPlayerCache.ReadHandle
@@ -26,7 +27,7 @@ import java.net.URL
 class MuxDataSource private constructor(
   private val upstreamSrcFac: HttpDataSource.Factory,
   private val muxPlayerCache: MuxPlayerCache,
-) : BaseDataSource(false) {
+) : DataSource {
 
   /**
    * Creates a new instance of [MuxDataSource]. The upstream data source will be invoked for any
@@ -52,6 +53,8 @@ class MuxDataSource private constructor(
   private var cacheReader: ReadHandle? = null
   private var cacheWriter: WriteHandle? = null
 
+  private val transferListeners = mutableListOf<TransferListener>()
+
   override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
     return if (respondingFromCache) {
       // !! safe by contract
@@ -71,6 +74,10 @@ class MuxDataSource private constructor(
 
       bytesFromUpstream
     }
+  }
+
+  override fun addTransferListener(transferListener: TransferListener) {
+    transferListeners += transferListener
   }
 
   override fun open(dataSpec: DataSpec): Long {
@@ -110,7 +117,7 @@ class MuxDataSource private constructor(
       .build()
 
     val upstreamBytes = openAndInitFromRemote(revalidateSpec, RevalidatingDataSource.Factory())
-    val upstream = this.upstream!! // set by initAndOpenUpstream
+    val upstream = this.upstream!! // set by openAndInitFromRemote
 
     return if (upstream.responseCode != 304) {
       // Entry wasn't valid anymore, but we did a GET so the body's ready to read and we're done
@@ -131,7 +138,7 @@ class MuxDataSource private constructor(
 
   private fun openAndInitFromRemote(dataSpec: DataSpec, fac: HttpDataSource.Factory): Long {
     respondingFromCache = false
-    val upstream = fac.createDataSource()
+    val upstream = createDataSource(fac)
 
     this.upstream = upstream
     val available = upstream.open(dataSpec)
@@ -146,6 +153,16 @@ class MuxDataSource private constructor(
     respondingFromCache = true
     this.cacheReader = readHandle
     return readHandle.fileSize
+  }
+
+  /**
+   * Creates a delegate [HttpDataSource] from the given factory, transitively adding all of our
+   * registered [TransferListener]s so that bandwidth from the delegate is still metered.
+   */
+  private fun createDataSource(fac: HttpDataSource.Factory): HttpDataSource {
+    val dataSource = fac.createDataSource()
+    transferListeners.forEach { dataSource.addTransferListener(it) }
+    return dataSource
   }
 }
 
