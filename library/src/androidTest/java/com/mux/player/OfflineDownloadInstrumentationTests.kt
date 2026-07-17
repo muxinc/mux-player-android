@@ -74,7 +74,7 @@ class OfflineDownloadInstrumentationTests {
   private lateinit var dbHelper: TestDbHelper
   private lateinit var testDatabaseProvider: DatabaseProvider
   private lateinit var testCache: SimpleCache
-  private lateinit var downloadIndex: DownloadIndex
+  private lateinit var ioExecutor: Executor
   private lateinit var ioExecutor: Executor
 
   private val appContext get() = InstrumentationRegistry.getInstrumentation().targetContext
@@ -110,6 +110,7 @@ class OfflineDownloadInstrumentationTests {
   fun cleanUp() {
     testCache.release()
     testDownloadManager.release()
+    testCache.release()
     dbHelper.close()
 
     ensureEmptyCacheDir()
