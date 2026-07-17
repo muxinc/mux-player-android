@@ -14,14 +14,16 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * A WrappingMediaSource that wraps an HlsMediaSource and captures the playlists is parses, along
- * with their DrmInitData. If the HLS stream had widevine protection data, it will be captured
- * and accessible via [selectedMediaPlaylists] and [capturedMultivariantPlaylist]
+ * with their DrmInitData. If the HLS stream had widevine protection data in the MVP or MP,
+ * it will be discovered and available.
  *
- * Build one with [create]. The captures are populated from the tracker's loader threads (one per
- * media playlist, so concurrently) during preparation, and are held in thread-safe containers keyed
- * by playlist URI.
+ * DownloadHelper would otherwise look for protection-scheme data in the HlsMediaPeriod, where it's
+ * stored without the actual PSSH
  *
- * This class should only be used to download VOD streams, especially if they are DRM'd
+ * This class should only be used to download VOD streams, not live. It assumes no playlist
+ * refreshes or key rotation
+ *
+ * Build one with [create].
  */
 @OptIn(UnstableApi::class)
 class MuxOfflineCmafHlsMediaSource private constructor(
