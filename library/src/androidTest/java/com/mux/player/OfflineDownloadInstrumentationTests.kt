@@ -171,7 +171,7 @@ class OfflineDownloadInstrumentationTests {
         playbackToken = PLAY_TOKEN,
         drmToken = DRM_TOKEN,
       ),
-      expectedAudioTrackIds = listOf("audio:default")
+      expectedAudioTrackIds = listOf("audio:Default")
     )
   }
 
@@ -205,10 +205,10 @@ class OfflineDownloadInstrumentationTests {
     downloadHelper.prepare(
       MuxHlsDownloadCallback(
         fileMediaSource,
-        // DrmSessionManagerProvider shouldn't be touched (tested in unit tests)
-        drmProvider = drmSessionManagerProvider,
         playbackId = mediaItem.getPlaybackId()!!, // MediaItems.fromMuxPlaybackId tested elsewhere
-        drmToken = null,
+        // DrmSessionManagerProvider/drmToken not touched unless the stream has a pssh (unit-tested)
+        drmProvider = drmSessionManagerProvider,
+        drmToken = DRM_TOKEN,
         ioExecutor = ioExecutor,
         onReady = { preparationComplete.complete(it) },
         onError = { preparationComplete.completeExceptionally(Exception("Download prep failed", it))
