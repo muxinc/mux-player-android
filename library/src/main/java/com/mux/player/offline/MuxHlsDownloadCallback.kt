@@ -3,7 +3,6 @@ package com.mux.player.offline
 import android.annotation.SuppressLint
 import android.net.Uri
 import androidx.annotation.OptIn
-import androidx.media3.common.C
 import androidx.media3.common.DrmInitData
 import androidx.media3.common.Format
 import androidx.media3.common.MimeTypes
@@ -12,7 +11,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.hls.playlist.HlsMultivariantPlaylist
 import androidx.media3.exoplayer.offline.DownloadHelper
 import androidx.media3.exoplayer.offline.DownloadRequest
-import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.mux.player.media.MediaItems
 import com.mux.player.media.MuxDrmSessionManagerProvider
 import java.io.IOException
@@ -153,23 +151,6 @@ class MuxHlsDownloadCallback(
         if (rendition.groupId == topVideoVariant.subtitleGroupId) {
           add(StreamKey(HlsMultivariantPlaylist.GROUP_INDEX_SUBTITLE, i))
         }
-      }
-    }
-  }
-
-  private fun selectAllAudioAndTextRenditions(helper: DownloadHelper) {
-    val mappedTrackInfo = helper.getMappedTrackInfo(/* periodIndex = */ 0)
-    for (renderer in 0 until mappedTrackInfo.rendererCount) {
-      val type = mappedTrackInfo.getRendererType(renderer)
-      if (type != C.TRACK_TYPE_AUDIO && type != C.TRACK_TYPE_TEXT) continue // keep default top video
-      val groups = mappedTrackInfo.getTrackGroups(renderer)
-      for (group in 0 until groups.length) { // each rendition is its own group
-        helper.addTrackSelectionForSingleRenderer(
-          /* periodIndex = */ 0,
-          renderer,
-          DownloadHelper.DEFAULT_TRACK_SELECTOR_PARAMETERS,
-          listOf(DefaultTrackSelector.SelectionOverride(group, /* tracks = */ 0)),
-        )
       }
     }
   }
