@@ -97,18 +97,14 @@ class OfflineDownloadInstrumentationTests {
     downloadIndex = DefaultDownloadIndex(testDatabaseProvider)
     testDownloadManager = DownloadManager(
       /*context=*/ appContext,
-      /*databaseProvider=*/
-      testDatabaseProvider,
-      /*cache=*/
-      testCache,
-      /*upstreamFactory=*/
-      LoggingHttpDataSource.Factory(
+      /*databaseProvider=*/ testDatabaseProvider,
+      /*cache=*/ testCache,
+      /*upstreamFactory=*/ LoggingHttpDataSource.Factory(
         DefaultHttpDataSource.Factory(),
         tag = "DownloadHttp",
         logging = LOG_NETWORK_REQUESTS
       ),
-      /*executor=*/
-      ioExecutor
+      /*executor=*/ ioExecutor
     )
     testDownloadManager.requirements = Requirements(0) // no requirements for starting
   }
