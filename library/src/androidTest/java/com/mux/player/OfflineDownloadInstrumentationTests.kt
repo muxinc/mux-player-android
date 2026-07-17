@@ -90,7 +90,6 @@ class OfflineDownloadInstrumentationTests {
       /*evictor=*/ NoOpCacheEvictor(),
       /*databaseProvider=*/ testDatabaseProvider
     )
-    downloadIndex = DefaultDownloadIndex(testDatabaseProvider)
     testDownloadManager = DownloadManager(
       /*context=*/ appContext,
       /*databaseProvider=*/ testDatabaseProvider,
