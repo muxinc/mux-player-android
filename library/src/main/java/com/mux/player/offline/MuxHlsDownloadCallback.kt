@@ -59,15 +59,12 @@ class MuxHlsDownloadCallback(
       ?: mediaSource.selectedMediaPlaylists.firstNotNullOfOrNull { it.capturedDrmInitData }
 
     if (videoDrmInitData != null) {
-//      acquireLicenseAsync(helper, videoDrmInitData) {
-//        buildRequest(uri, generateStreamKeys(helper, mvp), it)
-//      }
-      val baseRequest = buildRequest(uri, generateStreamKeys(helper, mvp))
+      val baseRequest = buildRequest(uri, generateStreamKeys(mvp))
       // after building the base request we can release. License data will be added async
       helper.release()
-      acquireLicenseAsync(helper, videoDrmInitData, baseRequest)
+      acquireLicenseAsync(videoDrmInitData, baseRequest)
     } else {
-      onReady(buildRequest(uri, generateStreamKeys(helper, mvp)))
+      onReady(buildRequest(uri, generateStreamKeys(mvp)))
       helper.release()
     }
   }
@@ -80,17 +77,14 @@ class MuxHlsDownloadCallback(
   private fun buildRequest(
     uri: Uri,
     streamKeys: List<StreamKey>,
-//    keySetId: ByteArray?
   ): DownloadRequest {
     return DownloadRequest.Builder(playbackId, uri)
       .setMimeType(MimeTypes.APPLICATION_M3U8)
       .setStreamKeys(streamKeys)
       .build()
-//      .let { if (keySetId != null) it.copyWithKeySetId(keySetId) else it }
   }
 
   private fun acquireLicenseAsync(
-    helper: DownloadHelper,
     videoDrmInitData: DrmInitData,
     baseRequest: DownloadRequest,
   ) {
@@ -102,9 +96,7 @@ class MuxHlsDownloadCallback(
         onError(e)
       } catch (e: Exception) {
         onError(IOException(e))
-      } //finally {
-        //helper.release()
-      //}
+      }
     }
   }
 
@@ -132,7 +124,6 @@ class MuxHlsDownloadCallback(
    * track selection process to avoid the crash
    */
   private fun generateStreamKeys(
-    helper: DownloadHelper,
     mvp: HlsMultivariantPlaylist
   ): List<StreamKey> {
     if (mvp.variants.isEmpty()) {

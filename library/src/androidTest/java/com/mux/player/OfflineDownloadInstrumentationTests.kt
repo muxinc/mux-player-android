@@ -26,6 +26,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mux.player.internal.createLogcatLogger
+import com.mux.player.internal.getDrmToken
 import com.mux.player.internal.getPlaybackId
 import com.mux.player.media.MediaItems
 import com.mux.player.media.MuxDrmSessionManagerProvider
@@ -40,6 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
@@ -219,6 +221,14 @@ class OfflineDownloadInstrumentationTests {
     // Throws here if there was an error selecting tracks
     val downloadRequest = preparationComplete.await()
 
+    if (!mediaItem.getDrmToken().isNullOrEmpty()) {
+      // assert that we discovered and attached a keyset id before continuinh
+      assertNotNull(
+        "Should have keySetId associated with DRM token ${mediaItem.getDrmToken()}",
+        downloadRequest.keySetId
+      )
+    }
+
     val downloadComplete = CompletableDeferred<Download>()
     testDownloadManager.addListener(object : DownloadManager.Listener {
       override fun onDownloadChanged(
@@ -321,10 +331,6 @@ class OfflineDownloadInstrumentationTests {
       expectedSubtitleIds.sorted(),
       tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }.map { it.mediaTrackGroup.id }.sorted()
     )
-  }
-
-  private fun deleteCachedWidevineLicenses() {
-    TODO("drm tests not yet implemented")
   }
 
   /** Human-readable name for a [Download.state] value, for logging/assertion messages. */
