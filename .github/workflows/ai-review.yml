@@ -28,6 +28,13 @@ jobs:
   ai-review-observe:
     name: ai-review (observe)
     runs-on: ubuntu-latest
+    # Fork PRs don't receive repo/org secrets (GitHub withholds them from forks
+    # by design), so REVIEW_TOOL_TOKEN would be empty and the tool checkout would
+    # 403. Skip the job entirely on fork PRs instead of letting it fail — a
+    # skipped job shows as neutral, never a red/blocking check, which keeps this
+    # true to its observe-only intent. Same-repo PRs (the SDK team's own branches)
+    # run normally.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Check out review tool
         uses: actions/checkout@v4
