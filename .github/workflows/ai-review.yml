@@ -1,15 +1,84 @@
+# Observe-only AI review. Inlines the steps from muxinc/code-review-analysis's
+# reusable workflow (.github/workflows/ai-review-observe.yml) instead of calling
+# it with `uses:` — GitHub does not allow a public repo to consume a reusable
+# workflow from a private repo via org-level Actions access, and this repo is
+# public while the tool repo is (for now) private. Checking the tool repo out
+# with a token sidesteps that restriction. If code-review-analysis is ever made
+# internal/public, this can revert to a thin `uses:` caller.
+#
+# This is OBSERVE-ONLY: it posts a comment + informational label and logs the
+# ruling. It does not block merges and creates no ruleset.
+
 name: ai-review
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+
 permissions:
   contents: read
   pull-requests: write
   issues: write
+
 concurrency:
   group: ai-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
+
 jobs:
-  review:
-    uses: muxinc/code-review-analysis/.github/workflows/ai-review-observe.yml@main
-    secrets: inherit
+  ai-review-observe:
+    name: ai-review (observe)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out review tool
+        uses: actions/checkout@v4
+        with:
+          repository: muxinc/code-review-analysis
+          ref: main
+          token: ${{ secrets.REVIEW_TOOL_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Classify PR (post comment + label, observe-only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python -m live.classify \
+            --repo "${{ github.repository }}" \
+            --pr "${{ github.event.pull_request.number }}" \
+            --live-config "live/config.native-sdk.yml" \
+            --apply --observe \
+            > result.json
+          cat result.json
+
+      - name: Render job summary
+        run: |
+          {
+            echo "## AI Review — observe-only"
+            echo ""
+            echo "PR [#$(jq -r '.pr' result.json)]($(jq -r '.url' result.json)) — **$(jq -r '.band' result.json)**"
+            echo ""
+            echo "| Layer | Result |"
+            echo "|---|---|"
+            echo "| Band (final) | \`$(jq -r '.label' result.json)\` |"
+            echo "| Route | $(jq -r '.route' result.json) |"
+            echo "| Engine score | $(jq -r '.engine_score' result.json) |"
+            echo "| Learned score | $(jq -r '.learned_score' result.json) |"
+            echo "| LLM judge | $(jq -r '.llm_score // "n/a"' result.json) |"
+            echo ""
+            echo "_Informational only — nothing is enforced._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record ruling to central log
+        env:
+          GH_TOKEN: ${{ secrets.REVIEW_TOOL_TOKEN }}
+          LOG_REPO: muxinc/code-review-analysis
+          LOG_BRANCH: rulings-log
+          LOG_PATH: rulings.jsonl
+        run: |
+          python -m live.record_ruling --result-file result.json
