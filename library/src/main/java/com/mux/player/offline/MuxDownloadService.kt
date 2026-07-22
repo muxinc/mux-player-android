@@ -38,7 +38,7 @@ class MuxDownloadService : DownloadService(
   ): Notification {
     return notificationHelper.buildProgressNotification(
       /*context=*/ this,
-      /*smallIcon=*/ android.R.drawable.stat_sys_download,
+      /*smallIcon=*/ R.drawable.ic_offline_download,
       /*contentIntent=*/ null,
       /*message=*/ null,
       /*downloads=*/ downloads,
