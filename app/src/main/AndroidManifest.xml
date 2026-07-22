@@ -8,6 +8,8 @@
          apps that don't download media. See the matching <service> block below in <application>. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <!-- Required for DownloadService progress notifications on API 33+ (also request at runtime) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Lets PlatformScheduler restart downloads after a device reboot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <!-- ===== end Mux Player offline downloads ===== -->

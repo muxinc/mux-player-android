@@ -9,6 +9,7 @@
     PlatformScheduler JobService, which in turn require sensitive permissions:
       - android.permission.FOREGROUND_SERVICE
       - android.permission.FOREGROUND_SERVICE_DATA_SYNC
+      - android.permission.POST_NOTIFICATIONS (API 33+; also grant at runtime)
       - android.permission.RECEIVE_BOOT_COMPLETED
 
     We deliberately do NOT declare the Service, the JobService, or these permissions here. Merging
