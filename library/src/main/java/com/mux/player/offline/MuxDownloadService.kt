@@ -1,5 +1,6 @@
 package com.mux.player.offline
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import androidx.annotation.OptIn
 import androidx.media3.common.util.NotificationUtil
@@ -30,6 +31,7 @@ class MuxDownloadService : DownloadService(
   override fun getDownloadManager(): DownloadManager =
     MuxPlayerDownloadStore.get(this).downloadManager
 
+  @SuppressLint("MissingPermission") // Perms in calling app
   override fun getScheduler(): Scheduler = PlatformScheduler(this, JOB_ID)
 
   override fun getForegroundNotification(
