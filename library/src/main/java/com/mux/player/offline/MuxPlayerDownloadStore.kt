@@ -64,7 +64,6 @@ private class DownloadStoreImpl(
   // Constructing the store (and everything in this constructor) is side-effect free.
 
   private val downloadDirectory: File
-  private val downloadDirectory: File
     get() = File(applicationContext.noBackupFilesDir, DOWNLOAD_DIR)
 
   private val databaseProvider: DatabaseProvider by lazy {
