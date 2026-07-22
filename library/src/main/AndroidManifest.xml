@@ -1,35 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <!-- TODO: Really these are sensitive permissions, should probably make callers add them
-       although, like why would you want the downloads to be interruptible? That would be silly
-       And you can't configure the foreground notification ID the way that I have this set up
+<manifest>
 
-       OK we just go with the original plan - Caller declares all of these in order to use the
-       Service, or implements their own Service at whatever foreground level they want
+  <!--
+    Offline downloads intentionally add NO manifest configuration from this library. Client apps
+    must add them manually if using offline downloads, because they can be sensitive permissions
+
+    Mux Player's offline download support relies on a foreground Service (MuxDownloadService) and a
+    PlatformScheduler JobService, which in turn require sensitive permissions:
+      - android.permission.FOREGROUND_SERVICE
+      - android.permission.FOREGROUND_SERVICE_DATA_SYNC
+      - android.permission.RECEIVE_BOOT_COMPLETED
+
+    We deliberately do NOT declare the Service, the JobService, or these permissions here. Merging
+    them from the library would force them onto every app that depends on mux-player, even ones that
+    never download anything - and sensitive permissions like these affect Play Store review and user
+    trust. They should only be enabled by apps that actually use offline downloads.
+
+    If you use offline downloads, declare the Service, the PlatformScheduler JobService, and the
+    permissions in your OWN app's AndroidManifest.xml. The `app` and `automatedtests` modules in
+    this repo have a working, copy-pasteable example. This will be documented in the dev guide.
   -->
 
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
-  <!-- Lets PlatformScheduler restart downloads after a device reboot -->
-  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-
-  <application>
-    <service
-      android:name="com.mux.player.offline.MuxDownloadService"
-      android:foregroundServiceType="dataSync"
-      android:exported="false"
-      >
-      <intent-filter>
-        <action android:name="androidx.media3.exoplayer.downloadService.action.RESTART"/>
-        <category android:name="android.intent.category.DEFAULT"/>
-      </intent-filter>
-    </service>
-
-    <!-- JobService used by PlatformScheduler (MuxDownloadService.getScheduler()) to reschedule
-         downloads when their requirements are met and after a reboot -->
-    <service
-      android:name="androidx.media3.exoplayer.scheduler.PlatformScheduler$PlatformSchedulerService"
-      android:permission="android.permission.BIND_JOB_SERVICE"
-      android:exported="true"/>
-  </application>
 </manifest>
