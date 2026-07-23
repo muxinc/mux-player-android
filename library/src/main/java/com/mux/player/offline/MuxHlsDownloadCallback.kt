@@ -19,7 +19,8 @@ import java.util.concurrent.Executor
 /**
  * Offline-download prepare callback that works with Mux's CMAF HLS VOD streams, including DRM ones
  *
- * 1. selects all audio and subtitle renditions for download
+ * 1. selects the top variant's video track and all audio and subtitle renditions in that variant's
+ *    AUDIO and SUBTITLES rendition groups (eg, default and alternate-language renditions)
  * 2. reads the captured video [androidx.media3.common.DrmInitData] off [mediaSource] — the multivariant
  *    `#EXT-X-SESSION-KEY`, falling back to a media playlist's `#EXT-X-KEY`;
  * 3. (off the caller's looper, on [ioExecutor]) acquires the offline Widevine license → `keySetId`
