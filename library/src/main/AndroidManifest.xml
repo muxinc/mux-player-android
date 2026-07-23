@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-<manifest>
 
   <!--
     Offline downloads intentionally add NO manifest configuration from this library. Client apps
