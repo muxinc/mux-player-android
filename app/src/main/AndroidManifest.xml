@@ -2,6 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- ===== Mux Player offline downloads =====
+         Only required if the app uses Mux Player's offline download support. The mux-player library
+         intentionally does not declare these, since they are sensitive and shouldn't be forced on
+         apps that don't download media. See the matching <service> block below in <application>. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <!-- Required for DownloadService progress notifications on API 33+ (also request at runtime) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Lets PlatformScheduler restart downloads after a device reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- ===== end Mux Player offline downloads ===== -->
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -40,6 +52,26 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- ===== Mux Player offline downloads =====
+             Only required if the app uses Mux Player's offline download support. Paired with the
+             permissions declared above at the top of the manifest. -->
+        <service
+            android:name="com.mux.player.offline.MuxDownloadService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="androidx.media3.exoplayer.downloadService.action.RESTART"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </service>
+        <!-- JobService used by PlatformScheduler (MuxDownloadService.getScheduler()) to reschedule
+             downloads when their requirements are met and after a reboot -->
+        <service
+            android:name="androidx.media3.exoplayer.scheduler.PlatformScheduler$PlatformSchedulerService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="true"/>
+        <!-- ===== end Mux Player offline downloads ===== -->
     </application>
 
 </manifest>
