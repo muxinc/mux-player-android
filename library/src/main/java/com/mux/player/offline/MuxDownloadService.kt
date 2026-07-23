@@ -17,6 +17,9 @@ import com.mux.player.R
 class MuxDownloadService : DownloadService(
   /* foregroundNotificationId = */ FOREGROUND_SERVICE_NOTIFICATION_ID,
   /*foregroundNotificationUpdateInterval =*/ FOREGROUND_SERVICE_UPDATE_INTERVAL_MS,
+  /*channelId =*/ NOTIFICATION_CHANNEL_ID,
+  /*channelNameResourceId =*/ R.string.mux_player_download_notification_channel_name,
+  /*channelDescriptionResourceId =*/ R.string.mux_player_download_notification_channel_description
 ) {
 
   private val notificationHelper by lazy {
@@ -25,7 +28,6 @@ class MuxDownloadService : DownloadService(
 
   override fun onCreate() {
     super.onCreate()
-    createNotificationChannel()
   }
 
   override fun getDownloadManager(): DownloadManager =
@@ -45,17 +47,6 @@ class MuxDownloadService : DownloadService(
       /*message=*/ null,
       /*downloads=*/ downloads,
       /*notMetRequirements=*/ notMetRequirements,
-    )
-  }
-
-  private fun createNotificationChannel() {
-    NotificationUtil.createNotificationChannel(
-      /*context=*/ this,
-      /*id=*/ NOTIFICATION_CHANNEL_ID,
-      /*nameResourceId=*/ R.string.mux_player_download_notification_channel_name,
-      /*descriptionResourceId=*/ R.string.mux_player_download_notification_channel_description,
-      // Low importance: the progress notification is informational and shouldn't make noise
-      /*importance=*/ NotificationUtil.IMPORTANCE_LOW,
     )
   }
 
