@@ -44,6 +44,7 @@ media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls", versio
 media3-cast = { module = "androidx.media3:media3-cast", version.ref = "media3" }
 mux-data-media3 = { module = "com.mux.stats.sdk.muxstats:data-media3-at_1_10", version.ref = "muxData" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxJunit" }
