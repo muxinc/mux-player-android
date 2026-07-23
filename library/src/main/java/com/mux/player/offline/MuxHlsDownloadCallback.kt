@@ -27,9 +27,12 @@ import java.util.concurrent.Executor
  * 4. builds a [androidx.media3.exoplayer.offline.DownloadRequest] keyed by **playbackId**
  * 5. emits it via [onReady] and releases the helper, waiting for license acquisition if required
  *
- * Clear content is downloaded with no `keySetId`.
+ * - Any failure routes to [onError].
  *
- * Any failure routes to [onError].
+ * ### Notes
+ * - Track selection will only work correctly for HLS streams (though mux doesn't deliver DASH at
+ *   the time of writing this)
+ * - Clear content is downloaded with no `keySetId`.
  *
  * @param mediaSource the same capturing source passed to [createMuxHlsDownloadHelper]; its captures
  *   are complete by the time this callback fires.
