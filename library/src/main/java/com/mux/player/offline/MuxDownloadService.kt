@@ -3,7 +3,6 @@ package com.mux.player.offline
 import android.annotation.SuppressLint
 import android.app.Notification
 import androidx.annotation.OptIn
-import androidx.media3.common.util.NotificationUtil
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
@@ -42,7 +41,7 @@ class MuxDownloadService : DownloadService(
   ): Notification {
     return notificationHelper.buildProgressNotification(
       /*context=*/ this,
-      /*smallIcon=*/ R.drawable.ic_offline_download,
+      /*smallIcon=*/ R.drawable.mux_player_ic_offline_download,
       /*contentIntent=*/ null,
       /*message=*/ null,
       /*downloads=*/ downloads,
