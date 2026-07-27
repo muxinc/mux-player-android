@@ -106,7 +106,7 @@ private class DownloadStoreImpl(
   }
 
   companion object {
-    const val DATABASE_NAME = "mux-offline.tedb"
+    const val DATABASE_NAME = "mux-offline.db"
     const val DOWNLOAD_DIR = "com.mux.player.offline"
     const val CACHE_SUBDIR = "cache"
   }
