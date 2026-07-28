@@ -7,7 +7,9 @@
 # internal/public, this can revert to a thin `uses:` caller.
 #
 # This is OBSERVE-ONLY: it posts a comment + informational label and logs the
-# ruling. It does not block merges and creates no ruleset.
+# ruling. It does not block merges and creates no ruleset. Tool-side steps run
+# continue-on-error and downstream steps gate on success, so a bug in the
+# reviewer degrades to a neutral warning and never reds a PR.
 
 name: ai-review
 
@@ -28,6 +30,8 @@ jobs:
   ai-review-observe:
     name: ai-review (observe)
     runs-on: ubuntu-latest
+    # Cap runtime: a wedged pip/gh/LLM call otherwise holds a runner up to 6h.
+    timeout-minutes: 15
     # Fork PRs don't receive repo/org secrets (GitHub withholds them from forks
     # by design), so REVIEW_TOOL_TOKEN would be empty and the tool checkout would
     # 403. Skip the job entirely on fork PRs instead of letting it fail — a
@@ -40,17 +44,28 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: muxinc/code-review-analysis
+          # Unpinned by design during rollout so tool fixes flow without a caller
+          # bump. Pin to a tag/SHA once the reviewer stabilizes.
           ref: main
           token: ${{ secrets.REVIEW_TOOL_TOKEN }}
+          # The token is only needed to fetch the tool repo; don't leave it in
+          # .git/config for the later python steps (they auth via GH_TOKEN env).
+          persist-credentials: false
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
       - name: Classify PR (post comment + label, observe-only)
+        id: classify
+        # Observe-only: a reviewer crash must never block the SDK team's PR. On
+        # failure this step warns (yellow) and the gated steps below skip.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -62,8 +77,10 @@ jobs:
             --apply --observe \
             > result.json
           cat result.json
+          echo "ok=true" >> "$GITHUB_OUTPUT"
 
       - name: Render job summary
+        if: steps.classify.outputs.ok == 'true'
         run: |
           {
             echo "## AI Review — observe-only"
@@ -82,6 +99,10 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record ruling to central log
+        if: steps.classify.outputs.ok == 'true'
+        # Recording must never block either; record_ruling already exits 0 on
+        # failure, this is belt-and-suspenders.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.REVIEW_TOOL_TOKEN }}
           LOG_REPO: muxinc/code-review-analysis
