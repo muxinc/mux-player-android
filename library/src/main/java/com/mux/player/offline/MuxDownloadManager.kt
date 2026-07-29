@@ -4,16 +4,20 @@ import android.content.Context
 import android.media.MediaDrm
 import android.os.Build
 import android.os.Handler
+import android.util.Log
+import androidx.annotation.MainThread
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.offline.Download
+import androidx.media3.exoplayer.offline.DownloadHelper
 import androidx.media3.exoplayer.offline.DownloadIndex
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.scheduler.Requirements
+import com.google.common.collect.ConcurrentHashMultiset
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.mux.player.internal.createLogcatLogger
@@ -23,6 +27,7 @@ import com.mux.player.internal.getPlaybackId
 import com.mux.player.media.MuxDrmSessionManagerProvider
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 
 /**
@@ -48,6 +53,8 @@ object MuxDownloadManager {
    * downloads to unmetered (e.g. Wi-Fi) networks.
    */
   val DEFAULT_REQUIREMENTS: Requirements = Requirements(Requirements.NETWORK)
+
+  private const val TAG = "MuxDownloadManager"
 
   /**
    * Observes offline-download progress and lifecycle changes.
@@ -87,27 +94,33 @@ object MuxDownloadManager {
   private val installLock = Any()
   private var installed = false
 
+  private val playbackIdsStarting = ConcurrentHashMap<String, DownloadHelper>()
+
   /**
    * Prepares [mediaItem] for offline playback and enqueues the download.
    *
    * The download id is the item's Mux playback ID. Preparation — fetching the HLS manifests and,
    * for DRM content, acquiring the offline Widevine license — runs asynchronously; during it,
-   * listeners see a [MuxDownload.State.STARTING] snapshot. Once prepared, the resulting
-   * `DownloadRequest` is handed to [MuxDownloadService] and the `DownloadManager` takes over
-   * ([MuxDownload.State.QUEUED] onward). If preparation fails before the download is queued, a
-   * [MuxDownload.State.FAILED] snapshot is delivered to listeners with the cause.
+   * listeners see a [MuxDownload.State.STARTING] snapshot. Once prepared, the download states are
+   * the similar to media3.
    *
    * @param context any context; the application context is used.
    * @param mediaItem a Mux [MediaItem] (built via `MediaItems.fromMuxPlaybackId`). Must carry a
-   *   playback ID; DRM items must also carry a DRM token.
+   *   playback ID; DRM items must also carry playback and DRM tokens.
    * @throws IllegalArgumentException if [mediaItem] is not a Mux media item (no playback ID).
    */
+  @MainThread
   fun startDownload(context: Context, mediaItem: MediaItem) {
     val appContext = context.applicationContext
     val playbackId = requireNotNull(mediaItem.getPlaybackId()) {
       "mediaItem is not a Mux MediaItem (no playback ID). Build it with MediaItems.fromMuxPlaybackId."
     }
     val store = MuxPlayerDownloadStore.get(appContext)
+
+    if (this.playbackIdsStarting[playbackId] != null) {
+      Log.w(TAG, "Trying to start already-started download for playback ID $playbackId")
+      return
+    }
 
     // Announce STARTING before the (async) manifest/license work — there is no DownloadManager
     // entry for this download yet, so this snapshot is the only signal it's in flight.
@@ -124,6 +137,8 @@ object MuxDownloadManager {
       drmSessionManagerProvider = drmProvider,
     )
     val helper = createMuxHlsDownloadHelper(appContext, mediaSource)
+
+    this.playbackIdsStarting[playbackId] = helper
     helper.prepare(
       MuxHlsDownloadCallback(
         mediaSource = mediaSource,
@@ -133,16 +148,24 @@ object MuxDownloadManager {
         licenseEndpointHost = mediaItem.getLicenseUrlHost(),
         ioExecutor = store.ioExecutor,
         onReady = { request ->
-          DownloadService.sendAddDownload(
-            appContext,
-            MuxDownloadService::class.java,
-            request,
-            /* foreground = */ false,
-          )
+          // Start the prepared Download unless it was removed in the meantime
+          if (playbackIdsStarting[playbackId] != null) {
+            DownloadService.sendAddDownload(
+              appContext,
+              MuxDownloadService::class.java,
+              request,
+              /* foreground = */ false,
+            )
+            playbackIdsStarting.remove(playbackId)
+          } else {
+            // If removed we might need to try to drop the license from the cdm cache
+            request.keySetId?.let { dropOfflineLicense(it) }
+          }
         },
         onError = { e ->
           // Preparation failed before the DownloadManager ever saw this download, so report here
           dispatchListenerCallOnMain(store) { it.onDownloadChanged(failedSnapshot(playbackId), e) }
+          playbackIdsStarting.remove(playbackId)
         },
       )
     )
@@ -164,6 +187,9 @@ object MuxDownloadManager {
       )
       keySetId?.let { dropOfflineLicense(it) }
     }
+
+    this.playbackIdsStarting.remove(playbackId)
+
   }
 
   /** Pauses all downloads. They can be resumed with [resumeAll]. */
