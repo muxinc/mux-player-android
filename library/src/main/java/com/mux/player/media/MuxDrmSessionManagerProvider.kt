@@ -124,7 +124,9 @@ class MuxDrmCallback(
 
     val uri = Uri.parse(request.defaultUrl).buildUpon()
       .appendQueryParameter("signedRequest", Util.fromUtf8Bytes(request.data))
-      .build()
+    val uri = Uri.parse(
+      request.defaultUrl + "&signedRequest=" + Util.fromUtf8Bytes(request.data)
+    )
     logger.d(TAG, "executeProvisionRequest: license URI is $uri")
 
     try {
