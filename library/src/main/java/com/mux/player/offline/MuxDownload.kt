@@ -3,13 +3,7 @@ package com.mux.player.offline
 /**
  * A **snapshot** of a single Mux offline download, keyed by its playback ID.
  *
- * Instances are immutable point-in-time readings. The [state] and progress values
- * ([percentDownloaded], [bytesDownloaded], [totalBytes]) reflect the download **at the moment the
- * snapshot was created** and are *never* updated afterward. To observe changes over time, register a
- * [MuxDownloadManager.Listener] with [MuxDownloadManager.addListener] (each callback delivers a fresh
- * snapshot) or re-query [MuxDownloadManager.getDownload]/[MuxDownloadManager.allDownloads].
- *
- * You don't create these yourself; the SDK hands them to you from [MuxDownloadManager].
+ * You don't create these yourself; the SDK returns them from [MuxDownloadManager].
  */
 @ConsistentCopyVisibility
 data class MuxDownload internal constructor(
@@ -19,7 +13,7 @@ data class MuxDownload internal constructor(
   val state: State,
   /**
    * How much of the download has completed, in the range `0.0..100.0`, or `-1f`
-   * ([androidx.media3.common.C.PERCENTAGE_UNSET]) if not yet known. Snapshot only — not live.
+   * ([androidx.media3.common.C.PERCENTAGE_UNSET]) if not yet known.
    */
   val percentDownloaded: Float,
   /** Bytes downloaded to disk so far at the time of this snapshot. */
@@ -36,15 +30,14 @@ data class MuxDownload internal constructor(
    *
    * Beyond the states Media3's `DownloadManager` reports, this adds [STARTING] to cover the work Mux
    * does *before* a download is handed to the `DownloadManager`: fetching the HLS manifests and, for
-   * DRM content, acquiring the offline license. During that window there is no `DownloadManager`
-   * entry yet, so [STARTING] is the only signal that a download is in flight.
+   * DRM content, acquiring the offline license.
    */
   enum class State {
     /**
      * Mux is preparing the download — fetching manifests and (for DRM) acquiring the offline
-     * license — but it has **not** been queued on the `DownloadManager` yet. This precedes [QUEUED].
-     * If preparation fails, the next snapshot is [FAILED]; there is no `DownloadManager` entry for a
-     * download that never left this state.
+     * license. This precedes [QUEUED].
+     * If preparation fails, the next snapshot is [FAILED]; there is no `DownloadManager` entry for
+     * a download that never left this state.
      */
     STARTING,
 
