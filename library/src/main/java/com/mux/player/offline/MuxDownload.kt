@@ -6,12 +6,13 @@ package com.mux.player.offline
  * Instances are immutable point-in-time readings. The [state] and progress values
  * ([percentDownloaded], [bytesDownloaded], [totalBytes]) reflect the download **at the moment the
  * snapshot was created** and are *never* updated afterward. To observe changes over time, register a
- * [Listener] with [MuxOfflineDownloads.addListener] (each callback delivers a fresh snapshot) or
- * re-query [MuxOfflineDownloads.getDownload]/[MuxOfflineDownloads.allDownloads].
+ * [MuxDownloadManager.Listener] with [MuxDownloadManager.addListener] (each callback delivers a fresh
+ * snapshot) or re-query [MuxDownloadManager.getDownload]/[MuxDownloadManager.allDownloads].
  *
- * You don't create these yourself; the SDK hands them to you from [MuxOfflineDownloads].
+ * You don't create these yourself; the SDK hands them to you from [MuxDownloadManager].
  */
-class MuxDownload internal constructor(
+@ConsistentCopyVisibility
+data class MuxDownload internal constructor(
   /** The Mux playback ID this download was started for. Stable for the life of the download. */
   val playbackId: String,
   /** The download's state at the time this snapshot was taken. See [State]. */
@@ -56,7 +57,10 @@ class MuxDownload internal constructor(
     /** Fully downloaded and available for offline playback. */
     COMPLETED,
 
-    /** The download failed. When reported via [Listener.onDownloadChanged], the cause is provided. */
+    /**
+     * The download failed. When reported via [MuxDownloadManager.Listener.onDownloadChanged], the
+     * cause is provided.
+     */
     FAILED,
 
     /** The download is being removed and its media deleted. */
@@ -64,60 +68,5 @@ class MuxDownload internal constructor(
 
     /** Stopped (e.g. paused) and will not progress until resumed. */
     STOPPED,
-  }
-
-  /**
-   * Observes offline-download progress and lifecycle changes.
-   *
-   * Callbacks are driven by Media3's `DownloadManager.Listener` (plus Mux's [State.STARTING] phase),
-   * translated to deliver [MuxDownload] snapshots instead of raw Media3 types. All callbacks are
-   * delivered on the `DownloadManager`'s application looper (the main thread in normal use).
-   *
-   * Register with [MuxOfflineDownloads.addListener] and unregister with
-   * [MuxOfflineDownloads.removeListener].
-   */
-  interface Listener {
-    /**
-     * Called whenever a download's [state][State] or progress changes, including the initial
-     * [State.STARTING] snapshot emitted by [MuxOfflineDownloads.startDownload].
-     *
-     * @param download a fresh snapshot of the download at this transition.
-     * @param error the cause when [download].state is [State.FAILED], otherwise `null`.
-     */
-    fun onDownloadChanged(download: MuxDownload, error: Throwable?)
-
-    /**
-     * Called when a download has been removed. [download] is the last snapshot before removal.
-     */
-    fun onDownloadRemoved(download: MuxDownload) {}
-
-    /**
-     * Called when there is a change in whether one or more downloads are stalled *solely* because
-     * the `DownloadManager`'s requirements (e.g. network connectivity) are not met.
-     */
-    fun onWaitingForRequirementsChanged(waitingForRequirements: Boolean) {}
-  }
-
-  override fun toString(): String =
-    "MuxDownload(playbackId='$playbackId', state=$state, percentDownloaded=$percentDownloaded, " +
-      "bytesDownloaded=$bytesDownloaded, totalBytes=$totalBytes)"
-
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (other !is MuxDownload) return false
-    return playbackId == other.playbackId
-      && state == other.state
-      && percentDownloaded == other.percentDownloaded
-      && bytesDownloaded == other.bytesDownloaded
-      && totalBytes == other.totalBytes
-  }
-
-  override fun hashCode(): Int {
-    var result = playbackId.hashCode()
-    result = 31 * result + state.hashCode()
-    result = 31 * result + percentDownloaded.hashCode()
-    result = 31 * result + bytesDownloaded.hashCode()
-    result = 31 * result + totalBytes.hashCode()
-    return result
   }
 }

@@ -33,14 +33,46 @@ import java.util.concurrent.CopyOnWriteArraySet
  * Everything is backed by the process-wide [MuxPlayerDownloadStore] — the same `DownloadManager` and
  * `DownloadIndex` the service acts on — so this facade and the service always agree.
  *
- * This is a plain `object`. Kotlin callers use `MuxOfflineDownloads.startDownload(...)`; Java callers
- * use `MuxOfflineDownloads.INSTANCE.startDownload(...)` (kept as instance methods so they're mockable
+ * This is a plain `object`. Kotlin callers use `MuxDownloadManager.startDownload(...)`; Java callers
+ * use `MuxDownloadManager.INSTANCE.startDownload(...)` (kept as instance methods so they're mockable
  * without static mocking). Java callers that want the enumeration reads use the `*Future` variants.
  */
 @OptIn(UnstableApi::class)
-object MuxOfflineDownloads {
+object MuxDownloadManager {
 
-  private val listeners = CopyOnWriteArraySet<MuxDownload.Listener>()
+  /**
+   * Observes offline-download progress and lifecycle changes.
+   *
+   * Callbacks are driven by Media3's `DownloadManager.Listener` (plus Mux's
+   * [MuxDownload.State.STARTING] phase), translated to deliver [MuxDownload] snapshots instead of
+   * raw Media3 types. All callbacks are delivered on the `DownloadManager`'s application looper (the
+   * main thread in normal use).
+   *
+   * Register with [addListener] and unregister with [removeListener].
+   */
+  interface Listener {
+    /**
+     * Called whenever a download's [state][MuxDownload.State] or progress changes, including the
+     * initial [MuxDownload.State.STARTING] snapshot emitted by [startDownload].
+     *
+     * @param download a fresh snapshot of the download at this transition.
+     * @param error the cause when [download].state is [MuxDownload.State.FAILED], otherwise `null`.
+     */
+    fun onDownloadChanged(download: MuxDownload, error: Throwable?)
+
+    /**
+     * Called when a download has been removed. [download] is the last snapshot before removal.
+     */
+    fun onDownloadRemoved(download: MuxDownload) {}
+
+    /**
+     * Called when there is a change in whether one or more downloads are stalled *solely* because
+     * the `DownloadManager`'s requirements (e.g. network connectivity) are not met.
+     */
+    fun onWaitingForRequirementsChanged(waitingForRequirements: Boolean) {}
+  }
+
+  private val listeners = CopyOnWriteArraySet<Listener>()
 
   // Guards installation of our single DownloadManager.Listener onto the store's manager.
   private val installLock = Any()
@@ -145,18 +177,16 @@ object MuxOfflineDownloads {
    * `DownloadManager`'s application looper (the main thread in normal use). Non-blocking. Remove it
    * with [removeListener].
    */
-  fun addListener(context: Context, listener: MuxDownload.Listener) {
+  fun addListener(context: Context, listener: Listener) {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     ensureManagerListenerInstalled(store)
     listeners.add(listener)
   }
 
   /** Unregisters a [listener] previously added with [addListener]. */
-  fun removeListener(listener: MuxDownload.Listener) {
+  fun removeListener(listener: Listener) {
     listeners.remove(listener)
   }
-
-  // region enumeration (Kotlin)
 
   /** All downloads known to the index, in any state. Runs the SQLite read off the main thread. */
   suspend fun allDownloads(context: Context): List<MuxDownload> {
@@ -208,7 +238,7 @@ object MuxOfflineDownloads {
     }
   }
 
-  /** Translates the shared `DownloadManager.Listener` into [MuxDownload.Listener] callbacks. */
+  /** Translates the shared `DownloadManager.Listener` into [Listener] callbacks. */
   private object ManagerListener : DownloadManager.Listener {
     override fun onDownloadChanged(
       downloadManager: DownloadManager,
@@ -238,7 +268,7 @@ object MuxOfflineDownloads {
    */
   private fun dispatch(
     store: MuxPlayerDownloadStore,
-    block: (MuxDownload.Listener) -> Unit,
+    block: (Listener) -> Unit,
   ) {
     Handler(store.downloadManager.applicationLooper).post {
       listeners.forEach(block)
