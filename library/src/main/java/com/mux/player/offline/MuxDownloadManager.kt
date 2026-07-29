@@ -13,6 +13,7 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadIndex
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadService
+import androidx.media3.exoplayer.scheduler.Requirements
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.mux.player.internal.createLogcatLogger
@@ -39,6 +40,14 @@ import java.util.concurrent.CopyOnWriteArraySet
  */
 @OptIn(UnstableApi::class)
 object MuxDownloadManager {
+
+  /**
+   * The requirements downloads must satisfy to make progress, applied to the `DownloadManager` on
+   * first use. The default requires only a network connection, including metered ones — pass
+   * [Requirements] including [Requirements.NETWORK_UNMETERED] to [setRequirements] to restrict
+   * downloads to unmetered (e.g. Wi-Fi) networks.
+   */
+  val DEFAULT_REQUIREMENTS: Requirements = Requirements(Requirements.NETWORK)
 
   /**
    * Observes offline-download progress and lifecycle changes.
@@ -132,8 +141,7 @@ object MuxDownloadManager {
           )
         },
         onError = { e ->
-          // Preparation failed before the DownloadManager ever saw this download, so the manager's
-          // listener won't report it — surface the failure ourselves.
+          // Preparation failed before the DownloadManager ever saw this download, so report here
           dispatchListenerCallOnMain(store) { it.onDownloadChanged(failedSnapshot(playbackId), e) }
         },
       )
@@ -173,6 +181,20 @@ object MuxDownloadManager {
   }
 
   /**
+   * Sets the [Requirements] that must be met for downloads to make progress, replacing the current
+   * ones (initially [DEFAULT_REQUIREMENTS], i.e. network only). Downloads that don't meet the new
+   * requirements move to a waiting state until they do.
+   *
+   * For example, to restrict downloads to unmetered (e.g. Wi-Fi) networks:
+   * `setRequirements(context, Requirements(Requirements.NETWORK_UNMETERED))`.
+   */
+  fun setRequirements(context: Context, requirements: Requirements) {
+    DownloadService.sendSetRequirements(
+      context.applicationContext, MuxDownloadService::class.java, requirements, /* foreground = */ false,
+    )
+  }
+
+  /**
    * Registers [listener] to observe download progress and lifecycle. Callbacks are delivered on the
    * `DownloadManager`'s application looper (the main thread in normal use). Non-blocking. Remove it
    * with [removeListener].
@@ -188,7 +210,7 @@ object MuxDownloadManager {
     listeners.remove(listener)
   }
 
-  /** All downloads known to the index, in any state. Runs the SQLite read off the main thread. */
+  /** All downloads known to the index, in any state */
   suspend fun allDownloads(context: Context): List<MuxDownload> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return withContext(store.ioExecutor.asCoroutineDispatcher()) {
@@ -196,7 +218,7 @@ object MuxDownloadManager {
     }
   }
 
-  /** Only fully-downloaded assets ([MuxDownload.State.COMPLETED]). Runs off the main thread. */
+  /** Only fully-downloaded assets ([MuxDownload.State.COMPLETED]). */
   suspend fun completedDownloads(context: Context): List<MuxDownload> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return withContext(store.ioExecutor.asCoroutineDispatcher()) {
@@ -208,7 +230,7 @@ object MuxDownloadManager {
    * The download for [playbackId], or `null` if there is none. Runs off the main thread.
    *
    * You don't need to call this in order to play a downloaded asset.
-   * Just use [com.mux.player.media.MediaItems.forMuxDownload]
+   * Just use [com.mux.player.media.MediaItems.forMuxDownload] and add the returned MediaItem.
    */
   suspend fun getDownload(context: Context, playbackId: String): MuxDownload? {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
