@@ -31,17 +31,12 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 
 /**
- * The caller-facing entry point for Mux offline downloads.
+ * The caller-facing entry point for Mux offline downloads. [startDownload] prepares an asset
+ * (fetching manifests, and for DRM acquiring an offline license) and enqueues it on
+ * [MuxDownloadService]; [addListener] observes progress and lifecycle
  *
- * Most apps need nothing else. [startDownload] prepares an asset (fetching manifests, and for DRM
- * acquiring an offline license) and enqueues it on [MuxDownloadService]; [addListener] observes
- * progress and lifecycle as [MuxDownload] snapshots; the enumeration methods list what's on disk.
- * Everything is backed by the process-wide [MuxPlayerDownloadStore] — the same `DownloadManager` and
- * `DownloadIndex` the service acts on — so this facade and the service always agree.
- *
- * This is a plain `object`. Kotlin callers use `MuxDownloadManager.startDownload(...)`; Java callers
- * use `MuxDownloadManager.INSTANCE.startDownload(...)` (kept as instance methods so they're mockable
- * without static mocking). Java callers that want the enumeration reads use the `*Future` variants.
+ * If you'd rather manage your own download lifecycle and datastore, you can skip using this class
+ * and use [MuxHlsDownloadCallback] with your own [DownloadHelper], [DownloadService], etc
  */
 @OptIn(UnstableApi::class)
 object MuxDownloadManager {
@@ -59,16 +54,14 @@ object MuxDownloadManager {
   /**
    * Observes offline-download progress and lifecycle changes.
    *
-   * Callbacks are driven by Media3's `DownloadManager.Listener` (plus Mux's
-   * [MuxDownload.State.STARTING] phase), translated to deliver [MuxDownload] snapshots instead of
-   * raw Media3 types. All callbacks are delivered on the `DownloadManager`'s application looper (the
-   * main thread in normal use).
+   * All callbacks are delivered on the `DownloadManager`'s application looper, which should be the
+   * main thread.
    *
    * Register with [addListener] and unregister with [removeListener].
    */
   interface Listener {
     /**
-     * Called whenever a download's [state][MuxDownload.State] or progress changes, including the
+     * Called whenever a download's [MuxDownload.State] or progress changes, including the
      * initial [MuxDownload.State.STARTING] snapshot emitted by [startDownload].
      *
      * @param download a fresh snapshot of the download at this transition.
