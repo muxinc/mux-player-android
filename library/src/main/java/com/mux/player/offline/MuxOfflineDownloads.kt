@@ -12,7 +12,6 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadIndex
 import androidx.media3.exoplayer.offline.DownloadManager
-import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
@@ -113,7 +112,7 @@ object MuxOfflineDownloads {
    * Removes a download: deletes its media via the `DownloadManager` and drops the local offline
    * license, if any. Safe to call for an unknown [playbackId] (no-op). Runs off the caller thread.
    */
-  fun remove(context: Context, playbackId: String) {
+  fun removeDownload(context: Context, playbackId: String) {
     val appContext = context.applicationContext
     val store = MuxPlayerDownloadStore.get(appContext)
     store.ioExecutor.execute {
@@ -160,7 +159,7 @@ object MuxOfflineDownloads {
   // region enumeration (Kotlin)
 
   /** All downloads known to the index, in any state. Runs the SQLite read off the main thread. */
-  suspend fun downloads(context: Context): List<MuxDownload> {
+  suspend fun allDownloads(context: Context): List<MuxDownload> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return withContext(store.ioExecutor.asCoroutineDispatcher()) {
       store.downloadIndex.readAll()
@@ -168,7 +167,7 @@ object MuxOfflineDownloads {
   }
 
   /** Only fully-downloaded assets ([MuxDownload.State.COMPLETED]). Runs off the main thread. */
-  suspend fun downloaded(context: Context): List<MuxDownload> {
+  suspend fun getCompletedDownloads(context: Context): List<MuxDownload> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return withContext(store.ioExecutor.asCoroutineDispatcher()) {
       store.downloadIndex.readAll(Download.STATE_COMPLETED)
@@ -176,36 +175,30 @@ object MuxOfflineDownloads {
   }
 
   /** The download for [playbackId], or `null` if there is none. Runs off the main thread. */
-  suspend fun download(context: Context, playbackId: String): MuxDownload? {
+  suspend fun getDownload(context: Context, playbackId: String): MuxDownload? {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return withContext(store.ioExecutor.asCoroutineDispatcher()) {
       store.downloadIndex.getDownload(playbackId)?.toMuxDownload()
     }
   }
 
-  // endregion
-
-  // region enumeration (Java) — same reads, resolved on the store's ioExecutor
-
-  /** Java twin of [downloads]. */
-  fun downloadsFuture(context: Context): ListenableFuture<List<MuxDownload>> {
+  /** Java twin of [allDownloads]. */
+  fun allDownloadsFuture(context: Context): ListenableFuture<List<MuxDownload>> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return submit(store) { store.downloadIndex.readAll() }
   }
 
-  /** Java twin of [downloaded]. */
-  fun downloadedFuture(context: Context): ListenableFuture<List<MuxDownload>> {
+  /** Java twin of [getCompletedDownloads]. */
+  fun completedDownloadsFuture(context: Context): ListenableFuture<List<MuxDownload>> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return submit(store) { store.downloadIndex.readAll(Download.STATE_COMPLETED) }
   }
 
-  /** Java twin of [download]. */
-  fun downloadFuture(context: Context, playbackId: String): ListenableFuture<MuxDownload?> {
+  /** Java twin of [getDownload]. */
+  fun getDownloadFuture(context: Context, playbackId: String): ListenableFuture<MuxDownload?> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return submit(store) { store.downloadIndex.getDownload(playbackId)?.toMuxDownload() }
   }
-
-  // endregion
 
   private fun ensureManagerListenerInstalled(store: MuxPlayerDownloadStore) {
     synchronized(installLock) {

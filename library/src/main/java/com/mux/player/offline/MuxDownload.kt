@@ -7,7 +7,7 @@ package com.mux.player.offline
  * ([percentDownloaded], [bytesDownloaded], [totalBytes]) reflect the download **at the moment the
  * snapshot was created** and are *never* updated afterward. To observe changes over time, register a
  * [Listener] with [MuxOfflineDownloads.addListener] (each callback delivers a fresh snapshot) or
- * re-query [MuxOfflineDownloads.download]/[MuxOfflineDownloads.downloads].
+ * re-query [MuxOfflineDownloads.getDownload]/[MuxOfflineDownloads.allDownloads].
  *
  * You don't create these yourself; the SDK hands them to you from [MuxOfflineDownloads].
  */
