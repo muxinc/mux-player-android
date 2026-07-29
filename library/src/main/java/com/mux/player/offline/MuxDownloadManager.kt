@@ -197,14 +197,19 @@ object MuxDownloadManager {
   }
 
   /** Only fully-downloaded assets ([MuxDownload.State.COMPLETED]). Runs off the main thread. */
-  suspend fun getCompletedDownloads(context: Context): List<MuxDownload> {
+  suspend fun completedDownloads(context: Context): List<MuxDownload> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return withContext(store.ioExecutor.asCoroutineDispatcher()) {
       store.downloadIndex.readAll(Download.STATE_COMPLETED)
     }
   }
 
-  /** The download for [playbackId], or `null` if there is none. Runs off the main thread. */
+  /**
+   * The download for [playbackId], or `null` if there is none. Runs off the main thread.
+   *
+   * You don't need to call this in order to play a downloaded asset.
+   * Just use [com.mux.player.media.MediaItems.forMuxDownload]
+   */
   suspend fun getDownload(context: Context, playbackId: String): MuxDownload? {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return withContext(store.ioExecutor.asCoroutineDispatcher()) {
@@ -218,7 +223,7 @@ object MuxDownloadManager {
     return submitToIoExecutor(store) { store.downloadIndex.readAll() }
   }
 
-  /** Java twin of [getCompletedDownloads]. */
+  /** Java twin of [completedDownloads]. */
   fun completedDownloadsFuture(context: Context): ListenableFuture<List<MuxDownload>> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return submitToIoExecutor(store) { store.downloadIndex.readAll(Download.STATE_COMPLETED) }

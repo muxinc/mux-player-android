@@ -179,6 +179,12 @@ object MediaItems {
       )
   }
 
+  fun forMuxDownload(playbackId: String): MediaItem {
+    // stubbed for now. Will create a MediaItem that `MuxDataSourceFactory` knows play from disk
+    //  (no need to do anything async just to get the MediaItem)
+    TODO("stub for documentation's sake")
+  }
+
   private fun createPlaybackUrl(
     playbackId: String,
     domain: String = MUX_VIDEO_DEFAULT_DOMAIN,
