@@ -102,7 +102,7 @@ object MuxDownloadManager {
 
     // Announce STARTING before the (async) manifest/license work — there is no DownloadManager
     // entry for this download yet, so this snapshot is the only signal it's in flight.
-    dispatch(store) { it.onDownloadChanged(startingSnapshot(playbackId), null) }
+    dispatchListenerCallOnMain(store) { it.onDownloadChanged(startingSnapshot(playbackId), null) }
 
     val logger = createLogcatLogger()
     val drmProvider = MuxDrmSessionManagerProvider(
@@ -134,7 +134,7 @@ object MuxDownloadManager {
         onError = { e ->
           // Preparation failed before the DownloadManager ever saw this download, so the manager's
           // listener won't report it — surface the failure ourselves.
-          dispatch(store) { it.onDownloadChanged(failedSnapshot(playbackId), e) }
+          dispatchListenerCallOnMain(store) { it.onDownloadChanged(failedSnapshot(playbackId), e) }
         },
       )
     )
@@ -215,19 +215,19 @@ object MuxDownloadManager {
   /** Java twin of [allDownloads]. */
   fun allDownloadsFuture(context: Context): ListenableFuture<List<MuxDownload>> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
-    return submit(store) { store.downloadIndex.readAll() }
+    return submitToIoExecutor(store) { store.downloadIndex.readAll() }
   }
 
   /** Java twin of [getCompletedDownloads]. */
   fun completedDownloadsFuture(context: Context): ListenableFuture<List<MuxDownload>> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
-    return submit(store) { store.downloadIndex.readAll(Download.STATE_COMPLETED) }
+    return submitToIoExecutor(store) { store.downloadIndex.readAll(Download.STATE_COMPLETED) }
   }
 
   /** Java twin of [getDownload]. */
   fun getDownloadFuture(context: Context, playbackId: String): ListenableFuture<MuxDownload?> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
-    return submit(store) { store.downloadIndex.getDownload(playbackId)?.toMuxDownload() }
+    return submitToIoExecutor(store) { store.downloadIndex.getDownload(playbackId)?.toMuxDownload() }
   }
 
   private fun ensureManagerListenerInstalled(store: MuxPlayerDownloadStore) {
@@ -266,7 +266,7 @@ object MuxDownloadManager {
    * Posts [block] to each listener on the `DownloadManager`'s application looper, so our synthetic
    * STARTING/FAILED snapshots are delivered on the same thread as the manager's own callbacks.
    */
-  private fun dispatch(
+  private fun dispatchListenerCallOnMain(
     store: MuxPlayerDownloadStore,
     block: (Listener) -> Unit,
   ) {
@@ -275,7 +275,7 @@ object MuxDownloadManager {
     }
   }
 
-  private fun <T> submit(
+  private fun <T> submitToIoExecutor(
     store: MuxPlayerDownloadStore,
     block: () -> T,
   ): ListenableFuture<T> {
