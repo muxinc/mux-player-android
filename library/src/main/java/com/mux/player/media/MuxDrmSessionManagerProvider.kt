@@ -2,6 +2,7 @@ package com.mux.player.media
 
 import android.annotation.SuppressLint
 import android.media.MediaDrm
+import android.net.Uri
 import android.util.Base64
 import androidx.annotation.OptIn
 import androidx.media3.common.C
@@ -111,23 +112,28 @@ class MuxDrmCallback(
     const val TAG = "MuxDrmCallback"
   }
 
+  @SuppressLint("UseKtx") // Uri ktx is not in the project
   override fun executeProvisionRequest(
     uuid: UUID,
     request: ProvisionRequest
   ): MediaDrmCallback.Response {
-    val widevine = uuid == C.WIDEVINE_UUID;
+    val widevine = uuid == C.WIDEVINE_UUID
     if (!widevine) {
       throw IOException("Mux player does not support scheme: $uuid")
     }
 
-    val url = request.defaultUrl + "&signedRequest=" + Util.fromUtf8Bytes(request.data)
-    logger.d(TAG, "executeProvisionRequest: license URI is $url")
+    val uri = Uri.parse(request.defaultUrl).buildUpon()
+      .appendQueryParameter("signedRequest", Util.fromUtf8Bytes(request.data))
+      .build()
+    logger.d(TAG, "executeProvisionRequest: license URI is $uri")
 
     try {
-      return DrmUtil.executePost(
-        drmHttpDataSourceFactory.createDataSource(),
-        url, null,
-        emptyMap()
+      return MediaDrmCallback.Response(
+        executePost(
+          uri = uri,
+          requestBody = null,
+          dataSourceFactory = drmHttpDataSourceFactory
+        )
       )
     } catch (e: InvalidResponseCodeException) {
       logger.e(TAG, "Provisioning/License Request failed!", e)
