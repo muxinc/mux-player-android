@@ -122,13 +122,9 @@ class MuxDrmCallback(
       throw IOException("Mux player does not support scheme: $uuid")
     }
 
-    val uri = Uri.parse(request.defaultUrl).buildUpon()
-      .appendQueryParameter("signedRequest", Util.fromUtf8Bytes(request.data))
     val uri = Uri.parse(
       request.defaultUrl + "&signedRequest=" + Util.fromUtf8Bytes(request.data)
-    val uri = Uri.parse(request.defaultUrl).buildUpon()
-      .appendQueryParameter("signedRequest", Util.fromUtf8Bytes(request.data))
-      .build()
+    )
     logger.d(TAG, "executeProvisionRequest: license URI is $uri")
 
     try {
