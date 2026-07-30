@@ -97,7 +97,11 @@ private class DownloadStoreImpl(
       /*cache=*/ downloadCache,
       /*upstreamFactory=*/ DefaultHttpDataSource.Factory(),
       /*executor=*/ ioExecutor,
-    )
+    ).apply {
+      // Media3's own default is network-only; establish Mux's default (network + charging). Callers
+      // override it with MuxDownloadManager.setRequirements.
+      setRequirements(MuxDownloadManager.DEFAULT_REQUIREMENTS)
+    }
   }
 
   // Derived from the DownloadManager so the store and the manager share a single, consistent index
