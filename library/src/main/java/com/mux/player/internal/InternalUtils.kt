@@ -15,7 +15,7 @@ import kotlin.jvm.Throws
 @OptIn(UnstableApi::class)
 internal fun executePost(
   uri: Uri,
-  headers: Map<String, List<String>>,
+  headers: Map<String, List<String>> = mapOf(),
   requestBody: ByteArray?,
   dataSourceFactory: DataSource.Factory,
   ): ByteArray {
@@ -23,6 +23,7 @@ internal fun executePost(
     .setUri(uri)
     .setHttpRequestHeaders(headers.mapValues { it.value.last() })
     .setHttpBody(requestBody)
+    .setHttpMethod(DataSpec.HTTP_METHOD_POST)
     .build()
 
   val dataSource = dataSourceFactory.createDataSource()
