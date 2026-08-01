@@ -24,6 +24,11 @@ object MediaItems {
   internal const val EXTRA_VIDEO_DATA = "com.mux.video.customerdata"
 
   /**
+   * Scheme used for playing offline Mux assets via the [MuxMediaSourceFactory] and [forMuxDownload]
+   */
+  const val URI_SCHEME_MUX_OFFLINE = "mux_offline"
+
+  /**
    * Creates a new [MediaItem] that points to a given Mux Playback ID.
    *
    * ## Controlling resolution

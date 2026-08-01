@@ -2,19 +2,33 @@ package com.mux.player.media
 
 import android.content.Context
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
+import androidx.media3.exoplayer.drm.ExoMediaDrm
+import androidx.media3.exoplayer.drm.FrameworkMediaDrm
+import androidx.media3.exoplayer.drm.MediaDrmCallback
+import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.offline.DownloadHelper
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.CmcdConfiguration
 import com.mux.player.internal.Logger
 import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.createNoLogger
+import com.mux.player.internal.getPlaybackId
+import com.mux.player.offline.MuxPlayerDownloadStore
+import java.io.IOException
+import java.util.UUID
 
 /**
  * A [MediaSource.Factory] configured to work best with Mux Video.
@@ -40,7 +54,8 @@ class MuxMediaSourceFactory private constructor(
 ) : MediaSource.Factory by innerFactory {
 
   companion object {
-    @JvmSynthetic internal fun create(
+    @JvmSynthetic
+    internal fun create(
       ctx: Context,
       dataSourceFactory: DataSource.Factory,
       innerFactory: DefaultMediaSourceFactory = DefaultMediaSourceFactory(ctx),
@@ -48,12 +63,58 @@ class MuxMediaSourceFactory private constructor(
     ): MuxMediaSourceFactory = MuxMediaSourceFactory(ctx, dataSourceFactory, innerFactory, logger)
   }
 
+  private val context = ctx
+
   @JvmOverloads
   constructor(
     ctx: Context,
     dataSourceFactory: DataSource.Factory,
     innerFactory: DefaultMediaSourceFactory = DefaultMediaSourceFactory(ctx),
-  ) : this (ctx, dataSourceFactory, innerFactory, createLogcatLogger())
+  ) : this(ctx, dataSourceFactory, innerFactory, createLogcatLogger())
+
+  override fun createMediaSource(item: MediaItem): MediaSource {
+    val localConfig = item.localConfiguration
+    val playbackID = item.getPlaybackId()
+    return if (
+      localConfig != null && playbackID != null
+      && localConfig.uri.scheme == MediaItems.URI_SCHEME_MUX_OFFLINE
+    ) {
+      createOfflineMediaSource(playbackID)
+    } else {
+      innerFactory.createMediaSource(item)
+    }
+  }
+
+  private fun createOfflineMediaSource(playbackId: String): MediaSource {
+    val store = MuxPlayerDownloadStore.get(context)
+    val download = store.downloadIndex.getDownload(playbackId)
+    download ?: throw RuntimeException("asset with playbackId $playbackId not downloaded")
+    val drm = download.request.keySetId
+      ?.let { offlinePlaybackDrm(it) } ?: DrmSessionManager.DRM_UNSUPPORTED
+
+    return DownloadHelper.createMediaSource(
+      download.request,
+      cacheOnlyDataSourceFactory(store.downloadCache),
+      drm
+    )
+  }
+
+  private fun offlinePlaybackDrm(keySetId: ByteArray): DrmSessionManager =
+    DefaultDrmSessionManager.Builder()
+      .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
+      .build(FailingDrmCallback()).apply {
+        setMode(
+          DefaultDrmSessionManager.MODE_PLAYBACK,
+          keySetId
+        )
+      }
+
+  private fun cacheOnlyDataSourceFactory(cache: Cache): DataSource.Factory {
+    return CacheDataSource.Factory().apply {
+      setCache(cache)
+      setUpstreamDataSourceFactory(null) // downloaded assets should never need to go online
+    }
+  }
 
   init {
     // basics
@@ -68,4 +129,19 @@ class MuxMediaSourceFactory private constructor(
   }
 }
 
+@OptIn(UnstableApi::class)
+private class FailingDrmCallback : MediaDrmCallback {
+  override fun executeProvisionRequest(
+    uuid: UUID,
+    request: ExoMediaDrm.ProvisionRequest
+  ): MediaDrmCallback.Response {
+    throw IOException("On-disk downloads should never need network")
+  }
 
+  override fun executeKeyRequest(
+    uuid: UUID,
+    request: ExoMediaDrm.KeyRequest
+  ): MediaDrmCallback.Response {
+    throw IOException("On-disk downloads should never need network")
+  }
+}
