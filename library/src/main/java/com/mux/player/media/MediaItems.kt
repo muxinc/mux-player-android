@@ -186,10 +186,23 @@ object MediaItems {
       )
   }
 
+  /**
+   * Creates a new [MediaItem] that will play the downloaded media represented by [download]
+   *
+   * @param download The Download to play. If the media isn't downloaded, playback will fail
+   */
   fun forMuxDownload(download: MuxDownload): MediaItem {
     return forMuxDownload(download.playbackId, /*todo: download.title eventually*/)
   }
 
+  /**
+   * Creates a new [MediaItem] that will play the downloaded media with the given playback ID
+   *
+   * If there's no asset downloaded with the given playback ID, playback will fail
+   *
+   * @param playbackId The playbckID of the media to play
+   * @param title The title that should be displayed for the MediaItem
+   */
   fun forMuxDownload(playbackId: String, title: String? = null): MediaItem {
     val uri = Uri.Builder()
       .scheme(URI_SCHEME_MUX_OFFLINE)
