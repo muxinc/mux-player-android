@@ -188,7 +188,7 @@ private fun DownloadListItemStartingPreview() {
       DownloadListItem(
         title = "Elephants Dream",
         state = MuxDownload.State.STARTING,
-        percentDownloaded = C.PERCENTAGE_UNSET.toFloat(),
+        percentDownloaded = (-1).toFloat(),
         onClick = {},
         onRemoveClick = {},
       )
