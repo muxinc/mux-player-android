@@ -37,15 +37,14 @@ import java.util.UUID
  * @param playbackId the Mux playback ID, which is also the download's ID.
  * @param downloadIndex the index to look the download up in. Resolve this on the app's thread — see
  *   [MuxMediaSourceFactory.createOfflineMediaSource] for why.
- * @param downloadCache the cache holding the downloaded media, opened lazily so the (blocking) open
- *   happens on the playback thread.
+ * @param downloadCache the cache holding the downloaded media.
  */
 @OptIn(UnstableApi::class)
 internal class OfflinePlaybackMediaSource(
   private val mediaItem: MediaItem,
   private val playbackId: String,
   private val downloadIndex: DownloadIndex,
-  private val downloadCache: () -> Cache,
+  private val downloadCache: Cache,
 ) : CompositeMediaSource<Void?>() {
 
   /**
@@ -87,7 +86,7 @@ internal class OfflinePlaybackMediaSource(
 
     return DownloadHelper.createMediaSource(
       download.request,
-      cacheOnlyDataSourceFactory(downloadCache()),
+      cacheOnlyDataSourceFactory(downloadCache),
       drmSessionManager,
     )
   }

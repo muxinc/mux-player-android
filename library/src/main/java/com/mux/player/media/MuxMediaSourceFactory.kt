@@ -71,22 +71,19 @@ class MuxMediaSourceFactory private constructor(
 
   /**
    * Builds a source for an already-downloaded asset. The download itself isn't looked up here —
-   * we're on the app's thread, and both the index read and opening the download cache block on
-   * disk. [OfflinePlaybackMediaSource] does that work on the playback thread instead.
+   * we're on the app's thread, and reading the index hits disk. [OfflinePlaybackMediaSource] does
+   * that on the playback thread instead.
    */
   private fun createOfflineMediaSource(item: MediaItem, playbackId: String): MediaSource {
     val store = MuxPlayerDownloadStore.get(context)
 
-    // Opening the download cache walks the cache directory, so get it started off-thread. The
-    // playback thread will block on it only if it isn't ready by the time playback prepares.
-    store.ioExecutor.execute { runCatching { store.downloadCache } }
-
     return OfflinePlaybackMediaSource(
       mediaItem = item,
       playbackId = playbackId,
+      // Must be resolved on the app's thread: creating the DownloadManager captures the calling
+      // thread's looper as the one MuxDownloadManager delivers Listener callbacks on.
       downloadIndex = store.downloadIndex,
-      // lazy, so the blocking open happens in the MediaSource on the playback thread.
-      downloadCache = { store.downloadCache },
+      downloadCache = store.downloadCache,
     )
   }
 
