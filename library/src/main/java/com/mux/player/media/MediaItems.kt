@@ -5,7 +5,9 @@ import android.os.Bundle
 import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
+import androidx.media3.common.MediaMetadata
 import com.mux.player.internal.Constants
+import com.mux.player.offline.MuxDownload
 
 /**
  * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with MuxPlayer`.
@@ -184,10 +186,27 @@ object MediaItems {
       )
   }
 
-  fun forMuxDownload(playbackId: String): MediaItem {
-    // stubbed for now. Will create a MediaItem that `MuxDataSourceFactory` knows play from disk
-    //  (no need to do anything async just to get the MediaItem)
-    TODO("stub for documentation's sake")
+  fun forMuxDownload(download: MuxDownload): MediaItem {
+    return forMuxDownload(download.playbackId, /*todo: download.title eventually*/)
+  }
+
+  fun forMuxDownload(playbackId: String, title: String? = null): MediaItem {
+    val uri = Uri.Builder()
+      .scheme(URI_SCHEME_MUX_OFFLINE)
+      .path(playbackId)
+      .build()
+    val builder = MediaItem.Builder()
+      .setUri(uri)
+
+    if (title != null) {
+      builder.setMediaMetadata(
+        MediaMetadata.Builder()
+          .setTitle(title)
+          .build()
+      )
+    }
+
+    return builder.build()
   }
 
   private fun createPlaybackUrl(
