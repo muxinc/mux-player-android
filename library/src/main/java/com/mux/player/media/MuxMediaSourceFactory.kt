@@ -74,7 +74,7 @@ class MuxMediaSourceFactory private constructor(
 
   override fun createMediaSource(item: MediaItem): MediaSource {
     val localConfig = item.localConfiguration
-    val playbackID = localConfig?.uri?.path
+    val playbackID = localConfig?.uri?.lastPathSegment
     return if (
       localConfig != null && playbackID != null
       && localConfig.uri.scheme == MediaItems.URI_SCHEME_MUX_OFFLINE
