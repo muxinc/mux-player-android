@@ -2,33 +2,17 @@ package com.mux.player.media
 
 import android.content.Context
 import androidx.annotation.OptIn
-import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
-import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.datasource.cache.Cache
-import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
-import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
-import androidx.media3.exoplayer.drm.ExoMediaDrm
-import androidx.media3.exoplayer.drm.FrameworkMediaDrm
-import androidx.media3.exoplayer.drm.MediaDrmCallback
-import androidx.media3.exoplayer.hls.HlsMediaSource
-import androidx.media3.exoplayer.offline.DownloadHelper
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.CmcdConfiguration
 import com.mux.player.internal.Logger
 import com.mux.player.internal.createLogcatLogger
-import com.mux.player.internal.createNoLogger
-import com.mux.player.internal.getPlaybackId
 import com.mux.player.offline.MuxPlayerDownloadStore
-import java.io.IOException
-import java.util.UUID
 
 /**
  * A [MediaSource.Factory] configured to work best with Mux Video.
@@ -79,41 +63,37 @@ class MuxMediaSourceFactory private constructor(
       localConfig != null && playbackID != null
       && localConfig.uri.scheme == MediaItems.URI_SCHEME_MUX_OFFLINE
     ) {
-      createOfflineMediaSource(playbackID)
+      createOfflineMediaSource(item, playbackID)
     } else {
       innerFactory.createMediaSource(item)
     }
   }
 
-  private fun createOfflineMediaSource(playbackId: String): MediaSource {
+  /**
+   * Builds a source for an already-downloaded asset. The download itself isn't looked up here —
+   * we're on the app's thread, and both the index read and opening the download cache block on
+   * disk. [OfflinePlaybackMediaSource] does that work on the playback thread instead.
+   */
+  private fun createOfflineMediaSource(item: MediaItem, playbackId: String): MediaSource {
     val store = MuxPlayerDownloadStore.get(context)
-    val download = store.downloadIndex.getDownload(playbackId)
-    download ?: throw RuntimeException("asset with playbackId $playbackId not downloaded")
-    val drm = download.request.keySetId
-      ?.let { offlinePlaybackDrm(it) } ?: DrmSessionManager.DRM_UNSUPPORTED
 
-    return DownloadHelper.createMediaSource(
-      download.request,
-      cacheOnlyDataSourceFactory(store.downloadCache),
-      drm
+    // Opening the download cache walks the cache directory, so get it started off-thread. The
+    // playback thread will block on it only if it isn't ready by the time playback prepares.
+    // Failures are swallowed on purpose: this is only a warm-up, and an exception escaping a pooled
+    // thread would take the process down. Whatever went wrong recurs on the playback thread below,
+    // where it's reported as a playback error instead.
+    store.ioExecutor.execute { runCatching { store.downloadCache } }
+
+    return OfflinePlaybackMediaSource(
+      mediaItem = item,
+      playbackId = playbackId,
+      // Resolved here rather than on the playback thread on purpose: this is what creates the
+      // DownloadManager, whose constructor captures the calling thread's looper as the one
+      // MuxDownloadManager delivers Listener callbacks on. That needs to be the app's thread.
+      downloadIndex = store.downloadIndex,
+      // Deliberately lazy, so the blocking open happens on the playback thread.
+      downloadCache = { store.downloadCache },
     )
-  }
-
-  private fun offlinePlaybackDrm(keySetId: ByteArray): DrmSessionManager =
-    DefaultDrmSessionManager.Builder()
-      .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
-      .build(FailingDrmCallback()).apply {
-        setMode(
-          DefaultDrmSessionManager.MODE_PLAYBACK,
-          keySetId
-        )
-      }
-
-  private fun cacheOnlyDataSourceFactory(cache: Cache): DataSource.Factory {
-    return CacheDataSource.Factory().apply {
-      setCache(cache)
-      setUpstreamDataSourceFactory(null) // downloaded assets should never need to go online
-    }
   }
 
   init {
@@ -126,22 +106,5 @@ class MuxMediaSourceFactory private constructor(
       drmHttpDataSourceFactory = DefaultHttpDataSource.Factory(),
       logger = logger
     ))
-  }
-}
-
-@OptIn(UnstableApi::class)
-private class FailingDrmCallback : MediaDrmCallback {
-  override fun executeProvisionRequest(
-    uuid: UUID,
-    request: ExoMediaDrm.ProvisionRequest
-  ): MediaDrmCallback.Response {
-    throw IOException("On-disk downloads should never need network")
-  }
-
-  override fun executeKeyRequest(
-    uuid: UUID,
-    request: ExoMediaDrm.KeyRequest
-  ): MediaDrmCallback.Response {
-    throw IOException("On-disk downloads should never need network")
   }
 }
