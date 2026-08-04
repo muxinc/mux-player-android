@@ -30,19 +30,8 @@ import java.util.UUID
  * actually use on the *playback* thread rather than in
  * [MuxMediaSourceFactory.createMediaSource].
  *
- * The point of the indirection is threading. `createMediaSource` runs on the app's thread — the one
- * that called `Player.setMediaItem` — so it can't read the download index or open the download
- * cache without doing disk I/O on the main thread. [prepareSourceInternal], by contrast, runs on
- * the playback thread, where blocking reads are merely slow instead of an ANR. So this source
- * publishes no [Timeline] of its own: it waits until the player prepares it, resolves the download,
- * and then hands the real source's timeline through.
- *
- * A download that can't be resolved (never downloaded, or an unreadable index) is reported through
- * [maybeThrowSourceInfoRefreshError], which reaches the app as a [PlaybackException] on
- * `Player.Listener.onPlayerError` — the same channel as a failed network manifest. That's deliberate:
- * a download can disappear between building the [MediaItem] and preparing it (the user deletes it,
- * or the app's own cleanup removes it), so this is a recoverable playback failure and not a
- * programming error worth throwing at whoever called `setMediaItem`.
+ * A download that can't be resolved (never downloaded, or an unreadable index) is reported to the
+ *  app as a [PlaybackException]
  *
  * @param mediaItem the `mux_offline` item being played. Used until the child source is prepared.
  * @param playbackId the Mux playback ID, which is also the download's ID.
@@ -76,9 +65,6 @@ internal class OfflinePlaybackMediaSource(
     val child = try {
       resolveDownloadedSource()
     } catch (e: IOException) {
-      // prepareSourceInternal isn't allowed to throw IOException, and throwing anything here would
-      // be reported as an unexpected error with a useless error code. Stash it for
-      // maybeThrowSourceInfoRefreshError, which the player polls while it waits for a timeline.
       resolutionError = e
       return
     }
@@ -111,8 +97,6 @@ internal class OfflinePlaybackMediaSource(
     mediaSource: MediaSource,
     newTimeline: Timeline,
   ) {
-    // Passed through unchanged: one child, one window, so period IDs map 1:1 and createPeriod can
-    // delegate straight to the child.
     refreshSourceInfo(newTimeline)
   }
 
@@ -148,6 +132,7 @@ internal class OfflinePlaybackMediaSource(
  */
 @OptIn(UnstableApi::class)
 private fun offlinePlaybackDrmSessionManager(keySetId: ByteArray): DrmSessionManager =
+  // don't need to use MuxDrmSessionManagerProvider since we're not ever calling out for downloads
   DefaultDrmSessionManager.Builder()
     .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
     .build(FailingDrmCallback())

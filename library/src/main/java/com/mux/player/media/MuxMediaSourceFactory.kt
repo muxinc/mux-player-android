@@ -79,19 +79,13 @@ class MuxMediaSourceFactory private constructor(
 
     // Opening the download cache walks the cache directory, so get it started off-thread. The
     // playback thread will block on it only if it isn't ready by the time playback prepares.
-    // Failures are swallowed on purpose: this is only a warm-up, and an exception escaping a pooled
-    // thread would take the process down. Whatever went wrong recurs on the playback thread below,
-    // where it's reported as a playback error instead.
     store.ioExecutor.execute { runCatching { store.downloadCache } }
 
     return OfflinePlaybackMediaSource(
       mediaItem = item,
       playbackId = playbackId,
-      // Resolved here rather than on the playback thread on purpose: this is what creates the
-      // DownloadManager, whose constructor captures the calling thread's looper as the one
-      // MuxDownloadManager delivers Listener callbacks on. That needs to be the app's thread.
       downloadIndex = store.downloadIndex,
-      // Deliberately lazy, so the blocking open happens on the playback thread.
+      // lazy, so the blocking open happens in the MediaSource on the playback thread.
       downloadCache = { store.downloadCache },
     )
   }
