@@ -17,7 +17,6 @@ import androidx.media3.exoplayer.offline.DownloadIndex
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.scheduler.Requirements
-import com.google.common.collect.ConcurrentHashMultiset
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.mux.player.internal.createLogcatLogger
@@ -52,6 +51,11 @@ object MuxDownloadManager {
   private const val TAG = "MuxDownloadManager"
 
   /**
+   * How often in-progress downloads are polled for progress. See [ProgressUpdateHelper].
+   */
+  private const val PROGRESS_POLL_INTERVAL_MS = 1_000L
+
+  /**
    * Observes offline-download progress and lifecycle changes.
    *
    * All callbacks are delivered on the `DownloadManager`'s application looper, which should be the
@@ -83,9 +87,12 @@ object MuxDownloadManager {
 
   private val listeners = CopyOnWriteArraySet<Listener>()
 
-  // Guards installation of our single DownloadManager.Listener onto the store's manager.
+  // Guards installation of our single DownloadManager.Listener onto the store's manager, and of the
+  // poller that goes with it. A non-null poller means we're installed.
   private val installLock = Any()
-  private var installed = false
+
+  @Volatile
+  private var progressUpdateHelper: ProgressUpdateHelper? = null
 
   private val playbackIdsStarting = ConcurrentHashMap<String, DownloadHelper>()
 
@@ -215,18 +222,19 @@ object MuxDownloadManager {
 
   /**
    * Registers [listener] to observe download progress and lifecycle. Callbacks are delivered on the
-   * `DownloadManager`'s application looper (the main thread in normal use). Non-blocking. Remove it
-   * with [removeListener].
+   * `DownloadManager`'s application looper. Non-blocking. Remove it with [removeListener].
    */
   fun addListener(context: Context, listener: Listener) {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
-    ensureManagerListenerInstalled(store)
+    val poller = ensureManagerListenerInstalled(store)
     listeners.add(listener)
+    poller.syncAsync()
   }
 
   /** Unregisters a [listener] previously added with [addListener]. */
   fun removeListener(listener: Listener) {
     listeners.remove(listener)
+    progressUpdateHelper?.syncAsync()
   }
 
   /** All downloads known to the index, in any state */
@@ -276,16 +284,23 @@ object MuxDownloadManager {
     return submitToIoExecutor(store) { store.downloadIndex.getDownload(playbackId)?.toMuxDownload() }
   }
 
-  private fun ensureManagerListenerInstalled(store: MuxPlayerDownloadStore) {
-    synchronized(installLock) {
-      if (installed) return
+  private fun ensureManagerListenerInstalled(
+    store: MuxPlayerDownloadStore
+  ): ProgressUpdateHelper = synchronized(installLock) {
+    progressUpdateHelper ?: ProgressUpdateHelper(store.downloadManager).also { poller ->
+      progressUpdateHelper = poller
       store.downloadManager.addListener(ManagerListener)
-      installed = true
     }
   }
 
   /** Translates the shared `DownloadManager.Listener` into [Listener] callbacks. */
   private object ManagerListener : DownloadManager.Listener {
+
+    override fun onInitialized(downloadManager: DownloadManager) {
+      // Downloads restored from the index may resume immediately, without a state change
+      progressUpdateHelper?.sync()
+    }
+
     override fun onDownloadChanged(
       downloadManager: DownloadManager,
       download: Download,
@@ -293,11 +308,24 @@ object MuxDownloadManager {
     ) {
       val snapshot = download.toMuxDownload()
       listeners.forEach { it.onDownloadChanged(snapshot, finalException) }
+      progressUpdateHelper?.sync()
     }
 
     override fun onDownloadRemoved(downloadManager: DownloadManager, download: Download) {
       val snapshot = download.toMuxDownload()
       listeners.forEach { it.onDownloadRemoved(snapshot) }
+      progressUpdateHelper?.sync()
+    }
+
+    override fun onDownloadsPausedChanged(
+      downloadManager: DownloadManager,
+      downloadsPaused: Boolean,
+    ) {
+      progressUpdateHelper?.sync()
+    }
+
+    override fun onIdle(downloadManager: DownloadManager) {
+      progressUpdateHelper?.sync()
     }
 
     override fun onWaitingForRequirementsChanged(
@@ -305,7 +333,71 @@ object MuxDownloadManager {
       waitingForRequirements: Boolean,
     ) {
       listeners.forEach { it.onWaitingForRequirementsChanged(waitingForRequirements) }
+      progressUpdateHelper?.sync()
     }
+  }
+
+  /**
+   * Polls in-progress downloads and reports their progress to [listeners].
+   *
+   * Media3's `DownloadManager` only notifies its listeners on state transitions, so progress
+   * between state transitions (ie, progress percentage/byte count updates)
+   *
+   * Call [sync] to automatically start or stop polling based on the state of the DownloadManager.
+   */
+  private class ProgressUpdateHelper(private val downloadManager: DownloadManager) : Runnable {
+
+    private val handler = Handler(downloadManager.applicationLooper)
+
+    /** Bytes last reported, per playback ID, so a stalled download isn't re-reported each tick. */
+    private val lastReportedBytes = HashMap<String, Long>()
+
+    private var polling = false
+
+    /** Starts or stops the loop so that it's running exactly when there's progress to report. */
+    fun sync() {
+      val shouldPoll =
+        listeners.isNotEmpty() && downloadManager.currentDownloads.any(::isInProgress)
+      if (shouldPoll == polling) return
+
+      polling = shouldPoll
+      if (shouldPoll) {
+        handler.postDelayed(this, PROGRESS_POLL_INTERVAL_MS)
+      } else {
+        handler.removeCallbacks(this)
+        lastReportedBytes.clear()
+      }
+    }
+
+    /** [sync], from any thread. */
+    fun syncAsync() {
+      handler.post { sync() }
+    }
+
+    override fun run() {
+      val inProgress = downloadManager.currentDownloads.filter(::isInProgress)
+      // Downloads that left the list since the last tick shouldn't hold onto their old byte count
+      lastReportedBytes.keys.retainAll(inProgress.mapTo(mutableSetOf()) { it.request.id })
+
+      inProgress.forEach { download ->
+        val bytesDownloaded = download.bytesDownloaded
+        if (lastReportedBytes.put(download.request.id, bytesDownloaded) != bytesDownloaded) {
+          val snapshot = download.toMuxDownload()
+          listeners.forEach { it.onDownloadChanged(snapshot, null) }
+        }
+      }
+
+      if (inProgress.isNotEmpty() && listeners.isNotEmpty()) {
+        handler.postDelayed(this, PROGRESS_POLL_INTERVAL_MS)
+      } else {
+        polling = false
+        lastReportedBytes.clear()
+      }
+    }
+
+    /** Whether [download] is one whose progress moves, and so is worth polling. */
+    private fun isInProgress(download: Download): Boolean =
+      download.state == Download.STATE_DOWNLOADING || download.state == Download.STATE_RESTARTING
   }
 
   /**
