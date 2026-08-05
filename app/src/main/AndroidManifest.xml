@@ -43,6 +43,11 @@
             android:exported="false"
             android:label="Smart Caching Example" />
         <activity
+            android:name=".examples.offline.OfflineDownloadsActivity"
+            android:exported="false"
+            android:label="Offline Downloads Example"
+            android:theme="@style/Theme.MuxVideoMedia3.NoActionBar" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.MuxVideoMedia3.NoActionBar">

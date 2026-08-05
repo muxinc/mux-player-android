@@ -1,5 +1,6 @@
 plugins {
   alias(libs.plugins.android.application)
+  alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -18,6 +19,7 @@ android {
 
   buildFeatures {
     viewBinding = true
+    compose = true
   }
   buildTypes {
     release {
@@ -38,6 +40,17 @@ dependencies {
   implementation(libs.androidx.constraintlayout)
   implementation(libs.androidx.recyclerview)
   implementation(libs.androidx.activity.ktx)
+
+  // Compose, used by the offline-downloads example
+  implementation(platform(libs.androidx.compose.bom))
+  implementation(libs.androidx.compose.ui)
+  implementation(libs.androidx.compose.material3)
+  implementation(libs.androidx.compose.ui.tooling.preview)
+  implementation(libs.androidx.compose.material.icons.core)
+  implementation(libs.androidx.activity.compose)
+  implementation(libs.androidx.lifecycle.viewmodel.compose)
+  implementation(libs.androidx.lifecycle.runtime.compose)
+  debugImplementation(libs.androidx.compose.ui.tooling)
 
   implementation(project(":library"))
 
