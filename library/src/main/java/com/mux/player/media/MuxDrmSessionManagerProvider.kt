@@ -41,6 +41,11 @@ class MuxDrmSessionManagerProvider(
     private const val TAG = "DrmSessionManagerProv"
   }
 
+  constructor(drmHttpDataSourceFactory: HttpDataSource.Factory) : this(
+    drmHttpDataSourceFactory = drmHttpDataSourceFactory,
+    logger = createNoLogger()
+  )
+
   private val lock = Any()
   // NOTE - Guarded by `lock`
   private var mediaItem: MediaItem? = null
