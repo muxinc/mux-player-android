@@ -13,17 +13,15 @@ import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManager
-import androidx.media3.exoplayer.drm.ExoMediaDrm
 import androidx.media3.exoplayer.drm.FrameworkMediaDrm
-import androidx.media3.exoplayer.drm.MediaDrmCallback
 import androidx.media3.exoplayer.offline.DownloadHelper
 import androidx.media3.exoplayer.offline.DownloadIndex
 import androidx.media3.exoplayer.source.CompositeMediaSource
 import androidx.media3.exoplayer.source.MediaPeriod
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.Allocator
+import com.mux.player.offline.NoNetworkDrmCallback
 import java.io.IOException
-import java.util.UUID
 
 /**
  * Plays a Mux asset that was downloaded for offline playback, resolving which [MediaSource] to
@@ -134,7 +132,7 @@ private fun offlinePlaybackDrmSessionManager(keySetId: ByteArray): DrmSessionMan
   // don't need to use MuxDrmSessionManagerProvider since we're not ever calling out for downloads
   DefaultDrmSessionManager.Builder()
     .setUuidAndExoMediaDrmProvider(C.WIDEVINE_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
-    .build(FailingDrmCallback())
+    .build(NoNetworkDrmCallback())
     .apply { setMode(DefaultDrmSessionManager.MODE_PLAYBACK, keySetId) }
 
 @OptIn(UnstableApi::class)
@@ -143,20 +141,3 @@ private fun cacheOnlyDataSourceFactory(cache: Cache): DataSource.Factory =
     setCache(cache)
     setUpstreamDataSourceFactory(null) // downloaded assets should never need to go online
   }
-
-@OptIn(UnstableApi::class)
-private class FailingDrmCallback : MediaDrmCallback {
-  override fun executeProvisionRequest(
-    uuid: UUID,
-    request: ExoMediaDrm.ProvisionRequest
-  ): MediaDrmCallback.Response {
-    throw IOException("On-disk downloads should never need network")
-  }
-
-  override fun executeKeyRequest(
-    uuid: UUID,
-    request: ExoMediaDrm.KeyRequest
-  ): MediaDrmCallback.Response {
-    throw IOException("On-disk downloads should never need network")
-  }
-}

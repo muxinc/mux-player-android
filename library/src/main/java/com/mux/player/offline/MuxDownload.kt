@@ -28,9 +28,10 @@ data class MuxDownload internal constructor(
   /**
    * The lifecycle state of a [MuxDownload].
    *
-   * Beyond the states Media3's `DownloadManager` reports, this adds [STARTING] to cover the work Mux
-   * does *before* a download is handed to the `DownloadManager`: fetching the HLS manifests and, for
-   * DRM content, acquiring the offline license.
+   * Beyond the states Media3's `DownloadManager` reports, this adds two of Mux's own:
+   * [STARTING], for the work Mux does *before* a download is handed to the `DownloadManager`
+   * (fetching the HLS manifests and, for DRM content, acquiring the offline license), and
+   * [EXPIRED], for a download whose offline DRM license has run out.
    */
   enum class State {
     /**
@@ -49,6 +50,16 @@ data class MuxDownload internal constructor(
 
     /** Fully downloaded and available for offline playback. */
     COMPLETED,
+
+    /**
+     * Fully downloaded, but its offline DRM license has run out, so it can no longer be played.
+     * The media is still on disk and still taking up space. Delete it with
+     * [MuxDownloadManager.removeDownload], and download the asset again if it's still wanted.
+     *
+     * Only DRM-protected downloads can expire. Non-protected and signed-playback downloads are
+     * playable until they are removed
+     */
+    EXPIRED,
 
     /**
      * The download failed. When reported via [MuxDownloadManager.Listener.onDownloadChanged], the

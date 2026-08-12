@@ -237,7 +237,12 @@ object MuxDownloadManager {
     progressUpdateHelper?.syncAsync()
   }
 
-  /** All downloads known to the index, in any state */
+  /**
+   * All downloads known to the index, in any state.
+   *
+   * Completed downloads have their offline license checked against the device's CDM, so an asset
+   * whose license ran out is reported as [MuxDownload.State.EXPIRED].
+   */
   suspend fun allDownloads(context: Context): List<MuxDownload> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return withContext(store.ioExecutor.asCoroutineDispatcher()) {
@@ -245,7 +250,12 @@ object MuxDownloadManager {
     }
   }
 
-  /** Only fully-downloaded assets ([MuxDownload.State.COMPLETED]). */
+  /**
+   * Only fully-downloaded assets. Their offline licenses are checked against the device's CDM, so
+   * these are [MuxDownload.State.COMPLETED] *or* [MuxDownload.State.EXPIRED] — an expired download
+   * is still fully on disk, so it's still listed here, just not playable. Check the state before
+   * offering one for playback.
+   */
   suspend fun completedDownloads(context: Context): List<MuxDownload> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return withContext(store.ioExecutor.asCoroutineDispatcher()) {
@@ -254,7 +264,8 @@ object MuxDownloadManager {
   }
 
   /**
-   * The download for [playbackId], or `null` if there is none. Runs off the main thread.
+   * The download for [playbackId], or `null` if there is none. Runs off the main thread. A completed
+   * download whose offline license has run out is reported as [MuxDownload.State.EXPIRED].
    *
    * You don't need to call this in order to play a downloaded asset.
    * Just use [com.mux.player.media.MediaItems.forMuxDownload] and add the returned MediaItem.
@@ -262,7 +273,7 @@ object MuxDownloadManager {
   suspend fun getDownload(context: Context, playbackId: String): MuxDownload? {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
     return withContext(store.ioExecutor.asCoroutineDispatcher()) {
-      store.downloadIndex.getDownload(playbackId)?.toMuxDownload()
+      store.downloadIndex.getDownload(playbackId)?.toMuxDownloadCheckingLicense()
     }
   }
 
@@ -281,7 +292,9 @@ object MuxDownloadManager {
   /** Java twin of [getDownload]. */
   fun getDownloadFuture(context: Context, playbackId: String): ListenableFuture<MuxDownload?> {
     val store = MuxPlayerDownloadStore.get(context.applicationContext)
-    return submitToIoExecutor(store) { store.downloadIndex.getDownload(playbackId)?.toMuxDownload() }
+    return submitToIoExecutor(store) {
+      store.downloadIndex.getDownload(playbackId)?.toMuxDownloadCheckingLicense()
+    }
   }
 
   private fun ensureManagerListenerInstalled(
@@ -432,10 +445,54 @@ object MuxDownloadManager {
     getDownloads(*states).use { cursor ->
       buildList {
         while (cursor.moveToNext()) {
-          add(cursor.download.toMuxDownload())
+          add(cursor.download)
         }
       }
+    }.toMuxDownloadsCheckingLicenses()
+
+  /** [toMuxDownloadsCheckingLicenses] for a single download. */
+  private fun Download.toMuxDownloadCheckingLicense(): MuxDownload =
+    listOf(this).toMuxDownloadsCheckingLicenses().single()
+
+  /**
+   * Snapshots [this], reporting any completed download whose offline license the CDM says is spent
+   * as [MuxDownload.State.EXPIRED] instead of [MuxDownload.State.COMPLETED].
+   *
+   * Blocking — it opens DRM sessions — so this is only for the query APIs, which run on
+   * [MuxPlayerDownloadStore.ioExecutor]. The listener callbacks are on the application looper and
+   * can't do this; see [MuxDownload.State.EXPIRED].
+   */
+  private fun List<Download>.toMuxDownloadsCheckingLicenses(): List<MuxDownload> {
+    // Only a finished download's license is worth asking about: one still in flight has a license
+    // that was acquired moments ago, and a clear download has none at all.
+    val licensesToCheck = mapNotNull { download ->
+      download.request.keySetId
+        ?.takeIf { download.state == Download.STATE_COMPLETED }
+        ?.let { keySetId -> download.request.id to keySetId }
     }
+    if (licensesToCheck.isEmpty()) {
+      return map { it.toMuxDownload() }
+    }
+
+    val expiredPlaybackIds = try {
+      // One helper for the whole batch; each query opens and closes its own CDM session anyway
+      val licenseHelper = localOfflineLicenseHelper()
+      try {
+        licensesToCheck
+          .filter { (_, keySetId) -> licenseHelper.isOfflineLicenseExpired(keySetId) }
+          .mapTo(mutableSetOf()) { (playbackId, _) -> playbackId }
+      } finally {
+        licenseHelper.release()
+      }
+    } catch (e: Exception) {
+      // A device that can't tell us about its licenses shouldn't fail the whole query; the states
+      // we already have from the index are still worth reporting
+      Log.w(TAG, "couldn't check offline licenses for expiration", e)
+      emptySet()
+    }
+
+    return map { it.toMuxDownload(expired = it.request.id in expiredPlaybackIds) }
+  }
 
   private fun startingSnapshot(playbackId: String): MuxDownload =
     MuxDownload(
@@ -455,10 +512,10 @@ object MuxDownloadManager {
       totalBytes = C.LENGTH_UNSET.toLong(),
     )
 
-  private fun Download.toMuxDownload(): MuxDownload =
+  private fun Download.toMuxDownload(expired: Boolean = false): MuxDownload =
     MuxDownload(
       playbackId = request.id,
-      state = state.toMuxState(),
+      state = if (expired) MuxDownload.State.EXPIRED else state.toMuxState(),
       percentDownloaded = percentDownloaded,
       bytesDownloaded = bytesDownloaded,
       totalBytes = contentLength,

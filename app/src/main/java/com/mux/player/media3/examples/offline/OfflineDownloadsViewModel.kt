@@ -21,6 +21,9 @@ import kotlinx.coroutines.launch
  * 1. [MuxDownloadManager.allDownloads], read once, for downloads that already existed on disk when
  *    this screen opened (downloads survive app restarts).
  * 2. [MuxDownloadManager.Listener], for live progress and state changes from here on.
+ *
+ * Only the first of those reports [MuxDownload.State.EXPIRED] — a DRM license running out isn't a
+ * download event, so it's something you query for, not something you're told about.
  */
 class OfflineDownloadsViewModel(private val app: Application) : AndroidViewModel(app) {
 

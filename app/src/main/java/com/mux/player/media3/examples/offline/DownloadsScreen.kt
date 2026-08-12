@@ -150,6 +150,7 @@ private fun MuxDownload.State.isInFlight(): Boolean = when (this) {
   MuxDownload.State.REMOVING -> true
 
   MuxDownload.State.COMPLETED,
+  MuxDownload.State.EXPIRED,
   MuxDownload.State.FAILED,
   MuxDownload.State.STOPPED -> false
 }
@@ -159,6 +160,8 @@ private fun MuxDownload.State.label(percentDownloaded: Float): String = when (th
   MuxDownload.State.QUEUED -> "Queued"
   MuxDownload.State.DOWNLOADING -> "Downloading ${percentDownloaded.toInt()}%"
   MuxDownload.State.COMPLETED -> "Ready to play offline"
+  // Still on disk, but its DRM license ran out. Deleting and downloading again is the fix.
+  MuxDownload.State.EXPIRED -> "Expired — delete and download again"
   MuxDownload.State.FAILED -> "Failed"
   MuxDownload.State.REMOVING -> "Removing…"
   MuxDownload.State.STOPPED -> "Paused"
@@ -204,6 +207,22 @@ private fun DownloadListItemCompletedPreview() {
       DownloadListItem(
         title = "The Making of Big Buck Bunny",
         state = MuxDownload.State.COMPLETED,
+        percentDownloaded = 100f,
+        onClick = {},
+        onRemoveClick = {},
+      )
+    }
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DownloadListItemExpiredPreview() {
+  MaterialTheme {
+    Surface {
+      DownloadListItem(
+        title = "Tears of Steel",
+        state = MuxDownload.State.EXPIRED,
         percentDownloaded = 100f,
         onClick = {},
         onRemoveClick = {},
