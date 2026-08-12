@@ -269,6 +269,7 @@ class MuxHlsDownloadCallbackTests : AbsRobolectricTest() {
       /* hasIndependentSegments = */ false,
       /* variableDefinitions = */ emptyMap(),
       /* sessionKeyDrmInitData = */ emptyList(),
+      /* contentSteeringInfo = */ null,
     )
 
   private fun directExecutor() = Executor { it.run() }
