@@ -1,4 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+  <!--
+    Offline downloads intentionally add NO manifest configuration from this library. Client apps
+    must add them manually if using offline downloads, because they can be sensitive permissions
+
+    Mux Player's offline download support relies on a foreground Service (MuxDownloadService) and a
+    PlatformScheduler JobService, which in turn require sensitive permissions:
+      - android.permission.FOREGROUND_SERVICE
+      - android.permission.FOREGROUND_SERVICE_DATA_SYNC
+      - android.permission.POST_NOTIFICATIONS (API 33+; also grant at runtime)
+      - android.permission.RECEIVE_BOOT_COMPLETED
+
+    We deliberately do NOT declare the Service, the JobService, or these permissions here. Merging
+    them from the library would force them onto every app that depends on mux-player, even ones that
+    never download anything - and sensitive permissions like these affect Play Store review and user
+    trust. They should only be enabled by apps that actually use offline downloads.
+
+    If you use offline downloads, declare the Service, the PlatformScheduler JobService, and the
+    permissions in your OWN app's AndroidManifest.xml. The `app` and `automatedtests` modules in
+    this repo have a working, copy-pasteable example. This will be documented in the dev guide.
+  -->
+
 </manifest>
+  

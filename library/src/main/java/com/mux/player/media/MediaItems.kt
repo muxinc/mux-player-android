@@ -5,7 +5,9 @@ import android.os.Bundle
 import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
+import androidx.media3.common.MediaMetadata
 import com.mux.player.internal.Constants
+import com.mux.player.offline.MuxDownload
 
 /**
  * Creates instances of [MediaItem] or [MediaItem.Builder] configured for easy use with MuxPlayer`.
@@ -22,6 +24,11 @@ object MediaItems {
 
   internal const val MUX_VIDEO_SUBDOMAIN = "stream"
   internal const val EXTRA_VIDEO_DATA = "com.mux.video.customerdata"
+
+  /**
+   * Scheme used for playing offline Mux assets via the [MuxMediaSourceFactory] and [forMuxDownload]
+   */
+  const val URI_SCHEME_MUX_OFFLINE = "mux_offline"
 
   /**
    * Creates a new [MediaItem] that points to a given Mux Playback ID.
@@ -177,6 +184,42 @@ object MediaItems {
           )
           .build()
       )
+  }
+
+  /**
+   * Creates a new [MediaItem] that will play the downloaded media represented by [download]
+   *
+   * @param download The Download to play. If the media isn't downloaded, playback will fail
+   */
+  fun forMuxDownload(download: MuxDownload): MediaItem {
+    return forMuxDownload(download.playbackId, /*todo: download.title eventually*/)
+  }
+
+  /**
+   * Creates a new [MediaItem] that will play the downloaded media with the given playback ID
+   *
+   * If there's no asset downloaded with the given playback ID, playback will fail
+   *
+   * @param playbackId The playbckID of the media to play
+   * @param title The title that should be displayed for the MediaItem
+   */
+  fun forMuxDownload(playbackId: String, title: String? = null): MediaItem {
+    val uri = Uri.Builder()
+      .scheme(URI_SCHEME_MUX_OFFLINE)
+      .path(playbackId)
+      .build()
+    val builder = MediaItem.Builder()
+      .setUri(uri)
+
+    if (title != null) {
+      builder.setMediaMetadata(
+        MediaMetadata.Builder()
+          .setTitle(title)
+          .build()
+      )
+    }
+
+    return builder.build()
   }
 
   private fun createPlaybackUrl(

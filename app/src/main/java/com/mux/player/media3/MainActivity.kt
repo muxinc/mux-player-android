@@ -19,6 +19,7 @@ import com.mux.player.media3.examples.BasicPlayerActivity
 import com.mux.player.media3.examples.ConfigurablePlayerActivity
 import com.mux.player.media3.examples.SmartCacheActivity
 import com.mux.player.media3.examples.carousel.PlayerCarouselActivity
+import com.mux.player.media3.examples.offline.OfflineDownloadsActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -72,6 +73,10 @@ class MainActivity : AppCompatActivity() {
     Example(
       title = "Smart Caching",
       destination = Intent(this@MainActivity, SmartCacheActivity::class.java)
+    ),
+    Example(
+      title = "Offline Downloads",
+      destination = Intent(this@MainActivity, OfflineDownloadsActivity::class.java)
     ),
   )
 }

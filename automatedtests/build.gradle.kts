@@ -71,6 +71,7 @@ dependencies {
   // Optional -- UI testing with UI Automator
   androidTestImplementation(libs.androidx.test.uiautomator)
   androidTestImplementation(libs.androidx.test.ext.junit)
+  androidTestImplementation(libs.kotlinx.coroutines.test)
 
   api(libs.checker.qual)
   // Automated tests should always test the local module and not the maven dependency.

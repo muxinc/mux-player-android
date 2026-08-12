@@ -5,16 +5,14 @@ import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
-import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManagerProvider
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.CmcdConfiguration
 import com.mux.player.internal.Logger
 import com.mux.player.internal.createLogcatLogger
-import com.mux.player.internal.createNoLogger
+import com.mux.player.offline.MuxPlayerDownloadStore
 
 /**
  * A [MediaSource.Factory] configured to work best with Mux Video.
@@ -40,7 +38,8 @@ class MuxMediaSourceFactory private constructor(
 ) : MediaSource.Factory by innerFactory {
 
   companion object {
-    @JvmSynthetic internal fun create(
+    @JvmSynthetic
+    internal fun create(
       ctx: Context,
       dataSourceFactory: DataSource.Factory,
       innerFactory: DefaultMediaSourceFactory = DefaultMediaSourceFactory(ctx),
@@ -48,12 +47,45 @@ class MuxMediaSourceFactory private constructor(
     ): MuxMediaSourceFactory = MuxMediaSourceFactory(ctx, dataSourceFactory, innerFactory, logger)
   }
 
+  private val context = ctx
+
   @JvmOverloads
   constructor(
     ctx: Context,
     dataSourceFactory: DataSource.Factory,
     innerFactory: DefaultMediaSourceFactory = DefaultMediaSourceFactory(ctx),
-  ) : this (ctx, dataSourceFactory, innerFactory, createLogcatLogger())
+  ) : this(ctx, dataSourceFactory, innerFactory, createLogcatLogger())
+
+  override fun createMediaSource(item: MediaItem): MediaSource {
+    val localConfig = item.localConfiguration
+    val playbackID = localConfig?.uri?.lastPathSegment
+    return if (
+      localConfig != null && playbackID != null
+      && localConfig.uri.scheme == MediaItems.URI_SCHEME_MUX_OFFLINE
+    ) {
+      createOfflineMediaSource(item, playbackID)
+    } else {
+      innerFactory.createMediaSource(item)
+    }
+  }
+
+  /**
+   * Builds a source for an already-downloaded asset. The download itself isn't looked up here —
+   * we're on the app's thread, and reading the index hits disk. [OfflinePlaybackMediaSource] does
+   * that on the playback thread instead.
+   */
+  private fun createOfflineMediaSource(item: MediaItem, playbackId: String): MediaSource {
+    val store = MuxPlayerDownloadStore.get(context)
+
+    return OfflinePlaybackMediaSource(
+      mediaItem = item,
+      playbackId = playbackId,
+      // Must be resolved on the app's thread: creating the DownloadManager captures the calling
+      // thread's looper as the one MuxDownloadManager delivers Listener callbacks on.
+      downloadIndex = store.downloadIndex,
+      downloadCache = store.downloadCache,
+    )
+  }
 
   init {
     // basics
@@ -67,5 +99,3 @@ class MuxMediaSourceFactory private constructor(
     ))
   }
 }
-
-
