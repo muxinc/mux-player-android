@@ -7,7 +7,9 @@
 # internal/public, this can revert to a thin `uses:` caller.
 #
 # This is OBSERVE-ONLY: it posts a comment + informational label and logs the
-# ruling. It does not block merges and creates no ruleset.
+# ruling. It does not block merges and creates no ruleset. Tool-side steps run
+# continue-on-error and downstream steps gate on success, so a bug or transient
+# API blip in the reviewer degrades to a neutral warning and never reds a PR.
 
 name: ai-review
 
@@ -42,6 +44,9 @@ jobs:
           repository: muxinc/code-review-analysis
           ref: main
           token: ${{ secrets.REVIEW_TOOL_TOKEN }}
+          # The token is only needed to fetch the tool repo; don't leave it in
+          # .git/config for the later python steps (they auth via GH_TOKEN env).
+          persist-credentials: false
 
       - uses: actions/setup-python@v5
         with:
@@ -51,6 +56,11 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Classify PR (post comment + label, observe-only)
+        id: classify
+        # Observe-only: a reviewer crash or transient GitHub API error must never
+        # block the SDK team's PR. On failure this step warns (yellow) and the
+        # gated steps below skip, so the check never goes red.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -62,8 +72,10 @@ jobs:
             --apply --observe \
             > result.json
           cat result.json
+          echo "ok=true" >> "$GITHUB_OUTPUT"
 
       - name: Render job summary
+        if: steps.classify.outputs.ok == 'true'
         run: |
           {
             echo "## AI Review — observe-only"
@@ -82,6 +94,10 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record ruling to central log
+        if: steps.classify.outputs.ok == 'true'
+        # Recording must never block either; record_ruling already exits 0 on
+        # failure, this is belt-and-suspenders.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.REVIEW_TOOL_TOKEN }}
           LOG_REPO: muxinc/code-review-analysis
