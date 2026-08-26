@@ -202,22 +202,17 @@ object MuxDownloadManager {
    *
    * Offline Widevine licenses run out — see [MuxDownload.State.EXPIRED] — and renewing one needs a
    * network, so this is something to do opportunistically while the device is online, before the
-   * user next goes offline. Only the license server is contacted; the downloaded media is untouched.
+   * user next goes offline.
    *
-   * DRM tokens are short-lived, so [drmToken] must be a *fresh* one from your backend. The token
-   * that acquired the license in the first place has almost certainly expired.
+   * DRM tokens are short-lived, so [drmToken] must be a *fresh* one from your backend.
    *
-   * Suspends until the license server answers — this makes a network request — and runs off the main
-   * thread. The returned snapshot has been checked against the device's CDM, so
-   * [MuxDownload.State.COMPLETED] means the asset is playable again and [MuxDownload.State.EXPIRED]
-   * means the new license was already spent when it was issued. Registered [Listener]s hear about
-   * the renewed download too.
+   * Returns once the license is renewed (requires network). [Listener]s hear about nrewals too
    *
    * @param context any context; the application context is used.
    * @param playbackId the Mux playback ID of a *fully downloaded*, DRM-protected asset.
    * @param drmToken a fresh DRM token authorizing a persistent (offline) license for [playbackId].
    * @param domain your Mux Video [custom domain](https://docs.mux.com/guides/use-a-custom-domain-for-streaming),
-   *   if you downloaded the asset with one. The default is Mux's own domain.
+   *   if you downloaded the asset with one. The domain provided should match the one used originally
    * @return a fresh snapshot of the download, with its license state checked.
    * @throws IllegalArgumentException if nothing is downloaded for [playbackId].
    * @throws IllegalStateException if the download isn't finished, isn't DRM-protected, or already
@@ -259,7 +254,7 @@ object MuxDownloadManager {
         ?: throw IllegalArgumentException("nothing is downloaded for Mux playback ID $playbackId")
 
       // An expired download is still STATE_COMPLETED in the index (see MuxDownload.State.EXPIRED),
-      // so this admits exactly the downloads whose license is worth renewing: the finished ones.
+      // so this admits all finished downloads that might have reasonably expired
       check(download.state == Download.STATE_COMPLETED) {
         "the download for $playbackId isn't fully downloaded" +
             " (state ${download.state.toMuxState()}), so there's no settled license to renew"
@@ -285,16 +280,12 @@ object MuxDownloadManager {
         throw IOException("couldn't renew the offline license for $playbackId", e)
       }
 
-      // Write to the index rather than re-adding the DownloadRequest to the DownloadManager: a
-      // merged request would send this finished download back to QUEUED and re-run the downloader.
-      // Going around the manager is safe because it keeps no in-memory copy of a completed download
-      // — it re-reads the index — and so do playback and removal.
+      // write directly to index. DownloadManager/DownloadService would re-download the media
       val renewed = download.copyWithKeySetId(newKeySetId)
       store.downloadIndex.putDownload(renewed)
 
       if (!newKeySetId.contentEquals(oldKeySetId)) {
-        // Nothing references the license we just replaced. Widevine usually renews in place and
-        // hands back the same keySetId, and purging that would delete the renewal itself.
+        // only drop the old one if we really got new license bytes
         dropOfflineLicense(oldKeySetId)
       }
 
