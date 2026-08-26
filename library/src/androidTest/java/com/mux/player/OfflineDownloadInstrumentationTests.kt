@@ -27,21 +27,28 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mux.player.internal.createLogcatLogger
 import com.mux.player.internal.getDrmToken
+import com.mux.player.internal.getLicenseUrlHost
 import com.mux.player.internal.getPlaybackId
 import com.mux.player.media.MediaItems
 import com.mux.player.media.MuxDrmSessionManagerProvider
 import com.mux.player.offline.MuxHlsDownloadCallback
 import com.mux.player.offline.MuxOfflineCmafHlsMediaSource
 import com.mux.player.offline.createMuxHlsDownloadHelper
+import com.mux.player.offline.isOfflineLicenseExpired
+import com.mux.player.offline.localOfflineLicenseHelper
+import com.mux.player.offline.renewOfflineLicense
 import com.mux.player.util.LoggingHttpDataSource
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
@@ -173,13 +180,62 @@ class OfflineDownloadInstrumentationTests {
     )
   }
 
-  // Download something using the DownloadHelper and OfflineLicenseHelpers and assert expected tracks
-  suspend fun testMediaItemCase(
-    mediaItem: MediaItem,
-    expectedAudioTrackIds: List<String> = listOf(),
-    expectedSubtitleIds: List<String> = listOf()
-  ) {
-    val drmSessionManagerProvider = MuxDrmSessionManagerProvider(
+  @Test
+  fun testDrmLicenseRenewal() = runTest {
+    assumeTrue(
+      "DRM Token should be provided to do this test",
+      DRM_TOKEN.isNotEmpty()
+    )
+    assumeTrue(
+      "Playback Token should be provided to do this test",
+      PLAY_TOKEN.isNotEmpty()
+    )
+
+    val mediaItem = MediaItems.fromMuxPlaybackId(
+      playbackId = DRM_PLAYBACK_ID,
+      playbackToken = PLAY_TOKEN,
+      drmToken = DRM_TOKEN,
+    )
+    val drmProvider = createDrmSessionManagerProvider()
+
+    // Acquiring the license is what starting a download does. Renewal picks up from the keySetId it
+    // leaves on the request; it needs no media, no manifests, and no PSSH.
+    val downloadRequest = prepareDownloadRequest(mediaItem, drmProvider)
+    val originalKeySetId = downloadRequest.keySetId
+    assertNotNull(
+      "Downloading a DRM asset should acquire an offline license",
+      originalKeySetId
+    )
+
+    Log.d(TAG, "testDrmLicenseRenewal(): Renewing the offline license")
+    val renewedKeySetId = withContext(Dispatchers.IO) {
+      drmProvider.renewOfflineLicense(
+        playbackId = DRM_PLAYBACK_ID,
+        drmToken = DRM_TOKEN,
+        licenseEndpointHost = mediaItem.getLicenseUrlHost(),
+        keySetId = originalKeySetId!!,
+      )
+    }
+
+    assertTrue(
+      "Renewal should hand back a keySetId the download can play with",
+      renewedKeySetId.isNotEmpty()
+    )
+
+    // The whole point of renewing: this device's CDM has to consider the license good again
+    val licenseHelper = localOfflineLicenseHelper()
+    try {
+      assertFalse(
+        "The renewed offline license should have time left on it",
+        licenseHelper.isOfflineLicenseExpired(renewedKeySetId)
+      )
+    } finally {
+      licenseHelper.release()
+    }
+  }
+
+  private fun createDrmSessionManagerProvider(): MuxDrmSessionManagerProvider =
+    MuxDrmSessionManagerProvider(
       drmHttpDataSourceFactory = LoggingHttpDataSource.Factory(
         delegateFactory = DefaultHttpDataSource.Factory(),
         tag = TAG,
@@ -187,6 +243,19 @@ class OfflineDownloadInstrumentationTests {
       ),
       logger = createLogcatLogger()
     )
+
+  /**
+   * Prepares [mediaItem] for download the way `MuxDownloadManager.startDownload` does, and returns
+   * the resulting request — including, for DRM content, the `keySetId` of a freshly acquired offline
+   * license.
+   *
+   * @param drmProvider the provider that acquires the license. Pass one in when you need the same
+   *   provider afterward, eg to renew the license it acquired.
+   */
+  private suspend fun prepareDownloadRequest(
+    mediaItem: MediaItem,
+    drmProvider: MuxDrmSessionManagerProvider = createDrmSessionManagerProvider(),
+  ): DownloadRequest {
     val fileMediaSource = MuxOfflineCmafHlsMediaSource.create(
       dataSourceFactory = LoggingHttpDataSource.Factory(
         DefaultHttpDataSource.Factory(),
@@ -194,10 +263,10 @@ class OfflineDownloadInstrumentationTests {
         logging = LOG_MEDIA_REQUESTS
       ),
       mediaItem = mediaItem,
-      drmSessionManagerProvider = drmSessionManagerProvider
+      drmSessionManagerProvider = drmProvider
     )
 
-    Log.d(TAG, "testCleartextDownload(): Preparing Download")
+    Log.d(TAG, "prepareDownloadRequest(): Preparing Download")
     val preparationComplete = CompletableDeferred<DownloadRequest>()
     val downloadHelper = createMuxHlsDownloadHelper(appContext, fileMediaSource)
     downloadHelper.prepare(
@@ -205,7 +274,7 @@ class OfflineDownloadInstrumentationTests {
         fileMediaSource,
         playbackId = mediaItem.getPlaybackId()!!, // MediaItems.fromMuxPlaybackId tested elsewhere
         // DrmSessionManagerProvider/drmToken not touched unless the stream has a pssh (unit-tested)
-        drmProvider = drmSessionManagerProvider,
+        drmProvider = drmProvider,
         drmToken = DRM_TOKEN,
         ioExecutor = ioExecutor,
         onReady = { preparationComplete.complete(it) },
@@ -215,7 +284,16 @@ class OfflineDownloadInstrumentationTests {
     )
 
     // Throws here if there was an error selecting tracks
-    val downloadRequest = preparationComplete.await()
+    return preparationComplete.await()
+  }
+
+  // Download something using the DownloadHelper and OfflineLicenseHelpers and assert expected tracks
+  suspend fun testMediaItemCase(
+    mediaItem: MediaItem,
+    expectedAudioTrackIds: List<String> = listOf(),
+    expectedSubtitleIds: List<String> = listOf()
+  ) {
+    val downloadRequest = prepareDownloadRequest(mediaItem)
 
     if (!mediaItem.getDrmToken().isNullOrEmpty()) {
       // assert that we discovered and attached a keyset id before continuinh

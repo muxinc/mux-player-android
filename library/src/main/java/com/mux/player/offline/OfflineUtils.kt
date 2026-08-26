@@ -1,6 +1,8 @@
 package com.mux.player.offline
 
 import android.content.Context
+import android.media.MediaDrm
+import android.os.Build
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
@@ -82,6 +84,40 @@ fun MuxDrmSessionManagerProvider.offlineLicenseHelper(
 }
 
 /**
+ * Renews the persistent Widevine license identified by [keySetId], returning the `keySetId` of the
+ * renewed license. Widevine often renews in place and hands back the same `keySetId`, so callers
+ * must not assume the result is new.
+ *
+ * Renewal goes to the same Mux endpoint as acquisition (see
+ * [MuxDrmSessionManagerProvider.offlineLicenseHelper]) and needs nothing from the media: media3
+ * builds the renewal request from [keySetId] alone, with no PSSH and no
+ * [androidx.media3.common.DrmInitData].
+ *
+ * NOTE: [OfflineLicenseHelper.renewLicense] blocks, so call it off the caller's looper.
+ *
+ * @param playbackId the Mux playback ID whose license is being renewed.
+ * @param drmToken a *fresh* DRM token authorizing a persistent (offline) license for [playbackId].
+ *   The token used to acquire the license has likely expired by now.
+ * @param licenseEndpointHost the Mux license server host, e.g. `license.mux.com`.
+ * @param keySetId the `keySetId` of the license to renew, as stored on the download's
+ *   [androidx.media3.exoplayer.offline.DownloadRequest].
+ */
+@OptIn(UnstableApi::class)
+internal fun MuxDrmSessionManagerProvider.renewOfflineLicense(
+  playbackId: String,
+  drmToken: String,
+  licenseEndpointHost: String,
+  keySetId: ByteArray,
+): ByteArray {
+  val licenseHelper = offlineLicenseHelper(playbackId, drmToken, licenseEndpointHost)
+  return try {
+    licenseHelper.renewLicense(keySetId)
+  } finally {
+    licenseHelper.release()
+  }
+}
+
+/**
  * Builds an [OfflineLicenseHelper] for asking the device's CDM about licenses that are *already* on
  * this device.
  *
@@ -153,6 +189,30 @@ internal fun offlineLicenseExpired(
 }
 
 /**
+ * Local-only purge of the offline license keyed by [keySetId]. No network and no DRM token — Mux
+ * enforces no offline-license quota, so there is no server-side release. Best-effort.
+ *
+ * Only call this for a license nothing references any more: a download that was removed, or one whose
+ * license [renewOfflineLicense] replaced with a different `keySetId`.
+ */
+@OptIn(UnstableApi::class)
+internal fun dropOfflineLicense(keySetId: ByteArray) {
+  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return // no per-license purge API pre-29
+  val mediaDrm = try {
+    MediaDrm(C.WIDEVINE_UUID)
+  } catch (_: Exception) {
+    return
+  }
+  try {
+    mediaDrm.removeOfflineLicense(keySetId)
+  } catch (_: Exception) {
+    // best-effort; no DownloadRequest points at this keySetId, so any residue is unreferenced
+  } finally {
+    mediaDrm.close()
+  }
+}
+
+/**
  * A [MediaDrmCallback] for DRM work that must stay local: playing back a download, or asking the CDM
  * about a license it already holds. Both are answered on-device, so any request out to the network
  * means something we didn't plan for, and failing is better than quietly going online.
@@ -174,7 +234,8 @@ internal class NoNetworkDrmCallback : MediaDrmCallback {
     // in practice means the license is expired or about to be. See MuxDownload.State.EXPIRED.
     throw IOException(
       "This download's offline license can't be used, and renewing it would need a network. " +
-          "It has probably expired; remove the download and download it again."
+          "It has probably expired; renew it with MuxDownloadManager.renewOfflineLicense while " +
+          "online, or remove the download."
     )
   }
 }

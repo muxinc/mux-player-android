@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mux.player.offline.MuxDownload
 import com.mux.player.offline.MuxDownloadManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +24,8 @@ import kotlinx.coroutines.launch
  * 2. [MuxDownloadManager.Listener], for live progress and state changes from here on.
  *
  * Only the first of those reports [MuxDownload.State.EXPIRED] — a DRM license running out isn't a
- * download event, so it's something you query for, not something you're told about.
+ * download event, so it's something you query for, not something you're told about. [renewLicense]
+ * is the way back from it.
  */
 class OfflineDownloadsViewModel(private val app: Application) : AndroidViewModel(app) {
 
@@ -34,6 +36,14 @@ class OfflineDownloadsViewModel(private val app: Application) : AndroidViewModel
   val downloads: StateFlow<List<MuxDownload>> get() = _downloads.asStateFlow()
 
   private val _downloads = MutableStateFlow<List<MuxDownload>>(emptyList())
+
+  /**
+   * Playback IDs with a [renewLicense] in flight. Renewal is a network round-trip with no download
+   * state of its own, so this is the only way the UI can show that it's working.
+   */
+  val renewingPlaybackIds: StateFlow<Set<String>> get() = _renewingPlaybackIds.asStateFlow()
+
+  private val _renewingPlaybackIds = MutableStateFlow<Set<String>>(emptySet())
 
   private val downloadListener = object : MuxDownloadManager.Listener {
     override fun onDownloadChanged(download: MuxDownload, error: Throwable?) {
@@ -86,6 +96,38 @@ class OfflineDownloadsViewModel(private val app: Application) : AndroidViewModel
   /** Deletes the download for [playbackId], including its media and any offline DRM license. */
   fun removeDownload(playbackId: String) {
     MuxDownloadManager.removeDownload(app, playbackId)
+  }
+
+  /**
+   * Renews the offline DRM license for [playbackId], so a download whose license ran out can be
+   * played offline again without re-downloading it.
+   *
+   * This needs a network and a *fresh* DRM token — see [DownloadableAssets.drmTokenFor] for the
+   * shortcut this example takes there. It's worth doing opportunistically, while the device is
+   * online and before the user next goes offline.
+   */
+  fun renewLicense(playbackId: String) {
+    val drmToken = DownloadableAssets.drmTokenFor(playbackId)
+    if (drmToken == null) {
+      Log.w(TAG, "No DRM token for playback ID $playbackId, so there's no license to renew")
+      return
+    }
+
+    viewModelScope.launch {
+      _renewingPlaybackIds.update { it + playbackId }
+      try {
+        // The renewed download reaches downloadListener too, but upserting what we're handed means
+        // the UI doesn't wait on that hop.
+        upsert(MuxDownloadManager.renewOfflineLicense(app, playbackId, drmToken))
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        // A real app would tell the user; renewal fails for ordinary reasons like a stale token
+        Log.e(TAG, "Couldn't renew the offline license for $playbackId", e)
+      } finally {
+        _renewingPlaybackIds.update { it - playbackId }
+      }
+    }
   }
 
   private fun upsert(download: MuxDownload) {

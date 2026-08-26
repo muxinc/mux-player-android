@@ -59,6 +59,7 @@ class OfflineDownloadsActivity : AppCompatActivity() {
 @Composable
 fun OfflineDownloadsExample(viewModel: OfflineDownloadsViewModel = viewModel()) {
   val downloads by viewModel.downloads.collectAsStateWithLifecycle()
+  val renewingPlaybackIds by viewModel.renewingPlaybackIds.collectAsStateWithLifecycle()
   var screen: Screen by remember { mutableStateOf(Screen.Downloads) }
 
   when (val current = screen) {
@@ -67,6 +68,8 @@ fun OfflineDownloadsExample(viewModel: OfflineDownloadsViewModel = viewModel()) 
       onAddDownloadClick = { screen = Screen.SelectAsset },
       onPlayDownload = { screen = Screen.Player(it.playbackId) },
       onRemoveDownload = { viewModel.removeDownload(it.playbackId) },
+      onRenewLicense = { viewModel.renewLicense(it.playbackId) },
+      renewingPlaybackIds = renewingPlaybackIds,
     )
 
     Screen.SelectAsset -> SelectAssetScreen(

@@ -2,6 +2,7 @@ package com.mux.player.media3.examples.offline
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -37,6 +38,8 @@ fun DownloadsScreen(
   onAddDownloadClick: () -> Unit,
   onPlayDownload: (MuxDownload) -> Unit,
   onRemoveDownload: (MuxDownload) -> Unit,
+  onRenewLicense: (MuxDownload) -> Unit,
+  renewingPlaybackIds: Set<String> = emptySet(),
   modifier: Modifier = Modifier,
 ) {
   Scaffold(
@@ -53,12 +56,19 @@ fun DownloadsScreen(
       }
 
       items(downloads, key = { it.playbackId }) { download ->
+        // Only a DRM asset that's fully on disk has a license to renew. Offered for COMPLETED as
+        // well as EXPIRED downloads: renewing before the license runs out is the better habit.
+        val renewable = download.state.isDownloaded()
+            && DownloadableAssets.isDrmProtected(download.playbackId)
+
         DownloadListItem(
           title = DownloadableAssets.titleFor(download.playbackId),
           state = download.state,
           percentDownloaded = download.percentDownloaded,
           onClick = { onPlayDownload(download) },
           onRemoveClick = { onRemoveDownload(download) },
+          onRenewClick = { onRenewLicense(download) }.takeIf { renewable },
+          renewing = download.playbackId in renewingPlaybackIds,
         )
       }
     }
@@ -79,6 +89,9 @@ private fun DownloadsTopBar() {
  *
  * @param percentDownloaded `0.0..100.0`, or [C.PERCENTAGE_UNSET] if not yet known.
  * @param onClick Invoked only when this download is [MuxDownload.State.COMPLETED], i.e. playable.
+ * @param onRenewClick Renews this download's offline DRM license. Null when there's no license to
+ *   renew — clear content, or media that isn't fully downloaded yet.
+ * @param renewing Whether a renewal for this download is in flight.
  */
 @Composable
 fun DownloadListItem(
@@ -87,6 +100,8 @@ fun DownloadListItem(
   percentDownloaded: Float,
   onClick: () -> Unit,
   onRemoveClick: () -> Unit,
+  onRenewClick: (() -> Unit)? = null,
+  renewing: Boolean = false,
   modifier: Modifier = Modifier,
 ) {
   val playable = state == MuxDownload.State.COMPLETED
@@ -98,15 +113,22 @@ fun DownloadListItem(
     },
     supportingContent = {
       Column {
-        Text(text = state.label(percentDownloaded))
+        Text(text = if (renewing) "Renewing license…" else state.label(percentDownloaded))
         if (state.isInFlight()) {
           DownloadProgressBar(percentDownloaded)
         }
       }
     },
     trailingContent = {
-      TextButton(onClick = onRemoveClick) {
-        Text("Delete")
+      Row {
+        if (onRenewClick != null) {
+          TextButton(onClick = onRenewClick, enabled = !renewing) {
+            Text("Renew")
+          }
+        }
+        TextButton(onClick = onRemoveClick) {
+          Text("Delete")
+        }
       }
     },
   )
@@ -142,6 +164,10 @@ private fun DownloadProgressBar(percentDownloaded: Float, modifier: Modifier = M
   }
 }
 
+/** True when all of the media is on disk, whether or not its DRM license is still good. */
+private fun MuxDownload.State.isDownloaded(): Boolean =
+  this == MuxDownload.State.COMPLETED || this == MuxDownload.State.EXPIRED
+
 /** True while the download is working toward completion, so progress is worth showing. */
 private fun MuxDownload.State.isInFlight(): Boolean = when (this) {
   MuxDownload.State.STARTING,
@@ -160,8 +186,8 @@ private fun MuxDownload.State.label(percentDownloaded: Float): String = when (th
   MuxDownload.State.QUEUED -> "Queued"
   MuxDownload.State.DOWNLOADING -> "Downloading ${percentDownloaded.toInt()}%"
   MuxDownload.State.COMPLETED -> "Ready to play offline"
-  // Still on disk, but its DRM license ran out. Deleting and downloading again is the fix.
-  MuxDownload.State.EXPIRED -> "Expired — delete and download again"
+  // Still on disk, but its DRM license ran out. Renewing it needs a network, but no re-download.
+  MuxDownload.State.EXPIRED -> "Expired — renew its license while you're online"
   MuxDownload.State.FAILED -> "Failed"
   MuxDownload.State.REMOVING -> "Removing…"
   MuxDownload.State.STOPPED -> "Paused"
@@ -226,6 +252,25 @@ private fun DownloadListItemExpiredPreview() {
         percentDownloaded = 100f,
         onClick = {},
         onRemoveClick = {},
+        onRenewClick = {},
+      )
+    }
+  }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DownloadListItemRenewingPreview() {
+  MaterialTheme {
+    Surface {
+      DownloadListItem(
+        title = "Tears of Steel",
+        state = MuxDownload.State.EXPIRED,
+        percentDownloaded = 100f,
+        onClick = {},
+        onRemoveClick = {},
+        onRenewClick = {},
+        renewing = true,
       )
     }
   }

@@ -53,8 +53,11 @@ data class MuxDownload internal constructor(
 
     /**
      * Fully downloaded, but its offline DRM license has run out, so it can no longer be played.
-     * The media is still on disk and still taking up space. Delete it with
-     * [MuxDownloadManager.removeDownload], and download the asset again if it's still wanted.
+     * The media is still on disk and still taking up space.
+     *
+     * Renew the license with [MuxDownloadManager.renewOfflineLicense] to make it playable again
+     * without re-downloading anything — that needs a network and a fresh DRM token. Otherwise
+     * delete it with [MuxDownloadManager.removeDownload].
      *
      * Only DRM-protected downloads can expire. Non-protected and signed-playback downloads are
      * playable until they are removed
