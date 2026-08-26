@@ -16,6 +16,7 @@ import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadProgress
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.scheduler.Requirements
+import com.google.common.collect.Sets
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.mux.player.internal.createLogcatLogger
@@ -97,8 +98,13 @@ object MuxDownloadManager {
 
   private val playbackIdsStarting = ConcurrentHashMap<String, DownloadHelper>()
 
-  /** Playback IDs with a [renewOfflineLicense] in flight, so two can't race on the same asset. */
-  private val playbackIdsRenewing = ConcurrentHashMap.newKeySet<String>()
+  /**
+   * Playback IDs with a [renewOfflineLicense] in flight, so two can't race on the same asset.
+   *
+   * Backed by a `ConcurrentHashMap`, so [MutableSet.add] is an atomic test-and-set — it delegates to
+   * `put`, and reports whether this caller is the one that claimed [playbackIdsRenewing].
+   */
+  private val playbackIdsRenewing: MutableSet<String> = Sets.newConcurrentHashSet()
 
   /**
    * Prepares [mediaItem] for offline playback and enqueues the download.
