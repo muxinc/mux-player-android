@@ -1,10 +1,20 @@
-# Observe-only AI review. Inlines the steps from muxinc/code-review-analysis's
-# reusable workflow (.github/workflows/ai-review-observe.yml) instead of calling
-# it with `uses:` — GitHub does not allow a public repo to consume a reusable
-# workflow from a private repo via org-level Actions access, and this repo is
-# public while the tool repo is (for now) private. Checking the tool repo out
-# with a token sidesteps that restriction. If code-review-analysis is ever made
-# internal/public, this can revert to a thin `uses:` caller.
+# Observe-only AI review — INLINED form.
+#
+# DO NOT hand-edit. This is a copy of live/workflows/inline-ai-review-public.yml
+# in muxinc/code-review-analysis, which is the source of truth and is kept
+# step-for-step in sync with that repo's reusable workflow by a parity test.
+# To change this file, change the template there and re-copy.
+#
+# It is inlined rather than a thin `uses:` caller because GitHub does not let a
+# PUBLIC repo consume a reusable workflow from a PRIVATE one, and the tool repo
+# is private. Checking the tool out with a token sidesteps that. If
+# code-review-analysis ever becomes internal/public, this can revert to the thin
+# caller (live/workflows/caller-ai-review.yml).
+#
+# Requires (set as org secrets so every onboarded repo inherits them):
+#   REVIEW_TOOL_TOKEN  token with contents:read on the tool repo + contents:write
+#                      on its rulings-log branch
+#   ANTHROPIC_API_KEY  optional — enables the LLM judge
 #
 # This is OBSERVE-ONLY: it posts a comment + informational label and logs the
 # ruling. It does not block merges and creates no ruleset.
@@ -28,12 +38,15 @@ jobs:
   ai-review-observe:
     name: ai-review (observe)
     runs-on: ubuntu-latest
+    # Cap runtime: a wedged pip/gh/LLM call otherwise holds a runner up to 6h.
+    timeout-minutes: 15
     # Fork PRs don't receive repo/org secrets (GitHub withholds them from forks
     # by design), so REVIEW_TOOL_TOKEN would be empty and the tool checkout would
     # 403. Skip the job entirely on fork PRs instead of letting it fail — a
     # skipped job shows as neutral, never a red/blocking check, which keeps this
-    # true to its observe-only intent. Same-repo PRs (the SDK team's own branches)
-    # run normally.
+    # true to its observe-only intent. Same-repo PRs run normally. This guard is
+    # the one thing the inline form needs that the reusable workflow does not:
+    # public repos get drive-by fork PRs, internal ones effectively don't.
     if: github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Check out review tool
@@ -42,15 +55,24 @@ jobs:
           repository: muxinc/code-review-analysis
           ref: main
           token: ${{ secrets.REVIEW_TOOL_TOKEN }}
+          # The token is only needed to fetch the tool repo; don't leave it in
+          # .git/config for the later python steps (they auth via GH_TOKEN env).
+          persist-credentials: false
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
       - name: Classify PR (post comment + label, observe-only)
+        id: classify
+        # Observe-only: a reviewer crash must never block this repo's PR. On
+        # failure this step warns (yellow) and the gated steps below skip.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -58,12 +80,14 @@ jobs:
           python -m live.classify \
             --repo "${{ github.repository }}" \
             --pr "${{ github.event.pull_request.number }}" \
-            --live-config "live/config.native-sdk.yml" \
+            --live-config "auto" \
             --apply --observe \
             > result.json
           cat result.json
+          echo "ok=true" >> "$GITHUB_OUTPUT"
 
       - name: Render job summary
+        if: steps.classify.outputs.ok == 'true'
         run: |
           {
             echo "## AI Review — observe-only"
@@ -82,6 +106,10 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record ruling to central log
+        if: steps.classify.outputs.ok == 'true'
+        # Recording must never block either; record_ruling already exits 0 on
+        # failure, this is belt-and-suspenders.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.REVIEW_TOOL_TOKEN }}
           LOG_REPO: muxinc/code-review-analysis
