@@ -214,11 +214,6 @@ object MuxDownloadManager {
    *
    * Returns once the license is renewed (requires network). [Listener]s hear about nrewals too
    *
-   * @param context any context; the application context is used.
-   * @param playbackId the Mux playback ID of a *fully downloaded*, DRM-protected asset.
-   * @param drmToken a fresh DRM token authorizing a persistent (offline) license for [playbackId].
-   * @param domain your Mux Video [custom domain](https://docs.mux.com/guides/use-a-custom-domain-for-streaming),
-   *   if you downloaded the asset with one. The domain provided should match the one used originally
    * @return a fresh snapshot of the download, with its license state checked.
    * @throws IllegalArgumentException if nothing is downloaded for [playbackId].
    * @throws IllegalStateException if the download isn't finished, isn't DRM-protected, or already
