@@ -23,6 +23,14 @@ data class MuxDownload internal constructor(
    * yet known (the content length isn't resolved until the download begins).
    */
   val totalBytes: Long,
+  /**
+   * The Widevine PSSH from the stream this was downloaded from, or null for downloads that aren't
+   * DRM-protected (or were made before the SDK started saving it).
+   *
+   * Needed to request a new offline license for media that's already on disk. See
+   * [MuxDownloadManager.renewOfflineLicense].
+   */
+  val widevinePssh: ByteArray?,
 ) {
 
   /**

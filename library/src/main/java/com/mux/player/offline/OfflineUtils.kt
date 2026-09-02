@@ -258,11 +258,12 @@ fun HlsMediaPlaylist.firstSegmentDrmInitData(): DrmInitData? =
 @OptIn(UnstableApi::class)
 fun HlsMultivariantPlaylist.firstWidevineSessionKeyDrmInitData(): DrmInitData? =
   sessionKeyDrmInitData.firstOrNull { drmInitData ->
-    drmInitData.findSessionKeySchemeData(uuid = C.WIDEVINE_UUID) != null
+    drmInitData.findSchemeData(uuid = C.WIDEVINE_UUID) != null
   }
 
+/** The first [DrmInitData.SchemeData] for [uuid], if this init data carries one. */
 @OptIn(UnstableApi::class)
-private fun DrmInitData.findSessionKeySchemeData(uuid: UUID): DrmInitData.SchemeData? {
+internal fun DrmInitData.findSchemeData(uuid: UUID): DrmInitData.SchemeData? {
   if (schemeDataCount <= 0) {
     return null
   }

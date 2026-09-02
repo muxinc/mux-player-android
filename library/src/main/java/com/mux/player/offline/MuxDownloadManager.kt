@@ -621,6 +621,7 @@ object MuxDownloadManager {
       percentDownloaded = C.PERCENTAGE_UNSET.toFloat(),
       bytesDownloaded = 0L,
       totalBytes = C.LENGTH_UNSET.toLong(),
+      widevinePssh = null,
     )
 
   private fun failedSnapshot(playbackId: String): MuxDownload =
@@ -630,6 +631,7 @@ object MuxDownloadManager {
       percentDownloaded = C.PERCENTAGE_UNSET.toFloat(),
       bytesDownloaded = 0L,
       totalBytes = C.LENGTH_UNSET.toLong(),
+      widevinePssh = null,
     )
 
   private fun Download.toMuxDownload(expired: Boolean = false): MuxDownload =
@@ -639,6 +641,7 @@ object MuxDownloadManager {
       percentDownloaded = percentDownloaded,
       bytesDownloaded = bytesDownloaded,
       totalBytes = contentLength,
+      widevinePssh = ExtraData.fromUtf8Bytes(request.data).widevinePssh,
     )
 
   /**
