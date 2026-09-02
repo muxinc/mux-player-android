@@ -1,10 +1,14 @@
 package com.mux.player.offline
 
 import android.content.Context
+import android.media.MediaDrm
+import android.os.Build
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.DrmInitData
+import androidx.media3.common.Format
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.RenderersFactory
@@ -82,6 +86,44 @@ fun MuxDrmSessionManagerProvider.offlineLicenseHelper(
 }
 
 /**
+ * Acquires a fresh persistent Widevine license for [drmInitData], returning its `keySetId`.
+ *
+ * This is both how a download gets its first license and how it gets a replacement one: Widevine
+ * can't extend a license that has already run out, so "renewing" an expired download means asking
+ * for a brand-new license for the same content, which needs the PSSH (see [ExtraData]).
+ *
+ * NOTE: [OfflineLicenseHelper.downloadLicense] blocks, so call it off the caller's looper.
+ *
+ * @param playbackId the Mux playback ID the license is for.
+ * @param drmToken a *fresh* DRM token authorizing a persistent (offline) license for [playbackId].
+ * @param licenseEndpointHost the Mux license server host, e.g. `license.mux.com`.
+ * @param drmInitData the content's Widevine init data, either captured from the playlists during a
+ *   download or rebuilt from a saved PSSH with [widevineDrmInitData].
+ */
+@OptIn(UnstableApi::class)
+internal fun MuxDrmSessionManagerProvider.acquireOfflineLicense(
+  playbackId: String,
+  drmToken: String,
+  licenseEndpointHost: String,
+  drmInitData: DrmInitData,
+): ByteArray {
+  val licenseHelper = offlineLicenseHelper(playbackId, drmToken, licenseEndpointHost)
+  return try {
+    licenseHelper.downloadLicense(Format.Builder().setDrmInitData(drmInitData).build())
+  } finally {
+    licenseHelper.release()
+  }
+}
+
+/**
+ * The Widevine [DrmInitData] for a [pssh] saved off a download, shaped the way media3's HLS parser
+ * shapes the one it reads from `#EXT-X-KEY`.
+ */
+@OptIn(UnstableApi::class)
+internal fun widevineDrmInitData(pssh: ByteArray): DrmInitData =
+  DrmInitData(DrmInitData.SchemeData(C.WIDEVINE_UUID, MimeTypes.VIDEO_MP4, pssh))
+
+/**
  * Builds an [OfflineLicenseHelper] for asking the device's CDM about licenses that are *already* on
  * this device.
  *
@@ -153,6 +195,30 @@ internal fun offlineLicenseExpired(
 }
 
 /**
+ * Local-only purge of the offline license keyed by [keySetId]. No network and no DRM token — Mux
+ * enforces no offline-license quota, so there is no server-side release. Best-effort.
+ *
+ * Only call this for a license nothing references any more: a download that was removed, or one
+ * whose license [MuxDownloadManager.renewOfflineLicense] replaced with a different `keySetId`.
+ */
+@OptIn(UnstableApi::class)
+internal fun dropOfflineLicense(keySetId: ByteArray) {
+  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return // no per-license purge API pre-29
+  val mediaDrm = try {
+    MediaDrm(C.WIDEVINE_UUID)
+  } catch (_: Exception) {
+    return
+  }
+  try {
+    mediaDrm.removeOfflineLicense(keySetId)
+  } catch (_: Exception) {
+    // best-effort; no DownloadRequest points at this keySetId, so any residue is unreferenced
+  } finally {
+    mediaDrm.close()
+  }
+}
+
+/**
  * A [MediaDrmCallback] for DRM work that must stay local: playing back a download, or asking the CDM
  * about a license it already holds. Both are answered on-device, so any request out to the network
  * means something we didn't plan for, and failing is better than quietly going online.
@@ -174,7 +240,8 @@ internal class NoNetworkDrmCallback : MediaDrmCallback {
     // in practice means the license is expired or about to be. See MuxDownload.State.EXPIRED.
     throw IOException(
       "This download's offline license can't be used, and renewing it would need a network. " +
-          "It has probably expired; remove the download and download it again."
+          "It has probably expired; renew it with MuxDownloadManager.renewOfflineLicense while " +
+          "online, or remove the download."
     )
   }
 }
@@ -197,11 +264,12 @@ fun HlsMediaPlaylist.firstSegmentDrmInitData(): DrmInitData? =
 @OptIn(UnstableApi::class)
 fun HlsMultivariantPlaylist.firstWidevineSessionKeyDrmInitData(): DrmInitData? =
   sessionKeyDrmInitData.firstOrNull { drmInitData ->
-    drmInitData.findSessionKeySchemeData(uuid = C.WIDEVINE_UUID) != null
+    drmInitData.findSchemeData(uuid = C.WIDEVINE_UUID) != null
   }
 
+/** The first [DrmInitData.SchemeData] for [uuid], if this init data carries one. */
 @OptIn(UnstableApi::class)
-private fun DrmInitData.findSessionKeySchemeData(uuid: UUID): DrmInitData.SchemeData? {
+internal fun DrmInitData.findSchemeData(uuid: UUID): DrmInitData.SchemeData? {
   if (schemeDataCount <= 0) {
     return null
   }

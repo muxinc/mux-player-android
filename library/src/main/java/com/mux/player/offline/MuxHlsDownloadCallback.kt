@@ -3,8 +3,8 @@ package com.mux.player.offline
 import android.annotation.SuppressLint
 import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.DrmInitData
-import androidx.media3.common.Format
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.StreamKey
 import androidx.media3.common.util.UnstableApi
@@ -25,7 +25,8 @@ import java.util.concurrent.Executor
  * 2. reads the captured video [androidx.media3.common.DrmInitData] off [mediaSource] — the multivariant
  *    `#EXT-X-SESSION-KEY`, falling back to a media playlist's `#EXT-X-KEY`;
  * 3. (off the caller's looper, on [ioExecutor]) acquires the offline Widevine license → `keySetId`
- * 4. builds a [androidx.media3.exoplayer.offline.DownloadRequest] keyed by **playbackId**
+ * 4. builds a [androidx.media3.exoplayer.offline.DownloadRequest] keyed by **playbackId**, with the
+ *    Widevine PSSH saved to its data as [ExtraData] for later license renewals
  * 5. emits it via [onReady] and releases the helper, waiting for license acquisition if required
  *
  * - Any failure routes to [onError].
@@ -64,7 +65,7 @@ class MuxHlsDownloadCallback(
       ?: mediaSource.selectedMediaPlaylists.firstNotNullOfOrNull { it.capturedDrmInitData }
 
     if (videoDrmInitData != null) {
-      val baseRequest = buildRequest(uri, generateStreamKeys(mvp))
+      val baseRequest = buildRequest(uri, generateStreamKeys(mvp), videoDrmInitData)
       // after building the base request we can release. License data will be added async
       helper.release()
       acquireLicenseAsync(videoDrmInitData, baseRequest)
@@ -82,10 +83,17 @@ class MuxHlsDownloadCallback(
   private fun buildRequest(
     uri: Uri,
     streamKeys: List<StreamKey>,
+    videoDrmInitData: DrmInitData? = null,
   ): DownloadRequest {
+    // the pssh is only in the playlists we're parsing right now, so save it for later renewals
+    val extraData = ExtraData(
+      widevinePssh = videoDrmInitData?.findSchemeData(C.WIDEVINE_UUID)?.data,
+    )
+
     return DownloadRequest.Builder(playbackId, uri)
       .setMimeType(MimeTypes.APPLICATION_M3U8)
       .setStreamKeys(streamKeys)
+      .setData(extraData.toUtf8Bytes())
       .build()
   }
 
@@ -110,13 +118,12 @@ class MuxHlsDownloadCallback(
   private fun acquireLicense(videoDrmInitData: DrmInitData): ByteArray {
     val token = drmToken
       ?: throw IOException("cannot acquire an offline license without a DRM token")
-    val licenseHelper = drmProvider.offlineLicenseHelper(playbackId, token, licenseEndpointHost)
-    return try {
-      val format = Format.Builder().setDrmInitData(videoDrmInitData).build()
-      licenseHelper.downloadLicense(format)
-    } finally {
-      licenseHelper.release()
-    }
+    return drmProvider.acquireOfflineLicense(
+      playbackId = playbackId,
+      drmToken = token,
+      licenseEndpointHost = licenseEndpointHost,
+      drmInitData = videoDrmInitData,
+    )
   }
 
   /**

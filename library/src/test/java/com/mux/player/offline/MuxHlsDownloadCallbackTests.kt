@@ -69,6 +69,10 @@ class MuxHlsDownloadCallbackTests : AbsRobolectricTest() {
     assertEquals("request should be keyed by playbackId", playbackId, ready?.id)
     assertEquals("request should target the manifest uri", MANIFEST_URI, ready?.uri)
     assertNull("clear content should carry no keySetId", ready?.keySetId)
+    assertNull(
+      "clear content should carry no pssh",
+      ready?.data?.let { ExtraData.fromUtf8Bytes(it).widevinePssh },
+    )
     // clear content must never reach for a license
     verify { drmProvider wasNot Called }
   }
@@ -135,6 +139,11 @@ class MuxHlsDownloadCallbackTests : AbsRobolectricTest() {
     assertNull(errored)
     assertEquals(playbackId, ready?.id)
     assertArrayEquals("the acquired keySetId should ride the request", keySetId, ready?.keySetId)
+    assertArrayEquals(
+      "the pssh should be saved for later license renewals",
+      sessionKeyInitData.get(0).data,
+      ready?.data?.let { ExtraData.fromUtf8Bytes(it).widevinePssh },
+    )
     // the session-key init data was the one sent for licensing
     verify { licenseHelper.downloadLicense(match { it.drmInitData == sessionKeyInitData }) }
     verify { licenseHelper.release() }
