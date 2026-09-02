@@ -238,8 +238,14 @@ object MuxDownloadManager {
    * `DownloadIndex`, and returns a checked snapshot. Blocking; callers run it on
    * [MuxPlayerDownloadStore.ioExecutor].
    *
-   * Nothing here guards against a download or a playback attempt racing the swap; a caller that
-   * renews while the same asset is being downloaded or played gets to sort that out.
+   * The index is re-read after the license request, so a concurrent [removeDownload] cannot
+   * resurrect a completed row with no media. If the row is gone, the new license is dropped and
+   * renewal fails as if the download were never there. If the same playback ID was deleted and
+   * downloaded again, the new license is saved onto that live row — same content, so either
+   * license is valid.
+   *
+   * Nothing here guards against a playback attempt racing the swap; a caller that renews while the
+   * same asset is being played gets to sort that out.
    *
    * Internal rather than private so tests can drive it against a fake store.
    */
@@ -291,12 +297,32 @@ object MuxDownloadManager {
         throw IOException("couldn't renew the offline license for $playbackId", e)
       }
 
-      // write directly to index. DownloadManager/DownloadService would re-download the media
-      val renewed = download.copyWithKeySetId(newKeySetId)
+      // Re-read after the (slow) license request. [removeDownload] doesn't share
+      // [playbackIdsRenewing], so the row we started with may have been deleted — or deleted and
+      // replaced by a new download of the same playback ID — while we were on the network.
+      val current = store.downloadIndex.getDownload(playbackId)
+      if (current == null) {
+        // Don't putDownload the stale completed snapshot: that would re-insert an asset with no
+        // media, and listeners would see a download that's already gone.
+        dropOfflineLicense(newKeySetId)
+        throw IllegalArgumentException("nothing is downloaded for Mux playback ID $playbackId")
+      }
+
+      // write directly to the live row. DownloadManager/DownloadService would re-download the media
+      val renewed = current.copyWithKeySetId(newKeySetId)
       store.downloadIndex.putDownload(renewed)
 
-      // after the swap is saved, so a crash mid-renewal can't leave the download with no license
-      if (!newKeySetId.contentEquals(oldKeySetId)) {
+      // after the swap is saved, so a crash mid-renewal can't leave the download with no license.
+      // Drop every keySetId the live row no longer points at, including one a replacement download
+      // may have acquired before we overlaid this license.
+      val previousKeySetId = current.request.keySetId
+      if (previousKeySetId != null && !previousKeySetId.contentEquals(newKeySetId)) {
+        dropOfflineLicense(previousKeySetId)
+      }
+      if (
+        !oldKeySetId.contentEquals(newKeySetId) &&
+        (previousKeySetId == null || !oldKeySetId.contentEquals(previousKeySetId))
+      ) {
         dropOfflineLicense(oldKeySetId)
       }
 

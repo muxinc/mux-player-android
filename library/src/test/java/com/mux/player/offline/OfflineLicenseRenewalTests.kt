@@ -304,6 +304,42 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
     assertArrayEquals(RENEWED_KEY_SET_ID, persisted.captured.request.keySetId)
   }
 
+  @Test
+  fun `a download removed while the license request is in flight is not resurrected`() {
+    every { index.getDownload(PLAYBACK_ID) } returns completedDrmDownload() andThen null
+
+    assertThrows(IllegalArgumentException::class.java) { renew() }
+    verify(exactly = 0) { index.putDownload(any()) }
+    verify(exactly = 1) { dropOfflineLicense(RENEWED_KEY_SET_ID) }
+  }
+
+  @Test
+  fun `a download replaced while renewing still receives the new license`() {
+    val original = completedDrmDownload()
+    val replacement = completedDrmDownload(
+      state = Download.STATE_DOWNLOADING,
+      keySetId = REPLACEMENT_KEY_SET_ID,
+      bytesDownloaded = 1_000L,
+      percentDownloaded = 10f,
+    )
+    every { index.getDownload(PLAYBACK_ID) } returns original andThen replacement
+    val persisted = capturePutDownload()
+
+    renew()
+
+    val saved = persisted.captured
+    assertEquals(
+      "the live download's progress must survive; overwriting it with the stale completed " +
+          "snapshot would drop the in-flight media",
+      Download.STATE_DOWNLOADING, saved.state,
+    )
+    assertEquals(1_000L, saved.bytesDownloaded)
+    assertEquals(10f, saved.percentDownloaded, 0f)
+    assertArrayEquals(RENEWED_KEY_SET_ID, saved.request.keySetId)
+    verify(exactly = 1) { dropOfflineLicense(ORIGINAL_KEY_SET_ID) }
+    verify(exactly = 1) { dropOfflineLicense(REPLACEMENT_KEY_SET_ID) }
+  }
+
   private fun renew(domain: String? = null): MuxDownload =
     MuxDownloadManager.renewOfflineLicenseBlocking(store, PLAYBACK_ID, DRM_TOKEN, domain)
 
@@ -314,6 +350,8 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
     state: Int = Download.STATE_COMPLETED,
     keySetId: ByteArray? = ORIGINAL_KEY_SET_ID,
     pssh: ByteArray? = WIDEVINE_PSSH,
+    bytesDownloaded: Long = BYTES_DOWNLOADED,
+    percentDownloaded: Float = 100f,
   ): Download = Download(
     DownloadRequest.Builder(PLAYBACK_ID, Uri.parse("https://stream.mux.com/$PLAYBACK_ID.m3u8"))
       .setMimeType(MimeTypes.APPLICATION_M3U8)
@@ -327,8 +365,8 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
     Download.STOP_REASON_NONE,
     Download.FAILURE_REASON_NONE,
     DownloadProgress().apply {
-      bytesDownloaded = BYTES_DOWNLOADED
-      percentDownloaded = 100f
+      this.bytesDownloaded = bytesDownloaded
+      this.percentDownloaded = percentDownloaded
     },
   )
 
@@ -342,5 +380,6 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
     val WIDEVINE_PSSH = byteArrayOf(0, 0, 0, 32, 112, 115, 115, 104)
     val ORIGINAL_KEY_SET_ID = byteArrayOf(1, 2, 3, 4)
     val RENEWED_KEY_SET_ID = byteArrayOf(5, 6, 7, 8)
+    val REPLACEMENT_KEY_SET_ID = byteArrayOf(9, 10, 11, 12)
   }
 }
