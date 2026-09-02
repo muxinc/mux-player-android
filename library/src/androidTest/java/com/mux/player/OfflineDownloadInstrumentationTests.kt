@@ -36,7 +36,9 @@ import com.mux.player.offline.MuxOfflineCmafHlsMediaSource
 import com.mux.player.offline.createMuxHlsDownloadHelper
 import com.mux.player.offline.isOfflineLicenseExpired
 import com.mux.player.offline.localOfflineLicenseHelper
-import com.mux.player.offline.renewOfflineLicense
+import com.mux.player.offline.ExtraData
+import com.mux.player.offline.acquireOfflineLicense
+import com.mux.player.offline.widevineDrmInitData
 import com.mux.player.util.LoggingHttpDataSource
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -198,22 +200,26 @@ class OfflineDownloadInstrumentationTests {
     )
     val drmProvider = createDrmSessionManagerProvider()
 
-    // Acquiring the license is what starting a download does. Renewal picks up from the keySetId it
-    // leaves on the request; it needs no media, no manifests, and no PSSH.
+    // Acquiring the license is what starting a download does. Renewal starts over from the PSSH the
+    // download saved, with no media and no manifests to hand.
     val downloadRequest = prepareDownloadRequest(mediaItem, drmProvider)
-    val originalKeySetId = downloadRequest.keySetId
     assertNotNull(
       "Downloading a DRM asset should acquire an offline license",
-      originalKeySetId
+      downloadRequest.keySetId
+    )
+    val savedPssh = ExtraData.fromUtf8Bytes(downloadRequest.data).widevinePssh
+    assertNotNull(
+      "Downloading a DRM asset should save the pssh a renewal needs",
+      savedPssh
     )
 
-    Log.d(TAG, "testDrmLicenseRenewal(): Renewing the offline license")
+    Log.d(TAG, "testDrmLicenseRenewal(): Acquiring a replacement offline license")
     val renewedKeySetId = withContext(Dispatchers.IO) {
-      drmProvider.renewOfflineLicense(
+      drmProvider.acquireOfflineLicense(
         playbackId = DRM_PLAYBACK_ID,
         drmToken = DRM_TOKEN,
         licenseEndpointHost = mediaItem.getLicenseUrlHost(),
-        keySetId = originalKeySetId!!,
+        drmInitData = widevineDrmInitData(savedPssh!!),
       )
     }
 

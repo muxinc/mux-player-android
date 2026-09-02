@@ -7,6 +7,8 @@ import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.DrmInitData
+import androidx.media3.common.Format
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.RenderersFactory
@@ -84,38 +86,42 @@ fun MuxDrmSessionManagerProvider.offlineLicenseHelper(
 }
 
 /**
- * Renews the persistent Widevine license identified by [keySetId], returning the `keySetId` of the
- * renewed license. Widevine often renews in place and hands back the same `keySetId`, so callers
- * must not assume the result is new.
+ * Acquires a fresh persistent Widevine license for [drmInitData], returning its `keySetId`.
  *
- * Renewal goes to the same Mux endpoint as acquisition (see
- * [MuxDrmSessionManagerProvider.offlineLicenseHelper]) and needs nothing from the media: media3
- * builds the renewal request from [keySetId] alone, with no PSSH and no
- * [androidx.media3.common.DrmInitData].
+ * This is both how a download gets its first license and how it gets a replacement one: Widevine
+ * can't extend a license that has already run out, so "renewing" an expired download means asking
+ * for a brand-new license for the same content, which needs the PSSH (see [ExtraData]).
  *
- * NOTE: [OfflineLicenseHelper.renewLicense] blocks, so call it off the caller's looper.
+ * NOTE: [OfflineLicenseHelper.downloadLicense] blocks, so call it off the caller's looper.
  *
- * @param playbackId the Mux playback ID whose license is being renewed.
+ * @param playbackId the Mux playback ID the license is for.
  * @param drmToken a *fresh* DRM token authorizing a persistent (offline) license for [playbackId].
- *   The token used to acquire the license has likely expired by now.
  * @param licenseEndpointHost the Mux license server host, e.g. `license.mux.com`.
- * @param keySetId the `keySetId` of the license to renew, as stored on the download's
- *   [androidx.media3.exoplayer.offline.DownloadRequest].
+ * @param drmInitData the content's Widevine init data, either captured from the playlists during a
+ *   download or rebuilt from a saved PSSH with [widevineDrmInitData].
  */
 @OptIn(UnstableApi::class)
-internal fun MuxDrmSessionManagerProvider.renewOfflineLicense(
+internal fun MuxDrmSessionManagerProvider.acquireOfflineLicense(
   playbackId: String,
   drmToken: String,
   licenseEndpointHost: String,
-  keySetId: ByteArray,
+  drmInitData: DrmInitData,
 ): ByteArray {
   val licenseHelper = offlineLicenseHelper(playbackId, drmToken, licenseEndpointHost)
   return try {
-    licenseHelper.renewLicense(keySetId)
+    licenseHelper.downloadLicense(Format.Builder().setDrmInitData(drmInitData).build())
   } finally {
     licenseHelper.release()
   }
 }
+
+/**
+ * The Widevine [DrmInitData] for a [pssh] saved off a download, shaped the way media3's HLS parser
+ * shapes the one it reads from `#EXT-X-KEY`.
+ */
+@OptIn(UnstableApi::class)
+internal fun widevineDrmInitData(pssh: ByteArray): DrmInitData =
+  DrmInitData(DrmInitData.SchemeData(C.WIDEVINE_UUID, MimeTypes.VIDEO_MP4, pssh))
 
 /**
  * Builds an [OfflineLicenseHelper] for asking the device's CDM about licenses that are *already* on
@@ -192,8 +198,8 @@ internal fun offlineLicenseExpired(
  * Local-only purge of the offline license keyed by [keySetId]. No network and no DRM token — Mux
  * enforces no offline-license quota, so there is no server-side release. Best-effort.
  *
- * Only call this for a license nothing references any more: a download that was removed, or one whose
- * license [renewOfflineLicense] replaced with a different `keySetId`.
+ * Only call this for a license nothing references any more: a download that was removed, or one
+ * whose license [MuxDownloadManager.renewOfflineLicense] replaced with a different `keySetId`.
  */
 @OptIn(UnstableApi::class)
 internal fun dropOfflineLicense(keySetId: ByteArray) {

@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.DrmInitData
-import androidx.media3.common.Format
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.StreamKey
 import androidx.media3.common.util.UnstableApi
@@ -119,13 +118,12 @@ class MuxHlsDownloadCallback(
   private fun acquireLicense(videoDrmInitData: DrmInitData): ByteArray {
     val token = drmToken
       ?: throw IOException("cannot acquire an offline license without a DRM token")
-    val licenseHelper = drmProvider.offlineLicenseHelper(playbackId, token, licenseEndpointHost)
-    return try {
-      val format = Format.Builder().setDrmInitData(videoDrmInitData).build()
-      licenseHelper.downloadLicense(format)
-    } finally {
-      licenseHelper.release()
-    }
+    return drmProvider.acquireOfflineLicense(
+      playbackId = playbackId,
+      drmToken = token,
+      licenseEndpointHost = licenseEndpointHost,
+      drmInitData = videoDrmInitData,
+    )
   }
 
   /**

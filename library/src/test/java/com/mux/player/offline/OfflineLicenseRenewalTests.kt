@@ -3,6 +3,7 @@ package com.mux.player.offline
 import android.net.Uri
 import android.os.Looper
 import androidx.annotation.OptIn
+import androidx.media3.common.DrmInitData
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
@@ -37,7 +38,7 @@ import java.io.IOException
  * [MuxDownloadManager.renewOfflineLicense].
  *
  * There's no CDM under Robolectric, so everything that talks to one is stubbed at the `OfflineUtilsKt`
- * seam: the license request ([MuxDrmSessionManagerProvider.renewOfflineLicense]), the expiry check
+ * seam: the license request ([MuxDrmSessionManagerProvider.acquireOfflineLicense]), the expiry check
  * ([isOfflineLicenseExpired]), and the stale-license purge ([dropOfflineLicense]). What's under test
  * is everything around them — which downloads are eligible, what gets persisted, and which license
  * gets purged.
@@ -60,7 +61,7 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
 
     mockkStatic("com.mux.player.offline.OfflineUtilsKt")
     every {
-      any<MuxDrmSessionManagerProvider>().renewOfflineLicense(any(), any(), any(), any())
+      any<MuxDrmSessionManagerProvider>().acquireOfflineLicense(any(), any(), any(), any())
     } returns RENEWED_KEY_SET_ID
     // The purge is what a couple of these tests observe, so it has to be stubbed either way
     every { dropOfflineLicense(any()) } just Runs
@@ -145,12 +146,12 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
   }
 
   @Test
-  fun `a license renewed in place is not purged`() {
+  fun `a new license that reuses the keySetId is not purged`() {
     every { index.getDownload(PLAYBACK_ID) } returns completedDrmDownload()
-    // Widevine commonly renews in place and hands back the same keySetId. Purging that would delete
-    // the license we just renewed.
+    // A CDM that hands back the same keySetId for the new license would otherwise have the license
+    // we just acquired deleted out from under it
     every {
-      any<MuxDrmSessionManagerProvider>().renewOfflineLicense(any(), any(), any(), any())
+      any<MuxDrmSessionManagerProvider>().acquireOfflineLicense(any(), any(), any(), any())
     } returns ORIGINAL_KEY_SET_ID.copyOf()
 
     renew()
@@ -164,7 +165,7 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
 
     val host = slot<String>()
     every {
-      any<MuxDrmSessionManagerProvider>().renewOfflineLicense(any(), any(), capture(host), any())
+      any<MuxDrmSessionManagerProvider>().acquireOfflineLicense(any(), any(), capture(host), any())
     } returns RENEWED_KEY_SET_ID
 
     renew(domain = "custom.abc1234.com")
@@ -178,7 +179,7 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
 
     val host = slot<String>()
     every {
-      any<MuxDrmSessionManagerProvider>().renewOfflineLicense(any(), any(), capture(host), any())
+      any<MuxDrmSessionManagerProvider>().acquireOfflineLicense(any(), any(), capture(host), any())
     } returns RENEWED_KEY_SET_ID
 
     renew()
@@ -187,15 +188,15 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
   }
 
   @Test
-  fun `renewing renews the license the download already has`() {
+  fun `renewing asks for a new license against the pssh saved on the download`() {
     every { index.getDownload(PLAYBACK_ID) } returns completedDrmDownload()
 
     val playbackId = slot<String>()
     val drmToken = slot<String>()
-    val keySetId = slot<ByteArray>()
+    val drmInitData = slot<DrmInitData>()
     every {
       any<MuxDrmSessionManagerProvider>()
-        .renewOfflineLicense(capture(playbackId), capture(drmToken), any(), capture(keySetId))
+        .acquireOfflineLicense(capture(playbackId), capture(drmToken), any(), capture(drmInitData))
     } returns RENEWED_KEY_SET_ID
 
     renew()
@@ -203,8 +204,8 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
     assertEquals(PLAYBACK_ID, playbackId.captured)
     assertEquals(DRM_TOKEN, drmToken.captured)
     assertArrayEquals(
-      "renewal has to start from the keySetId stored on the download",
-      ORIGINAL_KEY_SET_ID, keySetId.captured,
+      "the request has to carry the pssh, or the license server has nothing to license",
+      WIDEVINE_PSSH, drmInitData.captured.get(0).data,
     )
   }
 
@@ -234,10 +235,20 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
   }
 
   @Test
+  fun `renewing a download with no saved pssh fails`() {
+    // downloaded by a Mux Player version that didn't save the pssh yet, so there's nothing to
+    // license against and re-downloading is the only way out
+    every { index.getDownload(PLAYBACK_ID) } returns completedDrmDownload(pssh = null)
+
+    assertThrows(IllegalStateException::class.java) { renew() }
+    verify(exactly = 0) { index.putDownload(any()) }
+  }
+
+  @Test
   fun `a failed license request leaves the download alone`() {
     every { index.getDownload(PLAYBACK_ID) } returns completedDrmDownload()
     every {
-      any<MuxDrmSessionManagerProvider>().renewOfflineLicense(any(), any(), any(), any())
+      any<MuxDrmSessionManagerProvider>().acquireOfflineLicense(any(), any(), any(), any())
     } throws DrmSessionException(
       IOException("no license for you"),
       PlaybackException.ERROR_CODE_DRM_LICENSE_ACQUISITION_FAILED,
@@ -252,7 +263,7 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
   fun `a license failure that isn't an IOException is reported as one`() {
     every { index.getDownload(PLAYBACK_ID) } returns completedDrmDownload()
     every {
-      any<MuxDrmSessionManagerProvider>().renewOfflineLicense(any(), any(), any(), any())
+      any<MuxDrmSessionManagerProvider>().acquireOfflineLicense(any(), any(), any(), any())
     } throws IllegalArgumentException("the CDM didn't like that")
 
     // Callers shouldn't have to catch whatever the platform decided to throw
@@ -265,7 +276,7 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
 
     var reentrantFailure: Throwable? = null
     every {
-      any<MuxDrmSessionManagerProvider>().renewOfflineLicense(any(), any(), any(), any())
+      any<MuxDrmSessionManagerProvider>().acquireOfflineLicense(any(), any(), any(), any())
     } answers {
       // Renewal is a network round-trip, so a UI can easily ask for a second one mid-flight
       reentrantFailure = runCatching { renew() }.exceptionOrNull()
@@ -302,10 +313,12 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
   private fun completedDrmDownload(
     state: Int = Download.STATE_COMPLETED,
     keySetId: ByteArray? = ORIGINAL_KEY_SET_ID,
+    pssh: ByteArray? = WIDEVINE_PSSH,
   ): Download = Download(
     DownloadRequest.Builder(PLAYBACK_ID, Uri.parse("https://stream.mux.com/$PLAYBACK_ID.m3u8"))
       .setMimeType(MimeTypes.APPLICATION_M3U8)
       .setKeySetId(keySetId)
+      .setData(ExtraData(widevinePssh = pssh).toUtf8Bytes())
       .build(),
     state,
     START_TIME_MS,
@@ -326,6 +339,7 @@ class OfflineLicenseRenewalTests : AbsRobolectricTest() {
     const val CONTENT_LENGTH = 42_000_000L
     const val BYTES_DOWNLOADED = 42_000_000L
 
+    val WIDEVINE_PSSH = byteArrayOf(0, 0, 0, 32, 112, 115, 115, 104)
     val ORIGINAL_KEY_SET_ID = byteArrayOf(1, 2, 3, 4)
     val RENEWED_KEY_SET_ID = byteArrayOf(5, 6, 7, 8)
   }

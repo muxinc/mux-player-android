@@ -206,19 +206,20 @@ object MuxDownloadManager {
    * Renews the offline DRM license for the already-downloaded asset [playbackId], so it can be
    * played offline again without re-downloading any media.
    *
-   * Offline Widevine licenses run out — see [MuxDownload.State.EXPIRED] — and renewing one needs a
-   * network, so this is something to do opportunistically while the device is online, before the
-   * user next goes offline.
+   * Offline Widevine licenses run out (see [MuxDownload.State.EXPIRED]), and Widevine can't extend
+   * one that already has, so this asks the license server for a whole new license for the same
+   * content and points the download at it. Either way it needs a network, so it's something to do
+   * opportunistically while the device is online, before the user next goes offline.
    *
    * DRM tokens are short-lived, so [drmToken] must be a *fresh* one from your backend.
    *
-   * Returns once the license is renewed (requires network). [Listener]s hear about nrewals too
+   * Returns once the new license is saved (requires network). [Listener]s hear about renewals too.
    *
    * @return a fresh snapshot of the download, with its license state checked.
    * @throws IllegalArgumentException if nothing is downloaded for [playbackId].
-   * @throws IllegalStateException if the download isn't finished, isn't DRM-protected, or already
-   *   has a renewal in flight.
-   * @throws IOException if the license request fails, or the renewed license can't be saved.
+   * @throws IllegalStateException if the download isn't finished, isn't DRM-protected, has no saved
+   *   PSSH to license against, or already has a renewal in flight.
+   * @throws IOException if the license request fails, or the new license can't be saved.
    */
   suspend fun renewOfflineLicense(
     context: Context,
@@ -233,8 +234,12 @@ object MuxDownloadManager {
   }
 
   /**
-   * Renews the license identified by the download's stored `keySetId`, persists the renewed one, and
-   * returns a checked snapshot. Blocking; callers run it on [MuxPlayerDownloadStore.ioExecutor].
+   * Acquires a new offline license for the download's saved PSSH, writes its `keySetId` into the
+   * `DownloadIndex`, and returns a checked snapshot. Blocking; callers run it on
+   * [MuxPlayerDownloadStore.ioExecutor].
+   *
+   * Nothing here guards against a download or a playback attempt racing the swap; a caller that
+   * renews while the same asset is being downloaded or played gets to sort that out.
    *
    * Internal rather than private so tests can drive it against a fake store.
    */
@@ -263,17 +268,22 @@ object MuxDownloadManager {
       val oldKeySetId = checkNotNull(download.request.keySetId) {
         "the download for $playbackId has no offline license to renew; it isn't DRM-protected"
       }
+      // saved when the download's first license was acquired; the media on disk can't give it back
+      val widevinePssh = checkNotNull(ExtraData.fromUtf8Bytes(download.request.data).widevinePssh) {
+        "the download for $playbackId has no saved PSSH, so no new license can be requested for it." +
+            " Remove it and download it again."
+      }
 
       val drmProvider = MuxDrmSessionManagerProvider(
         drmHttpDataSourceFactory = DefaultHttpDataSource.Factory(),
         logger = createLogcatLogger(),
       )
       val newKeySetId = try {
-        drmProvider.renewOfflineLicense(
+        drmProvider.acquireOfflineLicense(
           playbackId = playbackId,
           drmToken = drmToken,
           licenseEndpointHost = "license.${domain ?: MUX_VIDEO_DEFAULT_DOMAIN}",
-          keySetId = oldKeySetId,
+          drmInitData = widevineDrmInitData(widevinePssh),
         )
       } catch (e: IOException) {
         throw e
@@ -285,8 +295,8 @@ object MuxDownloadManager {
       val renewed = download.copyWithKeySetId(newKeySetId)
       store.downloadIndex.putDownload(renewed)
 
+      // after the swap is saved, so a crash mid-renewal can't leave the download with no license
       if (!newKeySetId.contentEquals(oldKeySetId)) {
-        // only drop the old one if we really got new license bytes
         dropOfflineLicense(oldKeySetId)
       }
 
@@ -621,7 +631,7 @@ object MuxDownloadManager {
       percentDownloaded = C.PERCENTAGE_UNSET.toFloat(),
       bytesDownloaded = 0L,
       totalBytes = C.LENGTH_UNSET.toLong(),
-      widevinePssh = null,
+      extraData = ExtraData(),
     )
 
   private fun failedSnapshot(playbackId: String): MuxDownload =
@@ -631,7 +641,7 @@ object MuxDownloadManager {
       percentDownloaded = C.PERCENTAGE_UNSET.toFloat(),
       bytesDownloaded = 0L,
       totalBytes = C.LENGTH_UNSET.toLong(),
-      widevinePssh = null,
+      extraData = ExtraData(),
     )
 
   private fun Download.toMuxDownload(expired: Boolean = false): MuxDownload =
@@ -641,7 +651,7 @@ object MuxDownloadManager {
       percentDownloaded = percentDownloaded,
       bytesDownloaded = bytesDownloaded,
       totalBytes = contentLength,
-      widevinePssh = ExtraData.fromUtf8Bytes(request.data).widevinePssh,
+      extraData = ExtraData.fromUtf8Bytes(request.data),
     )
 
   /**

@@ -29,6 +29,14 @@ internal data class ExtraData(
       .toString()
       .toByteArray(Charsets.UTF_8)
 
+  // by hand because the generated ones would compare the pssh by reference, and this rides on
+  // MuxDownload, which callers may well compare
+  override fun equals(other: Any?): Boolean =
+    this === other ||
+        (other is ExtraData && widevinePssh.contentEquals(other.widevinePssh))
+
+  override fun hashCode(): Int = widevinePssh.contentHashCode()
+
   companion object {
     private const val KEY_WIDEVINE_PSSH = "widevinePssh"
     private const val BASE64_FLAGS = Base64.NO_WRAP
