@@ -11,8 +11,8 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
-import androidx.media3.exoplayer.offline.DownloadIndex
 import androidx.media3.exoplayer.offline.DownloadManager
+import androidx.media3.exoplayer.offline.WritableDownloadIndex
 import java.io.File
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -34,7 +34,7 @@ import java.util.concurrent.Executors
 abstract class MuxPlayerDownloadStore {
 
   abstract val downloadManager: DownloadManager
-  abstract val downloadIndex: DownloadIndex
+  abstract val downloadIndex: WritableDownloadIndex
   abstract val downloadCache: Cache
   abstract val ioExecutor: Executor
 
@@ -104,9 +104,10 @@ private class DownloadStoreImpl(
     }
   }
 
-  // Derived from the DownloadManager so the store and the manager share a single, consistent index
-  override val downloadIndex: DownloadIndex by lazy {
-    downloadManager.downloadIndex
+  // Derived from the DownloadManager so the store and the manager share a single, consistent index.
+  // DownloadManager's constructor above always builds a DefaultDownloadIndex, which is writable.
+  override val downloadIndex: WritableDownloadIndex by lazy {
+    downloadManager.downloadIndex as WritableDownloadIndex
   }
 
   companion object {

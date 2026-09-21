@@ -69,4 +69,20 @@ object DownloadableAssets {
    */
   fun titleFor(playbackId: String): String =
     all.firstOrNull { it.playbackId == playbackId }?.title ?: playbackId
+
+  /**
+   * Whether the asset for [playbackId] is DRM-protected, and so has an offline license that can run
+   * out and be renewed. Unknown playback IDs read as not DRM-protected.
+   */
+  fun isDrmProtected(playbackId: String): Boolean =
+    all.firstOrNull { it.playbackId == playbackId }?.drmToken != null
+
+  /**
+   * A *fresh* DRM token for [playbackId], for renewing its offline license.
+   *
+   * This example has its tokens compiled in, so "fresh" is a fiction here. A real app asks its
+   * backend for a new token at this point: the one that downloaded the asset expired long ago.
+   */
+  fun drmTokenFor(playbackId: String): String? =
+    all.firstOrNull { it.playbackId == playbackId }?.drmToken
 }
