@@ -48,7 +48,7 @@ muxDistribution {
   dokkaConfig {
     moduleName = "Mux Player SDK for Android"
     footer = "(c) " + Year.now() + " Mux, Inc. Have questions or need help?" +
-            " Contact support@mux.com"
+            " Visit https://www.mux.com/support"
   }
 
   pom {
